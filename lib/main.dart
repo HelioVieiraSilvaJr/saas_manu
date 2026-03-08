@@ -9,6 +9,9 @@ import 'Scenes/DashboardTenant/DashboardTenantPage.dart';
 import 'Scenes/Products/ProductsListPage.dart';
 import 'Scenes/Products/ProductFormPage.dart';
 import 'Scenes/Products/ProductDetailPage.dart';
+import 'Scenes/Customers/CustomersListPage.dart';
+import 'Scenes/Customers/CustomerFormPage.dart';
+import 'Scenes/Customers/CustomerDetailPage.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,6 +48,10 @@ class SaasManApp extends StatelessWidget {
         '/products/new': (context) => const ProductFormPage(),
         '/products/edit': (context) => const ProductFormPage(),
         '/products/detail': (context) => const ProductDetailPage(),
+        '/customers': (context) => const CustomersListPage(),
+        '/customers/new': (context) => const CustomerFormPage(),
+        '/customers/edit': (context) => const CustomerFormPage(),
+        '/customers/detail': (context) => const CustomerDetailPage(),
       },
     );
   }
