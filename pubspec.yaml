@@ -41,6 +41,33 @@ dependencies:
   cloud_firestore: ^5.5.2
   firebase_storage: ^12.3.7
 
+  # State Management
+  flutter_riverpod: ^2.6.1
+
+  # Local Storage
+  shared_preferences: ^2.3.4
+
+  # Charts
+  fl_chart: ^0.70.2
+
+  # Notifications
+  elegant_notification: ^2.4.1
+
+  # Formatting
+  intl: ^0.20.2
+
+  # URL Launcher
+  url_launcher: ^6.3.1
+
+  # Mask
+  mask_text_input_formatter: ^2.9.0
+
+  # HTTP
+  http: ^1.2.2
+
+  # Image Picker
+  image_picker: ^1.1.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
