@@ -20,6 +20,8 @@ import 'Scenes/ManageTenants/TenantsListPage.dart';
 import 'Scenes/ManageTenants/TenantFormPage.dart';
 import 'Scenes/ManageTenants/TenantDetailPage.dart';
 import 'Scenes/TenantSettings/TenantSettingsPage.dart';
+import 'Scenes/TeamManagement/TeamManagementPage.dart';
+import 'Scenes/TeamManagement/AddMemberPage.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -69,6 +71,8 @@ class SaasManApp extends StatelessWidget {
         '/admin/tenants/edit': (context) => const TenantFormPage(),
         '/admin/tenants/detail': (context) => const TenantDetailPage(),
         '/settings': (context) => const TenantSettingsPage(),
+        '/team': (context) => const TeamManagementPage(),
+        '/team/add': (context) => const AddMemberPage(),
       },
     );
   }
