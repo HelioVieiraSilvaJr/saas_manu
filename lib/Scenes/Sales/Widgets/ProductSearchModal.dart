@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../Commons/Extensions/String+Extensions.dart';
 import '../../../Commons/Models/ProductModel.dart';
+import '../../../Commons/Widgets/DesignSystem/AppNetworkImage.dart';
 import '../../../Commons/Widgets/DesignSystem/DSColors.dart';
 import '../../../Commons/Widgets/DesignSystem/DSSpacing.dart';
 import '../../../Commons/Widgets/DesignSystem/DSTextStyle.dart';
@@ -228,21 +229,14 @@ class _ProductSearchContentState extends State<_ProductSearchContent> {
               itemBuilder: (context, index) {
                 final product = _filtered[index];
                 return ListTile(
-                  leading: product.imageUrl != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(
-                            DSSpacing.radiusSm,
-                          ),
-                          child: Image.network(
-                            product.imageUrl!,
-                            width: 48,
-                            height: 48,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
-                                _buildProductPlaceholder(colors),
-                          ),
-                        )
-                      : _buildProductPlaceholder(colors),
+                  leading: AppNetworkImage(
+                    url: product.imageUrl,
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.cover,
+                    borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
+                    placeholder: _buildProductPlaceholder(colors),
+                  ),
                   title: Text(product.name),
                   subtitle: Text(
                     '${product.price.formatToBRL()} • Est: ${product.stock}',

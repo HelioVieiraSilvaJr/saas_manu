@@ -4,6 +4,7 @@ import '../../../Commons/Widgets/DesignSystem/DSColors.dart';
 import '../../../Commons/Widgets/DesignSystem/DSTextStyle.dart';
 import '../../../Commons/Widgets/DesignSystem/DSSpacing.dart';
 import '../../../Commons/Widgets/DesignSystem/DSBadge.dart';
+import '../../../Commons/Widgets/DesignSystem/AppNetworkImage.dart';
 import '../../../Commons/Extensions/String+Extensions.dart';
 
 /// Card de produto para grid (Web e Mobile).
@@ -132,32 +133,17 @@ class _ProductCardState extends State<ProductCard> {
   }
 
   Widget _buildImage(DSColors colors) {
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(
-        top: Radius.circular(DSSpacing.radiusMd),
-      ),
-      child: AspectRatio(
-        aspectRatio: 4 / 3,
-        child:
-            widget.product.imageUrl != null &&
-                widget.product.imageUrl!.isNotEmpty
-            ? Image.network(
-                widget.product.imageUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _imagePlaceholder(colors),
-              )
-            : _imagePlaceholder(colors),
-      ),
-    );
-  }
-
-  Widget _imagePlaceholder(DSColors colors) {
-    return Container(
-      color: colors.scaffoldBackground,
-      child: Center(
-        child: Icon(
+    return AspectRatio(
+      aspectRatio: 4 / 3,
+      child: AppNetworkImage(
+        url: widget.product.imageUrl,
+        fit: BoxFit.cover,
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(DSSpacing.radiusMd),
+        ),
+        placeholder: Icon(
           Icons.inventory_2_outlined,
-          size: 48,
+          size: 40,
           color: colors.textTertiary.withValues(alpha: 0.4),
         ),
       ),

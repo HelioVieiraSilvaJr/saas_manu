@@ -7,8 +7,10 @@ import '../../Commons/Widgets/DesignSystem/DSSpacing.dart';
 import '../../Commons/Widgets/DesignSystem/DSBadge.dart';
 import '../../Commons/Extensions/String+Extensions.dart';
 import '../../Sources/Coordinators/AppShell.dart';
+import '../../Commons/Widgets/DesignSystem/AppNetworkImage.dart';
 import 'ProductsCoordinator.dart';
 import 'ProductsListPresenter.dart';
+import 'ProductsRepository.dart';
 
 /// Página de detalhes do produto.
 ///
@@ -23,6 +25,7 @@ class ProductDetailPage extends StatefulWidget {
 class _ProductDetailPageState extends State<ProductDetailPage> {
   ProductModel? _product;
   late final ProductsListPresenter _presenter;
+  final ProductsRepository _repository = ProductsRepository();
 
   @override
   void initState() {
@@ -44,6 +47,14 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   void dispose() {
     _presenter.dispose();
     super.dispose();
+  }
+
+  // MARK: - Reload
+
+  Future<void> _reloadProduct() async {
+    if (_product == null) return;
+    final fresh = await _repository.getById(_product!.uid);
+    if (fresh != null && mounted) setState(() => _product = fresh);
   }
 
   @override
@@ -89,8 +100,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               Tooltip(
                 message: 'Editar',
                 child: IconButton(
-                  onPressed: () =>
-                      ProductsCoordinator.navigateToEdit(context, product),
+                  onPressed: () async {
+                    await ProductsCoordinator.navigateToEdit(context, product);
+                    _reloadProduct();
+                  },
                   icon: Icon(Icons.edit_outlined, color: colors.primaryColor),
                 ),
               ),
@@ -146,8 +159,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         elevation: 0,
         actions: [
           IconButton(
-            onPressed: () =>
-                ProductsCoordinator.navigateToEdit(context, product),
+            onPressed: () async {
+              await ProductsCoordinator.navigateToEdit(context, product);
+              _reloadProduct();
+            },
             icon: Icon(Icons.edit_outlined, color: colors.primaryColor),
           ),
           IconButton(
@@ -188,13 +203,13 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
-        child: product.imageUrl != null && product.imageUrl!.isNotEmpty
-            ? Image.network(
-                product.imageUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _imagePlaceholder(colors),
-              )
-            : _imagePlaceholder(colors),
+        child: AppNetworkImage(
+          url: product.imageUrl,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          placeholder: _imagePlaceholder(colors),
+        ),
       ),
     );
   }
@@ -203,7 +218,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     return Center(
       child: Icon(
         Icons.inventory_2_outlined,
-        size: 64,
+        size: 56,
         color: colors.textTertiary.withValues(alpha: 0.4),
       ),
     );

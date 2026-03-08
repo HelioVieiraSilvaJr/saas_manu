@@ -8,6 +8,7 @@ import '../../Commons/Widgets/DesignSystem/DSSpacing.dart';
 import '../../Commons/Widgets/DesignSystem/DSButton.dart';
 import '../../Commons/Widgets/DesignSystem/FormTextField.dart';
 import '../../Commons/Widgets/DesignSystem/LoadingIndicator.dart';
+import '../../Commons/Widgets/DesignSystem/AppNetworkImage.dart';
 import '../../Sources/Coordinators/AppShell.dart';
 import 'ProductFormPresenter.dart';
 import 'ProductFormViewModel.dart';
@@ -414,10 +415,10 @@ class _ProductFormPageState extends State<ProductFormPage> {
       return Image.memory(_imagePreview!, fit: BoxFit.cover);
     }
     if (_imagePreviewUrl != null && _imagePreviewUrl!.isNotEmpty) {
-      return Image.network(
-        _imagePreviewUrl!,
+      return AppNetworkImage(
+        url: _imagePreviewUrl,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _imagePlaceholder(colors),
+        placeholder: _imagePlaceholder(colors),
       );
     }
     return _imagePlaceholder(colors);

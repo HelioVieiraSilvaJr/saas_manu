@@ -49,7 +49,10 @@ class ProductsListMobileView extends StatelessWidget {
           right: DSSpacing.lg,
           bottom: DSSpacing.lg,
           child: FloatingActionButton.extended(
-            onPressed: () => ProductsCoordinator.navigateToCreate(context),
+            onPressed: () async {
+              await ProductsCoordinator.navigateToCreate(context);
+              presenter.refresh();
+            },
             backgroundColor: colors.primaryColor,
             icon: const Icon(Icons.add_rounded, color: Colors.white),
             label: const Text(
@@ -305,8 +308,14 @@ class ProductsListMobileView extends StatelessWidget {
           return ProductCard(
             product: product,
             isWeb: false,
-            onTap: () => ProductsCoordinator.navigateToDetail(context, product),
-            onEdit: () => ProductsCoordinator.navigateToEdit(context, product),
+            onTap: () async {
+              await ProductsCoordinator.navigateToDetail(context, product);
+              presenter.refresh();
+            },
+            onEdit: () async {
+              await ProductsCoordinator.navigateToEdit(context, product);
+              presenter.refresh();
+            },
             onDelete: () => presenter.deleteProduct(product),
           );
         },

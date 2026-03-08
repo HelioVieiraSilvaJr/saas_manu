@@ -4,23 +4,33 @@ import '../../Commons/Models/ProductModel.dart';
 /// Coordinator de navegação para Produtos.
 class ProductsCoordinator {
   /// Navega para a lista de produtos.
-  static void navigateToList(BuildContext context) {
-    Navigator.pushNamed(context, '/products');
+  static Future<dynamic> navigateToList(BuildContext context) {
+    return Navigator.pushNamed(context, '/products');
   }
 
   /// Navega para criar novo produto.
-  static void navigateToCreate(BuildContext context) {
-    Navigator.pushNamed(context, '/products/new');
+  static Future<dynamic> navigateToCreate(BuildContext context) {
+    return Navigator.pushNamed(context, '/products/new');
   }
 
   /// Navega para editar produto.
-  static void navigateToEdit(BuildContext context, ProductModel product) {
-    Navigator.pushNamed(context, '/products/edit', arguments: product.uid);
+  static Future<dynamic> navigateToEdit(
+    BuildContext context,
+    ProductModel product,
+  ) {
+    return Navigator.pushNamed(
+      context,
+      '/products/edit',
+      arguments: product.uid,
+    );
   }
 
   /// Navega para detalhes do produto.
-  static void navigateToDetail(BuildContext context, ProductModel product) {
-    Navigator.pushNamed(context, '/products/detail', arguments: product);
+  static Future<dynamic> navigateToDetail(
+    BuildContext context,
+    ProductModel product,
+  ) {
+    return Navigator.pushNamed(context, '/products/detail', arguments: product);
   }
 
   /// Voltar.

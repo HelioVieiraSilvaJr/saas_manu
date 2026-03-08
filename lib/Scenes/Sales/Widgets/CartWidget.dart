@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../Commons/Extensions/String+Extensions.dart';
+import '../../../Commons/Widgets/DesignSystem/AppNetworkImage.dart';
 import '../../../Commons/Widgets/DesignSystem/DSColors.dart';
 import '../../../Commons/Widgets/DesignSystem/DSSpacing.dart';
 import '../../../Commons/Widgets/DesignSystem/DSTextStyle.dart';
@@ -112,19 +113,14 @@ class CartWidget extends StatelessWidget {
       child: Row(
         children: [
           // Imagem/Placeholder
-          if (item.product.imageUrl != null)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
-              child: Image.network(
-                item.product.imageUrl!,
-                width: 40,
-                height: 40,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _buildPlaceholder(colors),
-              ),
-            )
-          else
-            _buildPlaceholder(colors),
+          AppNetworkImage(
+            url: item.product.imageUrl,
+            width: 40,
+            height: 40,
+            fit: BoxFit.cover,
+            borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
+            placeholder: _buildPlaceholder(colors),
+          ),
           const SizedBox(width: DSSpacing.sm),
 
           // Info

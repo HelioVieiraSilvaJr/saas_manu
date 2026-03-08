@@ -76,7 +76,10 @@ class ProductsListWebView extends StatelessWidget {
         DSButton.primary(
           label: 'Novo Produto',
           icon: Icons.add_rounded,
-          onTap: () => ProductsCoordinator.navigateToCreate(context),
+          onTap: () async {
+            await ProductsCoordinator.navigateToCreate(context);
+            presenter.refresh();
+          },
         ),
       ],
     );
@@ -252,7 +255,10 @@ class ProductsListWebView extends StatelessWidget {
         title: 'Nenhum produto cadastrado',
         message: 'Comece adicionando seu primeiro produto.',
         actionLabel: 'Novo Produto',
-        onAction: () => ProductsCoordinator.navigateToCreate(context),
+        onAction: () async {
+          await ProductsCoordinator.navigateToCreate(context);
+          presenter.refresh();
+        },
       );
     }
 
@@ -286,8 +292,14 @@ class ProductsListWebView extends StatelessWidget {
         return ProductCard(
           product: product,
           isWeb: true,
-          onTap: () => ProductsCoordinator.navigateToDetail(context, product),
-          onEdit: () => ProductsCoordinator.navigateToEdit(context, product),
+          onTap: () async {
+            await ProductsCoordinator.navigateToDetail(context, product);
+            presenter.refresh();
+          },
+          onEdit: () async {
+            await ProductsCoordinator.navigateToEdit(context, product);
+            presenter.refresh();
+          },
           onDelete: () => presenter.deleteProduct(product),
         );
       },
