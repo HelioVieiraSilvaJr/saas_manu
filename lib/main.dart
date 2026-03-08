@@ -15,6 +15,7 @@ import 'Scenes/Customers/CustomerDetailPage.dart';
 import 'Scenes/Sales/SalesListPage.dart';
 import 'Scenes/Sales/SaleFormPage.dart';
 import 'Scenes/Sales/SaleDetailPage.dart';
+import 'Scenes/DashboardSuperAdmin/SuperAdminDashboardPage.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -58,6 +59,7 @@ class SaasManApp extends StatelessWidget {
         '/sales': (context) => const SalesListPage(),
         '/sales/new': (context) => const SaleFormPage(),
         '/sales/detail': (context) => const SaleDetailPage(),
+        '/admin/dashboard': (context) => const SuperAdminDashboardPage(),
       },
     );
   }
