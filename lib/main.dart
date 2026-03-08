@@ -16,6 +16,9 @@ import 'Scenes/Sales/SalesListPage.dart';
 import 'Scenes/Sales/SaleFormPage.dart';
 import 'Scenes/Sales/SaleDetailPage.dart';
 import 'Scenes/DashboardSuperAdmin/SuperAdminDashboardPage.dart';
+import 'Scenes/ManageTenants/TenantsListPage.dart';
+import 'Scenes/ManageTenants/TenantFormPage.dart';
+import 'Scenes/ManageTenants/TenantDetailPage.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,6 +63,10 @@ class SaasManApp extends StatelessWidget {
         '/sales/new': (context) => const SaleFormPage(),
         '/sales/detail': (context) => const SaleDetailPage(),
         '/admin/dashboard': (context) => const SuperAdminDashboardPage(),
+        '/admin/tenants': (context) => const TenantsListPage(),
+        '/admin/tenants/new': (context) => const TenantFormPage(),
+        '/admin/tenants/edit': (context) => const TenantFormPage(),
+        '/admin/tenants/detail': (context) => const TenantDetailPage(),
       },
     );
   }
