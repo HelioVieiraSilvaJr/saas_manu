@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "426944817623",
+    "project_id": "saas-manu-project",
+    "storage_bucket": "saas-manu-project.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:426944817623:android:08ea1d65ef3e0c15174392",
+        "android_client_info": {
+          "package_name": "com.example.saas_manu"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB2X0o9PHJSgeoroFwWAhU_De461jbj3Dg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
