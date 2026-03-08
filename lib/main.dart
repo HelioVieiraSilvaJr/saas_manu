@@ -6,6 +6,9 @@ import 'Sources/PreferencesManager.dart';
 import 'Scenes/Splash/SplashPage.dart';
 import 'Scenes/Login/LoginPage.dart';
 import 'Scenes/DashboardTenant/DashboardTenantPage.dart';
+import 'Scenes/Products/ProductsListPage.dart';
+import 'Scenes/Products/ProductFormPage.dart';
+import 'Scenes/Products/ProductDetailPage.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,6 +41,10 @@ class SaasManApp extends StatelessWidget {
         '/': (context) => const SplashPage(),
         '/login': (context) => const LoginPage(),
         '/dashboard': (context) => const DashboardTenantPage(),
+        '/products': (context) => const ProductsListPage(),
+        '/products/new': (context) => const ProductFormPage(),
+        '/products/edit': (context) => const ProductFormPage(),
+        '/products/detail': (context) => const ProductDetailPage(),
       },
     );
   }
