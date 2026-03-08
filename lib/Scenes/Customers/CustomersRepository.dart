@@ -121,6 +121,38 @@ class CustomersRepository {
     return customer.hasPurchases;
   }
 
+  /// Atualiza estatísticas de compra do cliente (após nova venda).
+  Future<void> updatePurchaseStats(String customerId, double saleTotal) async {
+    try {
+      await _collection.doc(customerId).update({
+        'purchase_count': FieldValue.increment(1),
+        'total_spent': FieldValue.increment(saleTotal),
+        'last_purchase_at': FieldValue.serverTimestamp(),
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+      AppLogger.info('Purchase stats atualizadas: $customerId');
+    } catch (e) {
+      AppLogger.error('Erro ao atualizar purchase stats', error: e);
+    }
+  }
+
+  /// Decrementa estatísticas de compra do cliente (após exclusão de venda).
+  Future<void> decrementPurchaseStats(
+    String customerId,
+    double saleTotal,
+  ) async {
+    try {
+      await _collection.doc(customerId).update({
+        'purchase_count': FieldValue.increment(-1),
+        'total_spent': FieldValue.increment(-saleTotal),
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+      AppLogger.info('Purchase stats decrementadas: $customerId');
+    } catch (e) {
+      AppLogger.error('Erro ao decrementar purchase stats', error: e);
+    }
+  }
+
   /// Busca as últimas vendas de um cliente (para detalhes).
   Future<List<Map<String, dynamic>>> getRecentSales(
     String customerId, {
