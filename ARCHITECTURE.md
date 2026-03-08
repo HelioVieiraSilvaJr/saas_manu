@@ -37,79 +37,119 @@ Este é um SaaS Multi-tenant onde cada organização (tenant) possui seus própr
 
 ### Isolamento de Dados
 
-**REGRA CRÍTICA:** Todos os documentos do Firestore devem incluir `tenant_id`, **EXCETO:**
-- `users` - Usuários podem pertencer a múltiplos tenants
-- `tenants` - É a coleção raiz de organizações
-- `memberships` - Relaciona users ↔ tenants
+**ARQUITETURA ESCOLHIDA: NESTED COLLECTIONS (Subcoleções)**
 
-### Estrutura de Coleções Firestore
+Usamos **subcoleções** dentro de cada tenant para isolamento natural de dados. Esta abordagem oferece:
+- ✅ Isolamento automático por tenant (sem WHERE clause)
+- ✅ Security Rules mais simples e seguras
+- ✅ Queries mais rápidas (path direto)
+- ✅ Sem impacto no limite de 1MB por documento (subcoleções são independentes)
+
+**Coleções Globais (não pertencem a tenant):**
+- `users/` - Usuários podem pertencer a múltiplos tenants
+- `tenants/` - Coleção raiz de organizações
+- `memberships/` - Relaciona users ↔ tenants
+
+### Estrutura de Coleções Firestore (NESTED)
 
 ```
-users/                          # Usuários do sistema
-  └── {user_id}
-      ├── email
-      ├── name
-      └── created_at
-
-tenants/                        # Organizações/Empresas
-  └── {tenant_id}
-      ├── name
-      ├── plan (trial | basic | full)
-      ├── is_active
-      └── created_at
-
-memberships/                    # Relação user ↔ tenant
-  └── {membership_id}
-      ├── user_id
-      ├── tenant_id
-      ├── role (superAdmin | tenantAdmin | user)
-      ├── is_active
-      └── created_at
-
-products/                       # Produtos do micro-empreendedor
-  └── {product_id}
-      ├── tenant_id            ⚠️ OBRIGATÓRIO
-      ├── name
-      ├── description
-      ├── price
-      ├── image_url
-      └── is_active
-
-customers/                      # Clientes (CRM)
-  └── {customer_id}
-      ├── tenant_id            ⚠️ OBRIGATÓRIO
-      ├── name
-      ├── phone
-      ├── whatsapp
-      └── created_at
-
-sales/                          # Vendas realizadas
-  └── {sale_id}
-      ├── tenant_id            ⚠️ OBRIGATÓRIO
-      ├── customer_id
-      ├── product_ids[]
-      ├── total
-      ├── status
-      ├── created_at
-      └── source (manual | whatsapp_automation)
-
-conversations/                  # Histórico WhatsApp
-  └── {conversation_id}
-      ├── tenant_id            ⚠️ OBRIGATÓRIO
-      ├── customer_id
-      ├── messages[]
-      ├── status
-      └── last_message_at
-
-billing/                        # Faturamento e assinaturas
-  └── {billing_id}
-      ├── tenant_id            ⚠️ OBRIGATÓRIO
-      ├── plan
-      ├── amount
-      ├── status
-      ├── period_start
-      └── period_end
+Firestore Root/
+│
+├── users/                          # Usuários do sistema
+│   └── {user_id}
+│       ├── email
+│       ├── name
+│       └── created_at
+│
+├── memberships/                    # Relação user ↔ tenant
+│   └── {membership_id}
+│       ├── user_id
+│       ├── tenant_id
+│       ├── role (superAdmin | tenantAdmin | user)
+│       ├── is_active
+│       ├── user_name (denormalizado)
+│       ├── user_email (denormalizado)
+│       └── created_at
+│
+└── tenants/                        # Organizações/Empresas
+    └── {tenant_id}
+        ├── name
+        ├── contact_email
+        ├── contact_phone
+        ├── plan (trial | basic | full)
+        ├── is_active
+        ├── trial_end_date
+        ├── evolution_api_url
+        ├── evolution_api_key
+        ├── evolution_instance_name
+        ├── webhook_token
+        ├── created_at
+        │
+        ├── products/               # SUBCOLEÇÃO (dados do tenant)
+        │   └── {product_id}
+        │       ├── name
+        │       ├── sku
+        │       ├── price
+        │       ├── stock
+        │       ├── description
+        │       ├── image_url
+        │       ├── is_active
+        │       ├── created_at
+        │       └── updated_at
+        │
+        ├── customers/              # SUBCOLEÇÃO (dados do tenant)
+        │   └── {customer_id}
+        │       ├── name
+        │       ├── whatsapp
+        │       ├── email
+        │       ├── notes
+        │       ├── is_active
+        │       ├── created_at
+        │       ├── updated_at
+        │       ├── last_purchase_at (denormalizado)
+        │       ├── total_spent (denormalizado)
+        │       └── purchase_count (denormalizado)
+        │
+        ├── sales/                  # SUBCOLEÇÃO (dados do tenant)
+        │   └── {sale_id}
+        │       ├── customer_id
+        │       ├── customer_name (denormalizado)
+        │       ├── customer_whatsapp (denormalizado)
+        │       ├── items[]
+        │       │   ├── product_id
+        │       │   ├── product_name
+        │       │   ├── quantity
+        │       │   ├── unit_price
+        │       │   └── subtotal
+        │       ├── total
+        │       ├── status (pending | confirmed | cancelled)
+        │       ├── source (manual | whatsapp_automation)
+        │       ├── notes
+        │       ├── conversation_id
+        │       ├── created_at
+        │       └── updated_at
+        │
+        ├── conversations/          # SUBCOLEÇÃO (dados do tenant)
+        │   └── {conversation_id}
+        │       ├── customer_id
+        │       ├── customer_name
+        │       ├── customer_whatsapp
+        │       ├── messages[]
+        │       ├── status
+        │       ├── last_message_at
+        │       └── created_at
+        │
+        └── billing/                # SUBCOLEÇÃO (dados do tenant)
+            └── {billing_id}
+                ├── plan
+                ├── amount
+                ├── status
+                ├── period_start
+                ├── period_end
+                └── created_at
 ```
+
+**IMPORTANTE:** Como usamos subcoleções, **NÃO há campo `tenant_id`** dentro dos documentos de `products`, `customers`, `sales`, etc. O isolamento vem do **path** da coleção.
 
 ### SessionManager (Atualizado)
 
@@ -143,9 +183,9 @@ class SessionManager {
 }
 ```
 
-### Repository Pattern (Atualizado)
+### Repository Pattern (NESTED Collections)
 
-**IMPORTANTE:** Repositories devem **automaticamente** filtrar por `tenant_id`:
+**IMPORTANTE:** Repositories usam o **path completo** com tenant_id, sem necessidade de cláusula WHERE:
 
 ```dart
 class ProductRepository {
@@ -155,10 +195,11 @@ class ProductRepository {
   Future<List<ProductModel>> getAll() async {
     final tenantId = SessionManager.instance.currentTenant!.uid;
     
+    // Path direto: tenants/{tenant_id}/products
     final snapshot = await _firestore
-      .collection('products')
-      .where('tenant_id', isEqualTo: tenantId)
+      .collection('tenants/$tenantId/products')
       .where('is_active', isEqualTo: true)
+      .orderBy('created_at', descending: true)
       .get();
     
     return snapshot.docs
@@ -166,20 +207,95 @@ class ProductRepository {
       .toList();
   }
   
-  // Criar produto (injeta tenant_id automaticamente)
-  Future<void> create(ProductModel product) async {
+  // Buscar produto por ID
+  Future<ProductModel?> getById(String productId) async {
     final tenantId = SessionManager.instance.currentTenant!.uid;
     
-    final data = product.toMap();
-    data['tenant_id'] = tenantId; // ⚠️ Garantir tenant_id
+    final doc = await _firestore
+      .doc('tenants/$tenantId/products/$productId')
+      .get();
     
-    await _firestore.collection('products').add(data);
+    if (!doc.exists) return null;
+    return ProductModel.fromDocumentSnapshot(doc);
+  }
+  
+  // Criar produto (tenant_id está no path)
+  Future<String> create(ProductModel product) async {
+    final tenantId = SessionManager.instance.currentTenant!.uid;
+    
+    final docRef = await _firestore
+      .collection('tenants/$tenantId/products')
+      .add(product.toMap());
+    
+    return docRef.id;
+  }
+  
+  // Atualizar produto
+  Future<void> update(ProductModel product) async {
+    final tenantId = SessionManager.instance.currentTenant!.uid;
+    
+    await _firestore
+      .doc('tenants/$tenantId/products/${product.uid}')
+      .update(product.toMap());
+  }
+  
+  // Deletar produto
+  Future<void> delete(String productId) async {
+    final tenantId = SessionManager.instance.currentTenant!.uid;
+    
+    await _firestore
+      .doc('tenants/$tenantId/products/$productId')
+      .delete();
+  }
+  
+  // Stream para mudanças em tempo real
+  Stream<List<ProductModel>> watchAll() {
+    final tenantId = SessionManager.instance.currentTenant!.uid;
+    
+    return _firestore
+      .collection('tenants/$tenantId/products')
+      .where('is_active', isEqualTo: true)
+      .snapshots()
+      .map((snapshot) => snapshot.docs
+          .map((doc) => ProductModel.fromDocumentSnapshot(doc))
+          .toList());
   }
 }
 ```
 
+**Vantagens da Estrutura NESTED:**
+1. ✅ Isolamento automático (path já contém tenant_id)
+2. ✅ Queries mais simples (sem WHERE tenant_id)
+3. ✅ Security Rules mais diretas
+4. ✅ Melhor performance (índice menor)
+
+**Exemplo de Security Rules:**
+```javascript
+match /tenants/{tenantId}/products/{productId} {
+  allow read, write: if request.auth != null && 
+    exists(/databases/$(database)/documents/memberships/$(getMembership(request.auth.uid, tenantId)));
+}
+```
+
 **Exceção - SuperAdmin:**
-SuperAdmin pode acessar dados cross-tenant quando necessário (ex: dashboard global).
+SuperAdmin pode acessar dados cross-tenant usando `collectionGroup`:
+
+```dart
+// SuperAdmin: Buscar produtos de TODOS os tenants
+Future<List<ProductModel>> getAllProductsGlobal() async {
+  if (!SessionManager.instance.isSuperAdmin) {
+    throw Exception('Acesso negado');
+  }
+  
+  final snapshot = await _firestore
+    .collectionGroup('products')
+    .get();
+  
+  return snapshot.docs
+    .map((doc) => ProductModel.fromDocumentSnapshot(doc))
+    .toList();
+}
+```
 
 ---
 
@@ -649,6 +765,24 @@ class SalesMobileView extends StatelessWidget {
 }
 ```
 
+#### WhatsApp Business API Integration
+
+Service para integração (se necessário enviar mensagens da plataforma):
+
+```dart
+class WhatsAppService {
+  final String baseUrl = 'https://api.whatsapp.com/v1';
+  
+  Future<void> sendMessage(String phone, String message) async {
+    // Implementar chamada à API do WhatsApp Business
+  }
+  
+  Future<void> notifyNewSale(SaleModel sale) async {
+    // Notificar cliente sobre confirmação de pedido
+  }
+}
+```
+
 ---
 
 ## 🛣️ Navegação
@@ -837,6 +971,364 @@ DSButton().secundary(icon: Icons, label: 'Salvar', onTap: () {})
 
 ---
 
+### DSBadge (Tags/Status)
+
+Localização: `Commons/Widgets/DesignSystem/DSBadge.dart`
+
+Badge para exibir status, tags ou labels coloridas.
+
+**Exemplo:**
+```dart
+DSBadge(
+  label: 'Ativo',
+  type: DSBadgeType.success,
+)
+
+DSBadge(
+  label: 'Pendente',
+  type: DSBadgeType.warning,
+)
+
+DSBadge(
+  label: 'WhatsApp Bot',
+  type: DSBadgeType.info,
+  icon: Icons.chat,
+)
+```
+
+**Tipos disponíveis:**
+```dart
+enum DSBadgeType {
+  success,    // Verde (Ativo, Confirmado)
+  warning,    // Amarelo/Laranja (Pendente, Trial)
+  error,      // Vermelho (Cancelado, Inativo)
+  info,       // Azul (Manual, Info)
+  primary,    // Cor primária (WhatsApp Bot, Premium)
+}
+```
+
+**Parâmetros:**
+- `label` (String) - Texto do badge
+- `type` (DSBadgeType) - Tipo/cor do badge
+- `icon` (IconData?) - Ícone opcional
+- `size` (DSBadgeSize) - Tamanho (small, medium, large)
+
+---
+
+### DSAvatar (Avatar com Iniciais)
+
+Localização: `Commons/Widgets/DesignSystem/DSAvatar.dart`
+
+Avatar circular com iniciais geradas automaticamente a partir do nome.
+
+**Exemplo:**
+```dart
+DSAvatar(
+  name: 'João Silva',
+  size: 48,
+)
+
+DSAvatar(
+  name: 'Maria Santos',
+  size: 80,
+  imageUrl: 'https://...',  // Se tiver foto
+)
+```
+
+**Funcionalidades:**
+- Gera iniciais automaticamente (primeiras letras)
+- Cor de fundo gerada por hash do nome (consistente)
+- Suporta foto opcional (se `imageUrl` fornecido)
+- Texto branco sobre fundo colorido
+
+**Parâmetros:**
+- `name` (String) - Nome completo
+- `size` (double) - Tamanho do avatar (48, 64, 80, etc)
+- `imageUrl` (String?) - URL da foto (opcional)
+- `fontSize` (double?) - Tamanho da fonte das iniciais (auto se null)
+
+**Implementação:**
+```dart
+class DSAvatar extends StatelessWidget {
+  final String name;
+  final double size;
+  final String? imageUrl;
+  final double? fontSize;
+  
+  DSAvatar({
+    required this.name,
+    required this.size,
+    this.imageUrl,
+    this.fontSize,
+  });
+  
+  @override
+  Widget build(BuildContext context) {
+    return CircleAvatar(
+      radius: size / 2,
+      backgroundColor: _getColorFromName(name),
+      backgroundImage: imageUrl != null ? NetworkImage(imageUrl!) : null,
+      child: imageUrl == null
+        ? Text(
+            _getInitials(name),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: fontSize ?? size / 2.5,
+              fontWeight: FontWeight.bold,
+            ),
+          )
+        : null,
+    );
+  }
+  
+  String _getInitials(String name) {
+    final parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return name.substring(0, min(2, name.length)).toUpperCase();
+  }
+  
+  Color _getColorFromName(String name) {
+    final colors = [
+      Color(0xFF6366F1), // Indigo
+      Color(0xFF8B5CF6), // Purple
+      Color(0xFFEC4899), // Pink
+      Color(0xFFF59E0B), // Amber
+      Color(0xFF10B981), // Green
+      Color(0xFF3B82F6), // Blue
+      Color(0xFFEF4444), // Red
+      Color(0xFF06B6D4), // Cyan
+    ];
+    
+    final hash = name.hashCode.abs();
+    return colors[hash % colors.length];
+  }
+}
+```
+
+---
+
+### DSMetricCard (Cards de Métricas)
+
+Localização: `Commons/Widgets/DesignSystem/DSMetricCard.dart`
+
+Card para exibir métricas/estatísticas com valor principal e comparação.
+
+**Exemplo:**
+```dart
+DSMetricCard(
+  title: 'Vendas Hoje',
+  value: 'R\$ 450,00',
+  comparison: '+15%',
+  trend: TrendType.up,
+  icon: Icons.attach_money,
+)
+
+DSMetricCard(
+  title: 'Total Clientes',
+  value: '245',
+  comparison: '+12 este mês',
+  trend: TrendType.neutral,
+  icon: Icons.people,
+)
+```
+
+**Estrutura:**
+```
+┌─────────────────┐
+│ [Icon] Título   │
+│                 │
+│   VALOR GRANDE  │
+│   ↑ +15%        │
+└─────────────────┘
+```
+
+**Parâmetros:**
+- `title` (String) - Título do card
+- `value` (String) - Valor principal (grande)
+- `comparison` (String?) - Texto de comparação (ex: "+15%", "+12 clientes")
+- `trend` (TrendType?) - Tendência (up/down/neutral)
+- `icon` (IconData?) - Ícone opcional
+- `color` (Color?) - Cor do card (padrão: branco)
+
+```dart
+enum TrendType {
+  up,       // ↑ Verde
+  down,     // ↓ Vermelho
+  neutral,  // - Cinza
+}
+```
+
+---
+
+### DSListTile (Item de Lista Padronizado)
+
+Localização: `Commons/Widgets/DesignSystem/DSListTile.dart`
+
+Item de lista consistente usado em todas as listagens.
+
+**Exemplo:**
+```dart
+DSListTile(
+  leading: DSAvatar(name: 'João Silva', size: 48),
+  title: 'João Silva',
+  subtitle: '(11) 98765-4321 • joao@email.com',
+  trailing: [
+    IconButton(
+      icon: Icon(Icons.edit),
+      onPressed: () => editCustomer(),
+    ),
+    IconButton(
+      icon: Icon(Icons.delete),
+      onPressed: () => deleteCustomer(),
+    ),
+  ],
+  badges: [
+    DSBadge(label: 'VIP', type: DSBadgeType.primary),
+  ],
+  onTap: () => navigateToDetails(),
+)
+```
+
+**Estrutura:**
+```
+┌──────────────────────────────────────┐
+│ [Avatar] Título           [Buttons]  │
+│          Subtitle                    │
+│          [Badges]                    │
+└──────────────────────────────────────┘
+```
+
+**Parâmetros:**
+- `leading` (Widget?) - Widget à esquerda (geralmente avatar)
+- `title` (String) - Título principal
+- `subtitle` (String?) - Subtítulo (opcional)
+- `trailing` (List<Widget>?) - Botões/ações à direita
+- `badges` (List<DSBadge>?) - Lista de badges
+- `metadata` (String?) - Informação adicional (ex: "Há 3 dias")
+- `onTap` (VoidCallback?) - Ação ao clicar
+
+---
+
+## 🎨 Padrões de UI/UX
+
+### Botões de Ação em Listagens
+
+**IMPORTANTE:** Padronizar botões de ação para consistência em todos os módulos.
+
+#### **Web (Desktop):**
+Usar **apenas ícones** com tooltip ao hover:
+
+```dart
+IconButton(
+  icon: Icon(Icons.edit),
+  tooltip: 'Editar',
+  onPressed: () => editItem(),
+)
+
+IconButton(
+  icon: Icon(Icons.delete),
+  tooltip: 'Deletar',
+  onPressed: () => deleteItem(),
+)
+```
+
+**Benefícios:**
+- Interface mais limpa
+- Mais espaço para conteúdo
+- Visual moderno
+
+#### **Mobile:**
+Usar **ícone + texto** para melhor acessibilidade:
+
+```dart
+TextButton.icon(
+  icon: Icon(Icons.edit),
+  label: Text('Editar'),
+  onPressed: () => editItem(),
+)
+
+TextButton.icon(
+  icon: Icon(Icons.delete),
+  label: Text('Deletar'),
+  onPressed: () => deleteItem(),
+)
+```
+
+**Benefícios:**
+- Mais claro em telas touch
+- Melhor acessibilidade
+- Menos erros de toque
+
+#### **Padrão por Módulo:**
+
+| Módulo | Botões (Web) | Botões (Mobile) |
+|--------|--------------|-----------------|
+| **Produtos** | [✏️] [🗑️] | [✏️ Editar] [🗑️ Deletar] |
+| **Clientes** | [💬] [✏️] [🗑️] | [💬 WhatsApp] [✏️ Editar] [🗑️ Deletar] |
+| **Vendas** | [👁️] [🗑️] | [👁️ Ver] [🗑️ Deletar] |
+| **Equipe** | [✏️] [🗑️] | [✏️ Editar] [🗑️ Deletar] |
+| **Tenants** | [✏️] [👁️] [🗑️] | [✏️ Editar] [👁️ Ver] [🗑️ Deletar] |
+
+### Placeholders de Busca
+
+**Padrão consistente:**
+
+**Opção A - Simples (Recomendado):**
+```
+"Buscar produtos..."
+"Buscar clientes..."
+"Buscar vendas..."
+"Buscar membros..."
+```
+
+**Opção B - Detalhado:**
+```
+"Buscar por nome, SKU ou descrição..."
+"Buscar por nome, telefone ou email..."
+"Buscar por número, cliente ou produto..."
+```
+
+**Escolha:** Usar Opção A para simplicidade visual, adicionar hint text com campos no campo de ajuda.
+
+### Empty States
+
+Estrutura consistente em todos os módulos:
+
+```dart
+EmptyState(
+  icon: Icons.icon_name,
+  title: 'Título do Empty State',
+  message: 'Mensagem explicativa curta.',
+  actionLabel: 'Ação Principal',
+  onAction: () => performAction(),
+)
+```
+
+**Layout:**
+```
+┌─────────────────┐
+│                 │
+│  [Ilustração]   │
+│                 │
+│     Título      │
+│                 │
+│   Mensagem      │
+│   descritiva    │
+│                 │
+│  [Botão Ação]   │
+│                 │
+└─────────────────┘
+```
+
+**Variações por Contexto:**
+1. **Vazio Inicial:** "Nenhum X cadastrado" + CTA "Adicionar Primeiro X"
+2. **Busca Vazia:** "Nenhum X encontrado" + CTA "Limpar Busca"
+3. **Filtros Vazios:** "Nenhum X com esses filtros" + CTA "Limpar Filtros"
+
+---
+
 ## 🧩 Biblioteca de Widgets Reutilizáveis
 
 **REGRA IMPORTANTE:** Sempre que criar um widget comum/reutilizável, **adicionar nesta seção** com:
@@ -983,30 +1475,67 @@ Os Models seguem o padrão com:
 - Método estático `newModel()` para criar instâncias vazias
 - Construtor de cópia `Model.copy(original)`
 
+**IMPORTANTE:** Models de subcoleções (products, customers, sales) **NÃO têm campo `tenant_id`** pois o isolamento vem do path.
+
 ```dart
 class ProductModel {
   String uid;
-  String tenant_id;
   String name;
-  // ... outros campos
+  String sku;
+  double price;
+  int stock;
+  String? description;
+  String? image_url;
+  bool is_active;
+  DateTime created_at;
+  DateTime? updated_at;
+  
+  ProductModel({
+    required this.uid,
+    required this.name,
+    required this.sku,
+    required this.price,
+    required this.stock,
+    this.description,
+    this.image_url,
+    this.is_active = true,
+    required this.created_at,
+    this.updated_at,
+  });
 
   // Factory para Firestore
   static ProductModel fromDocumentSnapshot(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return ProductModel(
       uid: doc.id,
-      tenant_id: data['tenant_id'],
       name: data['name'],
-      // ...
+      sku: data['sku'],
+      price: (data['price'] as num).toDouble(),
+      stock: data['stock'] as int,
+      description: data['description'],
+      image_url: data['image_url'],
+      is_active: data['is_active'] ?? true,
+      created_at: (data['created_at'] as Timestamp).toDate(),
+      updated_at: data['updated_at'] != null
+        ? (data['updated_at'] as Timestamp).toDate()
+        : null,
     );
   }
   
   // Serialização
   Map<String, dynamic> toMap() {
     return {
-      'tenant_id': tenant_id,
       'name': name,
-      // ...
+      'sku': sku,
+      'price': price,
+      'stock': stock,
+      'description': description,
+      'image_url': image_url,
+      'is_active': is_active,
+      'created_at': Timestamp.fromDate(created_at),
+      'updated_at': updated_at != null 
+        ? Timestamp.fromDate(updated_at!)
+        : null,
     };
   }
   
@@ -1014,17 +1543,41 @@ class ProductModel {
   static ProductModel newModel() {
     return ProductModel(
       uid: '', 
-      tenant_id: '',
       name: '',
-      // ...
+      sku: '',
+      price: 0.0,
+      stock: 0,
+      is_active: true,
+      created_at: DateTime.now(),
     );
   }
   
-  // Cópia
-  ProductModel.copy(ProductModel original)
-      : uid = original.uid,
-        tenant_id = original.tenant_id,
-        name = original.name;
+  // Cópia com alterações
+  ProductModel copyWith({
+    String? uid,
+    String? name,
+    String? sku,
+    double? price,
+    int? stock,
+    String? description,
+    String? image_url,
+    bool? is_active,
+    DateTime? created_at,
+    DateTime? updated_at,
+  }) {
+    return ProductModel(
+      uid: uid ?? this.uid,
+      name: name ?? this.name,
+      sku: sku ?? this.sku,
+      price: price ?? this.price,
+      stock: stock ?? this.stock,
+      description: description ?? this.description,
+      image_url: image_url ?? this.image_url,
+      is_active: is_active ?? this.is_active,
+      created_at: created_at ?? this.created_at,
+      updated_at: updated_at ?? this.updated_at,
+    );
+  }
 }
 ```
 
@@ -1044,6 +1597,263 @@ Extensions são organizadas no padrão `[Tipo]+Extensions.dart`:
 "12345678901".formatCpfCnpj()  // "123.456.789-01"
 "1000".formatToBRL()           // "R$ 10,00"
 ```
+
+---
+
+## 🔒 Segurança e Autenticação
+
+### Requisitos de Senha
+
+**SENHA MÍNIMA: 7 caracteres**
+
+```dart
+// Validação de senha
+String? validatePassword(String? value) {
+  if (value == null || value.isEmpty) {
+    return 'Senha é obrigatória';
+  }
+  if (value.length < 7) {
+    return 'Senha deve ter no mínimo 7 caracteres';
+  }
+  return null;
+}
+```
+
+**Senha Padrão para Novos Usuários:**
+Quando TenantAdmin cria um novo usuário, a senha padrão é `1234567` (7 dígitos).
+
+**Troca Obrigatória no Primeiro Login:**
+```dart
+// Verificar se é primeiro login
+if (user.metadata.creationTime == user.metadata.lastSignInTime) {
+  // Forçar troca de senha
+  navigateToChangePassword(force: true);
+}
+```
+
+### Firebase Security Rules (Estrutura NESTED)
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper: Verificar se user tem membership ativo no tenant
+    function hasMembership(tenantId) {
+      return exists(/databases/$(database)/documents/memberships/$(getUserMembership(request.auth.uid, tenantId)));
+    }
+    
+    function getUserMembership(userId, tenantId) {
+      return get(/databases/$(database)/documents/memberships/$(userId + '_' + tenantId)).id;
+    }
+    
+    function isTenantAdmin(tenantId) {
+      let membership = get(/databases/$(database)/documents/memberships/$(getUserMembership(request.auth.uid, tenantId)));
+      return membership.data.role in ['tenantAdmin', 'superAdmin'] && membership.data.is_active == true;
+    }
+    
+    function isSuperAdmin() {
+      let memberships = get(/databases/$(database)/documents/memberships).data;
+      return memberships.role == 'superAdmin' && memberships.is_active == true;
+    }
+    
+    // Usuários: Apenas leitura própria
+    match /users/{userId} {
+      allow read: if request.auth.uid == userId;
+      allow write: if request.auth.uid == userId || isSuperAdmin();
+    }
+    
+    // Memberships: Leitura própria, escrita por admin
+    match /memberships/{membershipId} {
+      allow read: if request.auth != null;
+      allow create: if isTenantAdmin(request.resource.data.tenant_id) || isSuperAdmin();
+      allow update, delete: if isTenantAdmin(resource.data.tenant_id) || isSuperAdmin();
+    }
+    
+    // Tenants: SuperAdmin total, TenantAdmin leitura
+    match /tenants/{tenantId} {
+      allow read: if hasMembership(tenantId);
+      allow write: if isSuperAdmin();
+      
+      // Produtos: Apenas membros com permissão
+      match /products/{productId} {
+        allow read: if hasMembership(tenantId);
+        allow write: if isTenantAdmin(tenantId);
+      }
+      
+      // Clientes: Apenas membros com permissão
+      match /customers/{customerId} {
+        allow read: if hasMembership(tenantId);
+        allow write: if isTenantAdmin(tenantId);
+      }
+      
+      // Vendas: Todos podem criar, admin gerencia
+      match /sales/{saleId} {
+        allow read: if hasMembership(tenantId);
+        allow create: if hasMembership(tenantId);
+        allow update, delete: if isTenantAdmin(tenantId);
+      }
+      
+      // Conversas: Leitura para todos, escrita restrita
+      match /conversations/{conversationId} {
+        allow read: if hasMembership(tenantId);
+        allow write: if isTenantAdmin(tenantId);
+      }
+      
+      // Billing: Apenas SuperAdmin
+      match /billing/{billingId} {
+        allow read: if hasMembership(tenantId);
+        allow write: if isSuperAdmin();
+      }
+    }
+  }
+}
+```
+
+### Logout Forçado
+
+Quando TenantAdmin remove ou inativa um usuário, forçar logout:
+
+```dart
+// Middleware em cada navegação/requisição
+Future<void> checkMembershipStatus() async {
+  if (!SessionManager.instance.hasSession()) return;
+  
+  final userId = SessionManager.instance.currentUser!.uid;
+  final tenantId = SessionManager.instance.currentTenant!.uid;
+  
+  final membership = await _firestore
+    .collection('memberships')
+    .where('user_id', isEqualTo: userId)
+    .where('tenant_id', isEqualTo: tenantId)
+    .where('is_active', isEqualTo: true)
+    .limit(1)
+    .get();
+  
+  if (membership.docs.isEmpty) {
+    await SessionManager.instance.signOut();
+    Navigator.pushReplacementNamed(context, '/login');
+    DSAlertDialog.showWarning(
+      title: 'Acesso Removido',
+      message: 'Seu acesso a este tenant foi removido.',
+    );
+  }
+}
+```
+
+---
+
+## 📊 Estratégia de Denormalização
+
+### Por que Denormalizar?
+
+Em uma arquitetura NoSQL (Firestore), denormalizar dados evita **joins complexos** e melhora performance em listagens.
+
+### Campos Denormalizados por Model
+
+#### **CustomerModel:**
+```dart
+DateTime? last_purchase_at;   // Última compra
+double? total_spent;          // Total gasto (soma de vendas)
+int? purchase_count;          // Quantidade de compras
+```
+
+**Quando Atualizar:**
+- Ao criar uma venda → Incrementar `purchase_count`, somar em `total_spent`, atualizar `last_purchase_at`
+- Ao deletar uma venda → Decrementar `purchase_count`, subtrair de `total_spent`, recalcular `last_purchase_at`
+- Ao cancelar uma venda → Mesmo que deletar
+
+#### **SaleModel:**
+```dart
+String customer_name;         // Nome do cliente
+String customer_whatsapp;     // WhatsApp do cliente
+```
+
+**Quando Atualizar:**
+- Ao criar venda → Copiar de `CustomerModel`
+- Se cliente mudar nome/whatsapp → **NÃO** atualizar vendas antigas (manter histórico)
+
+#### **MembershipModel:**
+```dart
+String? user_name;            // Nome do usuário
+String? user_email;           // Email do usuário
+```
+
+**Quando Atualizar:**
+- Ao criar membership → Copiar de `UserModel`
+- Se user mudar nome/email → Atualizar **todos os memberships** desse user
+
+### Helper para Atualizar Denormalizações
+
+```dart
+class CustomerDenormalizationHelper {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  
+  // Atualizar estatísticas do cliente após nova venda
+  Future<void> updateAfterSale(String tenantId, String customerId, double saleAmount) async {
+    final customerRef = _firestore.doc('tenants/$tenantId/customers/$customerId');
+    
+    await _firestore.runTransaction((transaction) async {
+      final customerDoc = await transaction.get(customerRef);
+      
+      if (!customerDoc.exists) return;
+      
+      final currentCount = customerDoc.data()?['purchase_count'] ?? 0;
+      final currentTotal = (customerDoc.data()?['total_spent'] ?? 0.0) as double;
+      
+      transaction.update(customerRef, {
+        'purchase_count': currentCount + 1,
+        'total_spent': currentTotal + saleAmount,
+        'last_purchase_at': FieldValue.serverTimestamp(),
+      });
+    });
+  }
+  
+  // Atualizar estatísticas do cliente após deletar venda
+  Future<void> updateAfterDeleteSale(String tenantId, String customerId, double saleAmount) async {
+    final customerRef = _firestore.doc('tenants/$tenantId/customers/$customerId');
+    
+    await _firestore.runTransaction((transaction) async {
+      final customerDoc = await transaction.get(customerRef);
+      
+      if (!customerDoc.exists) return;
+      
+      final currentCount = customerDoc.data()?['purchase_count'] ?? 0;
+      final currentTotal = (customerDoc.data()?['total_spent'] ?? 0.0) as double;
+      
+      // Recalcular última compra
+      final sales = await _firestore
+        .collection('tenants/$tenantId/sales')
+        .where('customer_id', isEqualTo: customerId)
+        .orderBy('created_at', descending: true)
+        .limit(1)
+        .get();
+      
+      final lastPurchaseAt = sales.docs.isNotEmpty
+        ? sales.docs.first.data()['created_at']
+        : null;
+      
+      transaction.update(customerRef, {
+        'purchase_count': max(0, currentCount - 1),
+        'total_spent': max(0.0, currentTotal - saleAmount),
+        'last_purchase_at': lastPurchaseAt,
+      });
+    });
+  }
+}
+```
+
+### Quando NÃO Denormalizar
+
+❌ **Não denormalizar:**
+- Dados que mudam frequentemente (ex: estoque de produto)
+- Dados que precisam estar sempre sincronizados
+- Dados pequenos que podem ser buscados rapidamente
+
+✅ **Denormalizar:**
+- Dados usados em listagens (evitar lookups)
+- Dados raramente alterados (ex: nome de cliente em venda)
+- Estatísticas/agregações (evitar cálculos em tempo real)
 
 ---
 
@@ -1141,15 +1951,29 @@ AppLogger.error('Erro ocorreu', error: e, stackTrace: stack);
    }
    ```
 
-3. **Criar Repository com filtro por tenant_id:**
+3. **Criar Repository com path NESTED (subcoleção):**
    ```dart
    class NovaFeatureRepository {
+     final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+     
      Future<List<Model>> getAll() async {
        final tenantId = SessionManager.instance.currentTenant!.uid;
-       return firestore
-         .collection('collection_name')
-         .where('tenant_id', isEqualTo: tenantId)
-         .get();
+       
+       // Path direto: tenants/{tenant_id}/collection_name
+       return _firestore
+         .collection('tenants/$tenantId/collection_name')
+         .get()
+         .then((snapshot) => snapshot.docs
+             .map((doc) => Model.fromDocumentSnapshot(doc))
+             .toList());
+     }
+     
+     Future<void> create(Model model) async {
+       final tenantId = SessionManager.instance.currentTenant!.uid;
+       
+       await _firestore
+         .collection('tenants/$tenantId/collection_name')
+         .add(model.toMap());
      }
    }
    ```
