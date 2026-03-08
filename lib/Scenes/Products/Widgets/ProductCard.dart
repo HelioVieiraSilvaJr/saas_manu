@@ -67,11 +67,13 @@ class _ProductCardState extends State<ProductCard> {
               _buildImage(colors),
 
               // Content
-              Padding(
-                padding: const EdgeInsets.all(DSSpacing.md),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(DSSpacing.md),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                     // Nome
                     Text(
                       widget.product.name,
@@ -121,6 +123,7 @@ class _ProductCardState extends State<ProductCard> {
                   ],
                 ),
               ),
+              ),
             ],
           ),
         ),
@@ -134,7 +137,7 @@ class _ProductCardState extends State<ProductCard> {
         top: Radius.circular(DSSpacing.radiusMd),
       ),
       child: AspectRatio(
-        aspectRatio: 1,
+        aspectRatio: 4 / 3,
         child:
             widget.product.imageUrl != null &&
                 widget.product.imageUrl!.isNotEmpty
