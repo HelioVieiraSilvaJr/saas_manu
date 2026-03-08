@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../Commons/Utils/AppLogger.dart';
 import '../../Sources/SessionManager.dart';
+import '../../Sources/SeedRunner.dart';
 import 'LoginRepository.dart';
 import 'LoginViewModel.dart';
 
@@ -38,7 +39,10 @@ class LoginPresenter {
         return false;
       }
 
-      // 3. Carregar sessão completa (user, memberships, tenant)
+      // 3. Executar seed se necessário (primeira execução)
+      await _runSeedIfNeeded(firebaseUser);
+
+      // 4. Carregar sessão completa (user, memberships, tenant)
       await SessionManager.instance.loadSession(firebaseUser);
 
       viewModel = viewModel.copyWith(isLoading: false);
@@ -106,6 +110,7 @@ class LoginPresenter {
       // Carregar sessão após troca de senha
       final firebaseUser = _repository.currentFirebaseUser;
       if (firebaseUser != null) {
+        await _runSeedIfNeeded(firebaseUser);
         await SessionManager.instance.loadSession(firebaseUser);
       }
 
@@ -150,6 +155,21 @@ class LoginPresenter {
   }
 
   // MARK: - Private
+
+  /// Executa seed se Firestore estiver vazio (primeira execução).
+  Future<void> _runSeedIfNeeded(User firebaseUser) async {
+    final seedRunner = SeedRunner();
+    final alreadySeeded = await seedRunner.isSeeded();
+    if (!alreadySeeded) {
+      AppLogger.info('Firestore vazio — executando seed inicial...');
+      await seedRunner.run(
+        firebaseUid: firebaseUser.uid,
+        name: firebaseUser.displayName ?? 'Admin',
+        email: firebaseUser.email ?? '',
+      );
+      AppLogger.info('Seed concluído!');
+    }
+  }
 
   void _notifyView() {
     onViewModelUpdated?.call();

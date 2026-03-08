@@ -5,12 +5,16 @@ import '../../Commons/Widgets/DesignSystem/DSSpacing.dart';
 import '../../Commons/Widgets/DesignSystem/LoadingIndicator.dart';
 import '../../Commons/Utils/AppLogger.dart';
 import '../../Sources/SessionManager.dart';
+import '../../Sources/SeedRunner.dart';
 
 /// Tela de Splash / Verificação de Sessão.
 ///
 /// Verifica se o usuário já está autenticado e redireciona:
 /// - Se autenticado → Dashboard
 /// - Se não autenticado → Login
+///
+/// Na primeira execução, detecta Firestore vazio e executa o seed
+/// para criar o SuperAdmin.
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
 
@@ -19,6 +23,8 @@ class SplashPage extends StatefulWidget {
 }
 
 class _SplashPageState extends State<SplashPage> {
+  String _statusMessage = 'Carregando...';
+
   @override
   void initState() {
     super.initState();
@@ -32,7 +38,27 @@ class _SplashPageState extends State<SplashPage> {
 
     if (firebaseUser != null) {
       try {
+        // Verificar se precisa executar seed (primeira execução)
+        final seedRunner = SeedRunner();
+        final alreadySeeded = await seedRunner.isSeeded();
+
+        if (!alreadySeeded) {
+          AppLogger.info('Firestore vazio — executando seed inicial...');
+          if (mounted) {
+            setState(() => _statusMessage = 'Configurando dados iniciais...');
+          }
+          await seedRunner.run(
+            firebaseUid: firebaseUser.uid,
+            name: firebaseUser.displayName ?? 'Admin',
+            email: firebaseUser.email ?? '',
+          );
+          AppLogger.info('Seed concluído!');
+        }
+
         AppLogger.info('Usuário autenticado, carregando sessão...');
+        if (mounted) {
+          setState(() => _statusMessage = 'Carregando sessão...');
+        }
         await SessionManager.instance.loadSession(firebaseUser);
 
         if (mounted) {
@@ -69,7 +95,7 @@ class _SplashPageState extends State<SplashPage> {
               color: colors.primaryColor,
             ),
             const SizedBox(height: DSSpacing.xxl),
-            const LoadingIndicator(message: 'Carregando...'),
+            LoadingIndicator(message: _statusMessage),
           ],
         ),
       ),
