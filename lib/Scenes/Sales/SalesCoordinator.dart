@@ -11,8 +11,8 @@ class SalesCoordinator {
     Navigator.pushNamed(context, '/sales');
   }
 
-  Future<bool?> navigateToCreate() {
-    return Navigator.pushNamed<bool>(context, '/sales/new');
+  Future<dynamic> navigateToCreate() {
+    return Navigator.pushNamed(context, '/sales/new');
   }
 
   void navigateToDetail(SaleModel sale) {

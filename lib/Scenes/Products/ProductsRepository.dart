@@ -175,7 +175,11 @@ class ProductsRepository {
           'tenants/$_tenantId/products/$productId/$timestamp.$extension';
 
       final ref = _storage.ref().child(path);
-      final metadata = SettableMetadata(contentType: 'image/$extension');
+      final mimeType = extension == 'jpg' ? 'image/jpeg' : 'image/$extension';
+      final metadata = SettableMetadata(
+        contentType: mimeType,
+        cacheControl: 'public, max-age=31536000',
+      );
 
       await ref.putData(imageBytes, metadata);
       final downloadUrl = await ref.getDownloadURL();
