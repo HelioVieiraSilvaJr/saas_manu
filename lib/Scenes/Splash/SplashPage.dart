@@ -84,15 +84,23 @@ class _SplashPageState extends State<SplashPage> {
     final colors = DSColors();
 
     return Scaffold(
-      backgroundColor: colors.white,
+      backgroundColor: colors.background,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.storefront_rounded,
-              size: 80,
-              color: colors.primaryColor,
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                gradient: colors.primaryGradient,
+                borderRadius: BorderRadius.circular(DSSpacing.radiusXl),
+              ),
+              child: const Icon(
+                Icons.storefront_rounded,
+                size: 44,
+                color: Colors.white,
+              ),
             ),
             const SizedBox(height: DSSpacing.xxl),
             LoadingIndicator(message: _statusMessage),

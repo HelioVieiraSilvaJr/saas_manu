@@ -9,9 +9,9 @@ import '../SessionManager.dart';
 import '../PreferencesManager.dart';
 import '../../Scenes/Login/LoginCoordinator.dart';
 
-/// Shell principal da aplicação após login.
+/// Shell principal da aplicação — USE3D v2.0.
 ///
-/// Fornece Drawer/Sidebar com navegação, tenant switcher e logout.
+/// Fornece Sidebar/Drawer com navegação, tenant switcher e logout.
 class AppShell extends StatefulWidget {
   final Widget child;
   final String currentRoute;
@@ -29,7 +29,8 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final colors = DSColors();
     final session = SessionManager.instance;
-    final isWide = MediaQuery.of(context).size.width >= 1000;
+    final isWide =
+        MediaQuery.of(context).size.width >= DSSpacing.breakpointTablet;
 
     return Scaffold(
       key: _scaffoldKey,
@@ -38,17 +39,16 @@ class _AppShellState extends State<AppShell> {
       drawer: isWide ? null : _buildDrawer(colors, session),
       body: Row(
         children: [
-          // Sidebar para Web
           if (isWide) _buildSidebar(colors, session),
-
-          // Conteúdo principal
           Expanded(child: widget.child),
         ],
       ),
     );
   }
 
-  // MARK: - AppBar
+  // ══════════════════════════════════════════════
+  // APPBAR
+  // ══════════════════════════════════════════════
 
   PreferredSizeWidget _buildAppBar(
     DSColors colors,
@@ -58,41 +58,52 @@ class _AppShellState extends State<AppShell> {
     final textStyles = DSTextStyle();
 
     return AppBar(
-      backgroundColor: colors.white,
+      backgroundColor: colors.surfaceColor,
       elevation: 0,
       surfaceTintColor: Colors.transparent,
       leading: isWide
           ? null
           : IconButton(
-              icon: Icon(Icons.menu, color: colors.textPrimary),
+              icon: Icon(Icons.menu_rounded, color: colors.textPrimary),
               onPressed: () => _scaffoldKey.currentState?.openDrawer(),
             ),
       title: Row(
         children: [
           if (isWide) ...[
-            Icon(
-              Icons.storefront_rounded,
-              color: colors.primaryColor,
-              size: 28,
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                gradient: colors.primaryGradient,
+                borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
+              ),
+              child: const Icon(
+                Icons.storefront_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
             ),
-            const SizedBox(width: DSSpacing.sm),
+            const SizedBox(width: DSSpacing.md),
           ],
           Expanded(
             child: Text(
               session.currentTenant?.name ?? 'SaaS CRM',
-              style: textStyles.headline3.copyWith(fontSize: 18),
+              style: textStyles.headline3,
               overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
       ),
       actions: [
-        // Tenant Switcher (se tiver múltiplos tenants)
+        // Tenant Switcher
         if (session.hasMultipleTenants)
           PopupMenuButton<String>(
-            icon: Icon(Icons.swap_horiz, color: colors.textSecondary),
+            icon: Icon(Icons.swap_horiz_rounded, color: colors.textSecondary),
             tooltip: 'Trocar Tenant',
             onSelected: (tenantId) => _switchTenant(tenantId),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+            ),
             itemBuilder: (context) {
               return session.allMemberships.map((m) {
                 final isSelected = m.tenantId == session.currentTenant?.uid;
@@ -105,7 +116,7 @@ class _AppShellState extends State<AppShell> {
                             ? Icons.radio_button_checked
                             : Icons.radio_button_off,
                         color: isSelected
-                            ? colors.primaryColor
+                            ? colors.secundaryColor
                             : colors.greyLight,
                         size: DSSpacing.iconMd,
                       ),
@@ -131,14 +142,24 @@ class _AppShellState extends State<AppShell> {
         // User menu
         PopupMenuButton<String>(
           offset: const Offset(0, 48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+          ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: DSSpacing.md),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                DSAvatar(name: session.currentUser?.name ?? 'U', size: 32),
+                DSAvatar(
+                  name: session.currentUser?.name ?? 'U',
+                  size: 34,
+                  showBorder: true,
+                ),
                 const SizedBox(width: DSSpacing.xs),
-                Icon(Icons.arrow_drop_down, color: colors.textSecondary),
+                Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: colors.textSecondary,
+                ),
               ],
             ),
           ),
@@ -155,15 +176,16 @@ class _AppShellState extends State<AppShell> {
                   children: [
                     Text(
                       session.currentUser?.name ?? '',
-                      style: textStyles.bodyLarge,
+                      style: textStyles.labelLarge,
                     ),
+                    const SizedBox(height: DSSpacing.xxs),
                     Text(
                       session.currentUser?.email ?? '',
                       style: textStyles.bodySmall.copyWith(
                         color: colors.textSecondary,
                       ),
                     ),
-                    const SizedBox(height: DSSpacing.xs),
+                    const SizedBox(height: DSSpacing.sm),
                     DSBadge(
                       label: session.currentMembership?.role.label ?? 'User',
                       type: session.isSuperAdmin
@@ -176,13 +198,16 @@ class _AppShellState extends State<AppShell> {
                 ),
               ),
               const PopupMenuDivider(),
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'logout',
                 child: Row(
                   children: [
-                    Icon(Icons.logout, size: 20),
-                    SizedBox(width: 8),
-                    Text('Sair'),
+                    Icon(Icons.logout_rounded, size: 20, color: colors.red),
+                    const SizedBox(width: DSSpacing.sm),
+                    Text(
+                      'Sair',
+                      style: textStyles.bodyMedium.copyWith(color: colors.red),
+                    ),
                   ],
                 ),
               ),
@@ -197,45 +222,53 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
-  // MARK: - Sidebar (Web)
+  // ══════════════════════════════════════════════
+  // SIDEBAR (Web)
+  // ══════════════════════════════════════════════
 
   Widget _buildSidebar(DSColors colors, SessionManager session) {
     final textStyles = DSTextStyle();
 
     return Container(
-      width: 240,
+      width: DSSpacing.sidebarWidthExpanded,
       decoration: BoxDecoration(
-        color: colors.white,
+        color: colors.surfaceColor,
         border: Border(right: BorderSide(color: colors.divider)),
+        boxShadow: [
+          BoxShadow(
+            color: colors.shadowColor,
+            blurRadius: DSSpacing.elevationSmBlur,
+            offset: Offset(DSSpacing.elevationSmOffset, 0),
+          ),
+        ],
       ),
       child: Column(
         children: [
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: DSSpacing.base),
+              padding: const EdgeInsets.symmetric(vertical: DSSpacing.md),
               children: [
                 _buildNavItem(
                   icon: Icons.dashboard_outlined,
-                  selectedIcon: Icons.dashboard,
+                  selectedIcon: Icons.dashboard_rounded,
                   label: 'Dashboard',
                   route: '/dashboard',
                   colors: colors,
                   textStyles: textStyles,
                 ),
 
-                // Seção CRM - acessível a todos
                 _buildSectionHeader('CRM', textStyles, colors),
                 _buildNavItem(
                   icon: Icons.inventory_2_outlined,
-                  selectedIcon: Icons.inventory_2,
+                  selectedIcon: Icons.inventory_2_rounded,
                   label: 'Produtos',
                   route: '/products',
                   colors: colors,
                   textStyles: textStyles,
                 ),
                 _buildNavItem(
-                  icon: Icons.people_outline,
-                  selectedIcon: Icons.people,
+                  icon: Icons.people_outline_rounded,
+                  selectedIcon: Icons.people_rounded,
                   label: 'Clientes',
                   route: '/customers',
                   colors: colors,
@@ -243,19 +276,18 @@ class _AppShellState extends State<AppShell> {
                 ),
                 _buildNavItem(
                   icon: Icons.shopping_cart_outlined,
-                  selectedIcon: Icons.shopping_cart,
+                  selectedIcon: Icons.shopping_cart_rounded,
                   label: 'Vendas',
                   route: '/sales',
                   colors: colors,
                   textStyles: textStyles,
                 ),
 
-                // Seção Admin - apenas TenantAdmin/SuperAdmin
                 if (session.canManageTenant()) ...[
                   _buildSectionHeader('Administração', textStyles, colors),
                   _buildNavItem(
                     icon: Icons.settings_outlined,
-                    selectedIcon: Icons.settings,
+                    selectedIcon: Icons.settings_rounded,
                     label: 'Configurações',
                     route: '/settings',
                     colors: colors,
@@ -263,7 +295,7 @@ class _AppShellState extends State<AppShell> {
                   ),
                   _buildNavItem(
                     icon: Icons.group_outlined,
-                    selectedIcon: Icons.group,
+                    selectedIcon: Icons.group_rounded,
                     label: 'Equipe',
                     route: '/team',
                     colors: colors,
@@ -271,12 +303,11 @@ class _AppShellState extends State<AppShell> {
                   ),
                 ],
 
-                // SuperAdmin
                 if (session.isSuperAdmin) ...[
                   _buildSectionHeader('Super Admin', textStyles, colors),
                   _buildNavItem(
                     icon: Icons.admin_panel_settings_outlined,
-                    selectedIcon: Icons.admin_panel_settings,
+                    selectedIcon: Icons.admin_panel_settings_rounded,
                     label: 'Dashboard Admin',
                     route: '/admin/dashboard',
                     colors: colors,
@@ -284,7 +315,7 @@ class _AppShellState extends State<AppShell> {
                   ),
                   _buildNavItem(
                     icon: Icons.business_outlined,
-                    selectedIcon: Icons.business,
+                    selectedIcon: Icons.business_rounded,
                     label: 'Tenants',
                     route: '/admin/tenants',
                     colors: colors,
@@ -299,24 +330,37 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
-  // MARK: - Drawer (Mobile)
+  // ══════════════════════════════════════════════
+  // DRAWER (Mobile)
+  // ══════════════════════════════════════════════
 
   Widget _buildDrawer(DSColors colors, SessionManager session) {
     final textStyles = DSTextStyle();
 
     return Drawer(
+      backgroundColor: colors.surfaceColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topRight: Radius.circular(DSSpacing.radiusLg),
+          bottomRight: Radius.circular(DSSpacing.radiusLg),
+        ),
+      ),
       child: SafeArea(
         child: Column(
           children: [
-            // Header
+            // Header com gradiente
             Container(
-              padding: const EdgeInsets.all(DSSpacing.base),
+              padding: const EdgeInsets.all(DSSpacing.lg),
               decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: colors.divider)),
+                gradient: colors.primaryGradient,
               ),
               child: Row(
                 children: [
-                  DSAvatar(name: session.currentUser?.name ?? 'U', size: 48),
+                  DSAvatar(
+                    name: session.currentUser?.name ?? 'U',
+                    size: 48,
+                    showBorder: true,
+                  ),
                   const SizedBox(width: DSSpacing.md),
                   Expanded(
                     child: Column(
@@ -324,14 +368,16 @@ class _AppShellState extends State<AppShell> {
                       children: [
                         Text(
                           session.currentUser?.name ?? '',
-                          style: textStyles.bodyLarge,
+                          style: textStyles.labelLarge.copyWith(
+                            color: colors.white,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: DSSpacing.xxs),
                         Text(
                           session.currentTenant?.name ?? '',
                           style: textStyles.bodySmall.copyWith(
-                            color: colors.textSecondary,
+                            color: colors.white.withValues(alpha: 0.7),
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -347,31 +393,39 @@ class _AppShellState extends State<AppShell> {
                 padding: const EdgeInsets.symmetric(vertical: DSSpacing.sm),
                 children: [
                   _buildDrawerItem(
-                    icon: Icons.dashboard,
+                    icon: Icons.dashboard_rounded,
                     label: 'Dashboard',
                     route: '/dashboard',
                     colors: colors,
                     textStyles: textStyles,
                   ),
 
-                  const Divider(),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: DSSpacing.base,
+                    ),
+                    child: Divider(
+                      color: colors.divider,
+                      height: DSSpacing.base,
+                    ),
+                  ),
                   _buildDrawerSectionHeader('CRM', textStyles, colors),
                   _buildDrawerItem(
-                    icon: Icons.inventory_2,
+                    icon: Icons.inventory_2_rounded,
                     label: 'Produtos',
                     route: '/products',
                     colors: colors,
                     textStyles: textStyles,
                   ),
                   _buildDrawerItem(
-                    icon: Icons.people,
+                    icon: Icons.people_rounded,
                     label: 'Clientes',
                     route: '/customers',
                     colors: colors,
                     textStyles: textStyles,
                   ),
                   _buildDrawerItem(
-                    icon: Icons.shopping_cart,
+                    icon: Icons.shopping_cart_rounded,
                     label: 'Vendas',
                     route: '/sales',
                     colors: colors,
@@ -379,21 +433,29 @@ class _AppShellState extends State<AppShell> {
                   ),
 
                   if (session.canManageTenant()) ...[
-                    const Divider(),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: DSSpacing.base,
+                      ),
+                      child: Divider(
+                        color: colors.divider,
+                        height: DSSpacing.base,
+                      ),
+                    ),
                     _buildDrawerSectionHeader(
                       'Administração',
                       textStyles,
                       colors,
                     ),
                     _buildDrawerItem(
-                      icon: Icons.settings,
+                      icon: Icons.settings_rounded,
                       label: 'Configurações',
                       route: '/settings',
                       colors: colors,
                       textStyles: textStyles,
                     ),
                     _buildDrawerItem(
-                      icon: Icons.group,
+                      icon: Icons.group_rounded,
                       label: 'Equipe',
                       route: '/team',
                       colors: colors,
@@ -402,21 +464,29 @@ class _AppShellState extends State<AppShell> {
                   ],
 
                   if (session.isSuperAdmin) ...[
-                    const Divider(),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: DSSpacing.base,
+                      ),
+                      child: Divider(
+                        color: colors.divider,
+                        height: DSSpacing.base,
+                      ),
+                    ),
                     _buildDrawerSectionHeader(
                       'Super Admin',
                       textStyles,
                       colors,
                     ),
                     _buildDrawerItem(
-                      icon: Icons.admin_panel_settings,
+                      icon: Icons.admin_panel_settings_rounded,
                       label: 'Dashboard Admin',
                       route: '/admin/dashboard',
                       colors: colors,
                       textStyles: textStyles,
                     ),
                     _buildDrawerItem(
-                      icon: Icons.business,
+                      icon: Icons.business_rounded,
                       label: 'Tenants',
                       route: '/admin/tenants',
                       colors: colors,
@@ -438,10 +508,7 @@ class _AppShellState extends State<AppShell> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Trocar Tenant',
-                      style: textStyles.labelSmall.copyWith(
-                        color: colors.textTertiary,
-                      ),
+                      'TROCAR TENANT', style: textStyles.overline,
                     ),
                     const SizedBox(height: DSSpacing.sm),
                     ...session.allMemberships.map((m) {
@@ -455,7 +522,7 @@ class _AppShellState extends State<AppShell> {
                               ? Icons.radio_button_checked
                               : Icons.radio_button_off,
                           color: isSelected
-                              ? colors.primaryColor
+                              ? colors.secundaryColor
                               : colors.greyLight,
                           size: DSSpacing.iconMd,
                         ),
@@ -470,7 +537,7 @@ class _AppShellState extends State<AppShell> {
                         onTap: isSelected
                             ? null
                             : () {
-                                Navigator.pop(context); // Fechar drawer
+                                Navigator.pop(context);
                                 _switchTenant(m.tenantId);
                               },
                       );
@@ -481,15 +548,21 @@ class _AppShellState extends State<AppShell> {
 
             // Logout
             Container(
-              padding: const EdgeInsets.all(DSSpacing.md),
+              padding: const EdgeInsets.symmetric(
+                horizontal: DSSpacing.md,
+                vertical: DSSpacing.sm,
+              ),
               decoration: BoxDecoration(
                 border: Border(top: BorderSide(color: colors.divider)),
               ),
               child: ListTile(
-                leading: Icon(Icons.logout, color: colors.red),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+                ),
+                leading: Icon(Icons.logout_rounded, color: colors.red),
                 title: Text(
                   'Sair',
-                  style: DSTextStyle().bodyMedium.copyWith(color: colors.red),
+                  style: textStyles.bodyMedium.copyWith(color: colors.red),
                 ),
                 onTap: _handleLogout,
               ),
@@ -500,7 +573,9 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
-  // MARK: - Navigation Items
+  // ══════════════════════════════════════════════
+  // NAVIGATION ITEMS
+  // ══════════════════════════════════════════════
 
   Widget _buildSectionHeader(
     String title,
@@ -509,17 +584,14 @@ class _AppShellState extends State<AppShell> {
   ) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-        DSSpacing.base,
         DSSpacing.lg,
-        DSSpacing.base,
+        DSSpacing.lg,
+        DSSpacing.lg,
         DSSpacing.sm,
       ),
       child: Text(
         title.toUpperCase(),
-        style: textStyles.labelSmall.copyWith(
-          color: colors.textTertiary,
-          letterSpacing: 1.2,
-        ),
+        style: textStyles.overline,
       ),
     );
   }
@@ -537,15 +609,16 @@ class _AppShellState extends State<AppShell> {
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: DSSpacing.sm,
-        vertical: DSSpacing.xxs,
+        vertical: 2,
       ),
       child: Material(
         color: isSelected
-            ? colors.primaryColor.withValues(alpha: 0.08)
+            ? colors.primarySurface
             : Colors.transparent,
-        borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
         child: InkWell(
-          borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
+          borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+          hoverColor: colors.primarySurface.withValues(alpha: 0.5),
           onTap: isSelected ? null : () => _navigateTo(route),
           child: Padding(
             padding: const EdgeInsets.symmetric(
@@ -554,6 +627,17 @@ class _AppShellState extends State<AppShell> {
             ),
             child: Row(
               children: [
+                // Barra lateral de indicação ativa (teal)
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 3,
+                  height: isSelected ? 24 : 0,
+                  margin: const EdgeInsets.only(right: DSSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: colors.secundaryColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
                 Icon(
                   isSelected ? selectedIcon : icon,
                   color: isSelected
@@ -588,17 +672,14 @@ class _AppShellState extends State<AppShell> {
   ) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-        DSSpacing.base,
+        DSSpacing.lg,
         DSSpacing.sm,
-        DSSpacing.base,
+        DSSpacing.lg,
         DSSpacing.xs,
       ),
       child: Text(
         title.toUpperCase(),
-        style: textStyles.labelSmall.copyWith(
-          color: colors.textTertiary,
-          letterSpacing: 1.2,
-        ),
+        style: textStyles.overline,
       ),
     );
   }
@@ -612,27 +693,33 @@ class _AppShellState extends State<AppShell> {
   }) {
     final isSelected = widget.currentRoute == route;
 
-    return ListTile(
-      leading: Icon(
-        icon,
-        color: isSelected ? colors.primaryColor : colors.textSecondary,
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: DSSpacing.sm,
+        vertical: 1,
       ),
-      title: Text(
-        label,
-        style: textStyles.bodyMedium.copyWith(
-          color: isSelected ? colors.primaryColor : colors.textPrimary,
-          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+      child: ListTile(
+        leading: Icon(
+          icon,
+          color: isSelected ? colors.primaryColor : colors.textSecondary,
         ),
+        title: Text(
+          label,
+          style: textStyles.bodyMedium.copyWith(
+            color: isSelected ? colors.primaryColor : colors.textPrimary,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ),
+        selected: isSelected,
+        selectedTileColor: colors.primarySurface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        ),
+        onTap: () {
+          Navigator.pop(context);
+          if (!isSelected) _navigateTo(route);
+        },
       ),
-      selected: isSelected,
-      selectedTileColor: colors.primaryColor.withValues(alpha: 0.08),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
-      ),
-      onTap: () {
-        Navigator.pop(context); // Fechar drawer
-        if (!isSelected) _navigateTo(route);
-      },
     );
   }
 

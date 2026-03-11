@@ -89,13 +89,13 @@ class CustomerListItem extends StatelessWidget {
         padding: const EdgeInsets.all(DSSpacing.md),
         decoration: BoxDecoration(
           color: colors.cardBackground,
-          borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+          borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
           border: Border.all(color: colors.divider),
           boxShadow: [
             BoxShadow(
               color: colors.shadowColor,
-              blurRadius: 4,
-              offset: const Offset(0, 1),
+              blurRadius: DSSpacing.elevationSmBlur,
+              offset: Offset(0, DSSpacing.elevationSmOffset),
             ),
           ],
         ),

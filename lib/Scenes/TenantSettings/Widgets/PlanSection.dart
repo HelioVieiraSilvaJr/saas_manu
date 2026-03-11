@@ -21,10 +21,10 @@ class PlanSection extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(DSSpacing.lg),
+      padding: const EdgeInsets.all(DSSpacing.cardPaddingLg),
       decoration: BoxDecoration(
         color: colors.cardBackground,
-        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
         border: Border.all(color: colors.divider),
       ),
       child: Column(
@@ -70,7 +70,7 @@ class PlanSection extends StatelessWidget {
       padding: const EdgeInsets.all(DSSpacing.lg),
       decoration: BoxDecoration(
         color: _currentPlanColor(colors).withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
         border: Border.all(
           color: _currentPlanColor(colors).withValues(alpha: 0.3),
         ),
@@ -247,7 +247,7 @@ class PlanSection extends StatelessWidget {
         color: isCurrent
             ? colors.primaryColor.withValues(alpha: 0.03)
             : colors.cardBackground,
-        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
         border: Border.all(
           color: isCurrent ? colors.primaryColor : colors.divider,
           width: isCurrent ? 2 : 1,

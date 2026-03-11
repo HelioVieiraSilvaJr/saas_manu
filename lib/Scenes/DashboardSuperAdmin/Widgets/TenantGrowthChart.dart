@@ -17,10 +17,10 @@ class TenantGrowthChart extends StatelessWidget {
     final textStyles = DSTextStyle();
 
     return Container(
-      padding: const EdgeInsets.all(DSSpacing.base),
+      padding: const EdgeInsets.all(DSSpacing.cardPaddingLg),
       decoration: BoxDecoration(
         color: colors.cardBackground,
-        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
         border: Border.all(color: colors.divider),
       ),
       child: Column(
@@ -88,7 +88,7 @@ class TenantGrowthChart extends StatelessWidget {
                 final label = labels[value.toInt()];
                 if (label == null) return const SizedBox.shrink();
                 return Padding(
-                  padding: const EdgeInsets.only(top: 8),
+                  padding: const EdgeInsets.only(top: DSSpacing.xs),
                   child: Text(
                     label,
                     style: textStyles.bodySmall.copyWith(
@@ -126,13 +126,13 @@ class TenantGrowthChart extends StatelessWidget {
           LineChartBarData(
             spots: spots,
             isCurved: true,
-            color: colors.primaryColor,
+            color: colors.secundaryColor,
             barWidth: 2,
             isStrokeCapRound: true,
             dotData: const FlDotData(show: false),
             belowBarData: BarAreaData(
               show: true,
-              color: colors.primaryColor.withValues(alpha: 0.1),
+              color: colors.secundaryColor.withValues(alpha: 0.1),
             ),
           ),
         ],

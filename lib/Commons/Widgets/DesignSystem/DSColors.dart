@@ -1,66 +1,116 @@
 import 'package:flutter/material.dart';
 
-/// Design System - Paleta de cores centralizada.
+/// Design System v2.0 — Paleta de cores USE3D.
 ///
 /// NUNCA usar cores hardcoded. Sempre referenciar DSColors().
 class DSColors {
-  // MARK: Primary
-  Color get primaryColor => const Color(0xFF6366F1); // Indigo
-  Color get primaryLight => const Color(0xFF818CF8);
-  Color get primaryDark => const Color(0xFF4F46E5);
+  // ══════════════════════════════════════════════
+  // PRIMARY — Azul Profundo (confiança, profissionalismo)
+  // ══════════════════════════════════════════════
+  final Color primaryColor = const Color(0xFF1E3A5F);
+  final Color primaryLight = const Color(0xFF2D5F8A);
+  final Color primaryDark = const Color(0xFF0F2440);
+  final Color primarySurface = const Color(0xFFE8EFF7);
 
-  // MARK: Secondary
-  Color get secundaryColor => const Color(0xFF8B5CF6); // Purple
-  Color get secundaryLight => const Color(0xFFA78BFA);
-  Color get secundaryDark => const Color(0xFF7C3AED);
+  // ══════════════════════════════════════════════
+  // SECONDARY — Teal Vibrante (ação, energia)
+  // ══════════════════════════════════════════════
+  final Color secundaryColor = const Color(0xFF0D9488);
+  final Color secundaryLight = const Color(0xFF2DD4BF);
+  final Color secundaryDark = const Color(0xFF0F766E);
+  final Color secundarySurface = const Color(0xFFE6F7F5);
 
-  // MARK: Accent / Highlights
-  Color get tint => const Color(0xFF6366F1);
-  Color get highlights => const Color(0xFFF59E0B); // Amber
+  // ══════════════════════════════════════════════
+  // ACCENT — Âmbar Quente (destaques, CTAs especiais)
+  // ══════════════════════════════════════════════
+  final Color tint = const Color(0xFF1E3A5F);
+  final Color highlights = const Color(0xFFF59E0B);
+  final Color accentWarm = const Color(0xFFE67E22);
 
-  // MARK: Backgrounds
-  Color get background => const Color(0xFFF8FAFC);
-  Color get surfaceColor => const Color(0xFFFFFFFF);
-  Color get cardBackground => const Color(0xFFFFFFFF);
-  Color get scaffoldBackground => const Color(0xFFF1F5F9);
+  // ══════════════════════════════════════════════
+  // BACKGROUNDS — Sistema de Camadas (Elevation)
+  // ══════════════════════════════════════════════
+  final Color background = const Color(0xFFF7F9FC);
+  final Color surfaceColor = const Color(0xFFFFFFFF);
+  final Color cardBackground = const Color(0xFFFFFFFF);
+  final Color scaffoldBackground = const Color(0xFFF0F4F8);
+  final Color surfaceElevated = const Color(0xFFFFFFFF);
+  final Color surfaceOverlay = const Color(0xFFF8FAFD);
 
-  // MARK: Neutral
-  Color get white => const Color(0xFFFFFFFF);
-  Color get black => const Color(0xFF0F172A);
-  Color get grey => const Color(0xFF64748B);
-  Color get greyLight => const Color(0xFF94A3B8);
-  Color get greyLighter => const Color(0xFFCBD5E1);
-  Color get greyLightest => const Color(0xFFE2E8F0);
-  Color get divider => const Color(0xFFE2E8F0);
+  // ══════════════════════════════════════════════
+  // NEUTRAL — Escala de Cinzas Frios
+  // ══════════════════════════════════════════════
+  final Color white = const Color(0xFFFFFFFF);
+  final Color black = const Color(0xFF0B1929);
+  final Color grey = const Color(0xFF5A6B7F);
+  final Color greyLight = const Color(0xFF8696A7);
+  final Color greyLighter = const Color(0xFFBCC8D4);
+  final Color greyLightest = const Color(0xFFDDE4ED);
+  final Color divider = const Color(0xFFE3E9F0);
 
-  // MARK: Semantic / Status
-  Color get red => const Color(0xFFEF4444);
-  Color get redLight => const Color(0xFFFEE2E2);
-  Color get green => const Color(0xFF10B981);
-  Color get greenLight => const Color(0xFFD1FAE5);
-  Color get yellow => const Color(0xFFF59E0B);
-  Color get yellowLight => const Color(0xFFFEF3C7);
-  Color get blue => const Color(0xFF3B82F6);
-  Color get blueLight => const Color(0xFFDBEAFE);
-  Color get orange => const Color(0xFFF97316);
-  Color get orangeLight => const Color(0xFFFED7AA);
+  // ══════════════════════════════════════════════
+  // SEMANTIC — Estados do Sistema
+  // ══════════════════════════════════════════════
+  final Color red = const Color(0xFFDC2626);
+  final Color redLight = const Color(0xFFFEE2E2);
+  final Color green = const Color(0xFF059669);
+  final Color greenLight = const Color(0xFFD1FAE5);
+  final Color yellow = const Color(0xFFF59E0B);
+  final Color yellowLight = const Color(0xFFFEF3C7);
+  final Color blue = const Color(0xFF2563EB);
+  final Color blueLight = const Color(0xFFDBEAFE);
+  final Color orange = const Color(0xFFF97316);
+  final Color orangeLight = const Color(0xFFFED7AA);
 
-  // MARK: WhatsApp
-  Color get whatsappGreen => const Color(0xFF25D366);
+  // ══════════════════════════════════════════════
+  // WHATSAPP
+  // ══════════════════════════════════════════════
+  final Color whatsappGreen = const Color(0xFF25D366);
 
-  // MARK: Text
-  Color get textPrimary => const Color(0xFF0F172A);
-  Color get textSecondary => const Color(0xFF475569);
-  Color get textTertiary => const Color(0xFF94A3B8);
-  Color get textOnPrimary => const Color(0xFFFFFFFF);
-  Color get textLink => const Color(0xFF6366F1);
+  // ══════════════════════════════════════════════
+  // TEXT — Hierarquia de Leitura
+  // ══════════════════════════════════════════════
+  final Color textPrimary = const Color(0xFF0B1929);
+  final Color textSecondary = const Color(0xFF3D4F63);
+  final Color textTertiary = const Color(0xFF8696A7);
+  final Color textOnPrimary = const Color(0xFFFFFFFF);
+  final Color textOnSecondary = const Color(0xFFFFFFFF);
+  final Color textLink = const Color(0xFF1E3A5F);
 
-  // MARK: Input
-  Color get inputBorder => const Color(0xFFCBD5E1);
-  Color get inputBorderFocused => const Color(0xFF6366F1);
-  Color get inputBackground => const Color(0xFFFFFFFF);
-  Color get inputError => const Color(0xFFEF4444);
+  // ══════════════════════════════════════════════
+  // INPUT — Campos de Formulário
+  // ══════════════════════════════════════════════
+  final Color inputBorder = const Color(0xFFBCC8D4);
+  final Color inputBorderFocused = const Color(0xFF1E3A5F);
+  final Color inputBackground = const Color(0xFFFFFFFF);
+  final Color inputError = const Color(0xFFDC2626);
+  final Color inputSuccess = const Color(0xFF059669);
 
-  // MARK: Shadow
-  Color get shadowColor => const Color(0x0A000000);
+  // ══════════════════════════════════════════════
+  // SHADOW — Sistema de Elevação
+  // ══════════════════════════════════════════════
+  final Color shadowColor = const Color(0x0F0B1929);
+  final Color shadowMedium = const Color(0x1A0B1929);
+  final Color shadowStrong = const Color(0x290B1929);
+
+  // ══════════════════════════════════════════════
+  // GRADIENTES
+  // ══════════════════════════════════════════════
+  LinearGradient get primaryGradient => const LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF1E3A5F), Color(0xFF2D5F8A)],
+  );
+
+  LinearGradient get accentGradient => const LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF0D9488), Color(0xFF2DD4BF)],
+  );
+
+  LinearGradient get warmGradient => const LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFFF59E0B), Color(0xFFE67E22)],
+  );
 }

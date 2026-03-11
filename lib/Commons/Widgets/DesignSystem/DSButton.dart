@@ -3,7 +3,7 @@ import 'DSColors.dart';
 import 'DSTextStyle.dart';
 import 'DSSpacing.dart';
 
-/// Design System - Botões padronizados.
+/// Design System v2.0 — Botões padronizados USE3D.
 ///
 /// NUNCA usar ElevatedButton/TextButton diretamente. Usar DSButton().
 class DSButton extends StatelessWidget {
@@ -101,6 +101,44 @@ class DSButton extends StatelessWidget {
     );
   }
 
+  /// Botão accent (teal/secundário preenchido)
+  factory DSButton.accent({
+    required String label,
+    IconData? icon,
+    VoidCallback? onTap,
+    bool isLoading = false,
+    bool isExpanded = false,
+    double? width,
+  }) {
+    return DSButton._(
+      label: label,
+      icon: icon,
+      onTap: onTap,
+      type: _DSButtonType.accent,
+      isLoading: isLoading,
+      isExpanded: isExpanded,
+      width: width,
+    );
+  }
+
+  /// Botão ghost (sem fundo, sem borda, hover sutil)
+  factory DSButton.ghost({
+    required String label,
+    IconData? icon,
+    VoidCallback? onTap,
+    bool isLoading = false,
+    bool isExpanded = false,
+  }) {
+    return DSButton._(
+      label: label,
+      icon: icon,
+      onTap: onTap,
+      type: _DSButtonType.ghost,
+      isLoading: isLoading,
+      isExpanded: isExpanded,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = DSColors();
@@ -130,6 +168,16 @@ class DSButton extends StatelessWidget {
         bgColor = colors.red;
         fgColor = colors.white;
         borderColor = colors.red;
+        break;
+      case _DSButtonType.accent:
+        bgColor = colors.secundaryColor;
+        fgColor = colors.white;
+        borderColor = colors.secundaryColor;
+        break;
+      case _DSButtonType.ghost:
+        bgColor = Colors.transparent;
+        fgColor = colors.textSecondary;
+        borderColor = Colors.transparent;
         break;
     }
 
@@ -163,21 +211,30 @@ class DSButton extends StatelessWidget {
       }
     }
 
+    const radius = DSSpacing.radiusMd; // 12 → borderRadius modernizado
+
     final button = Material(
-      color: bgColor,
-      borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(radius),
       child: InkWell(
         onTap: isLoading ? null : onTap,
-        borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
-        child: Container(
+        borderRadius: BorderRadius.circular(radius),
+        hoverColor: _type == _DSButtonType.ghost ? colors.primarySurface : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeOut,
           width: width ?? (isExpanded ? double.infinity : null),
           padding: const EdgeInsets.symmetric(
-            horizontal: DSSpacing.base,
-            vertical: DSSpacing.md,
+            horizontal: DSSpacing.lg,
+            vertical: 14,
           ),
           decoration: BoxDecoration(
-            border: Border.all(color: borderColor, width: 1.5),
-            borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
+            color: bgColor,
+            border: Border.all(
+              color: borderColor,
+              width: _type == _DSButtonType.ghost ? 0 : 1.5,
+            ),
+            borderRadius: BorderRadius.circular(radius),
           ),
           child: Center(child: child),
         ),
@@ -188,4 +245,4 @@ class DSButton extends StatelessWidget {
   }
 }
 
-enum _DSButtonType { primary, secondary, text, danger }
+enum _DSButtonType { primary, secondary, text, danger, accent, ghost }

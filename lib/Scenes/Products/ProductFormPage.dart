@@ -120,7 +120,10 @@ class _ProductFormPageState extends State<ProductFormPage> {
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(DSSpacing.xl),
+      padding: const EdgeInsets.symmetric(
+        horizontal: DSSpacing.pagePaddingHorizontalWeb,
+        vertical: DSSpacing.pagePaddingVerticalWeb,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -200,7 +203,7 @@ class _ProductFormPageState extends State<ProductFormPage> {
               padding: const EdgeInsets.all(DSSpacing.md),
               decoration: BoxDecoration(
                 color: colors.red.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
+                borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
                 border: Border.all(color: colors.red.withValues(alpha: 0.3)),
               ),
               child: Row(
@@ -375,11 +378,11 @@ class _ProductFormPageState extends State<ProductFormPage> {
               height: 150,
               decoration: BoxDecoration(
                 color: colors.scaffoldBackground,
-                borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+                borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
                 border: Border.all(color: colors.divider),
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+                borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
                 child: _buildImagePreview(colors),
               ),
             ),
@@ -441,7 +444,7 @@ class _ProductFormPageState extends State<ProductFormPage> {
       padding: const EdgeInsets.all(DSSpacing.md),
       decoration: BoxDecoration(
         color: colors.cardBackground,
-        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
         border: Border.all(color: colors.divider),
       ),
       child: Row(

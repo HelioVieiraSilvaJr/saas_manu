@@ -51,7 +51,10 @@ class _AddMemberPageState extends State<AddMemberPage> {
     return AppShell(
       currentRoute: '/team',
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(DSSpacing.xl),
+        padding: const EdgeInsets.symmetric(
+          horizontal: DSSpacing.pagePaddingHorizontalWeb,
+          vertical: DSSpacing.pagePaddingVerticalWeb,
+        ),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 600),
@@ -64,7 +67,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
                   Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.arrow_back),
+                        icon: const Icon(Icons.arrow_back_rounded),
                         onPressed: () => Navigator.pop(context),
                       ),
                       const SizedBox(width: DSSpacing.sm),
@@ -76,10 +79,10 @@ class _AddMemberPageState extends State<AddMemberPage> {
                   // Card do formulário
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(DSSpacing.lg),
+                    padding: const EdgeInsets.all(DSSpacing.cardPaddingLg),
                     decoration: BoxDecoration(
                       color: colors.cardBackground,
-                      borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+                      borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
                       border: Border.all(color: colors.divider),
                     ),
                     child: Column(
@@ -180,7 +183,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
 
     return InkWell(
       onTap: () => _presenter.setRole(role),
-      borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+      borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(DSSpacing.md),
@@ -188,7 +191,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
           color: isSelected
               ? colors.primaryColor.withValues(alpha: 0.05)
               : colors.scaffoldBackground,
-          borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+          borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
           border: Border.all(
             color: isSelected ? colors.primaryColor : colors.divider,
             width: isSelected ? 2 : 1,

@@ -71,6 +71,9 @@ dependencies:
   # Cached Network Image
   cached_network_image: ^3.4.1
 
+  # Fonts
+  google_fonts: ^6.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

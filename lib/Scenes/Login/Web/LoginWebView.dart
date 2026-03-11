@@ -61,12 +61,12 @@ class _LoginWebViewState extends State<LoginWebView> {
                 constraints: const BoxConstraints(maxWidth: 440),
                 decoration: BoxDecoration(
                   color: colors.white,
-                  borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
+                  borderRadius: BorderRadius.circular(DSSpacing.radiusXl),
                   boxShadow: [
                     BoxShadow(
-                      color: colors.shadowColor,
-                      blurRadius: 24,
-                      offset: const Offset(0, 8),
+                      color: colors.shadowMedium,
+                      blurRadius: DSSpacing.elevationLgBlur,
+                      offset: const Offset(0, DSSpacing.elevationLgOffset),
                     ),
                   ],
                 ),
@@ -96,7 +96,17 @@ class _LoginWebViewState extends State<LoginWebView> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Logo / Title
-          Icon(Icons.storefront_rounded, size: 56, color: colors.primaryColor),
+          Center(
+            child: Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                gradient: colors.primaryGradient,
+                borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+              ),
+              child: const Icon(Icons.storefront_rounded, size: 32, color: Colors.white),
+            ),
+          ),
           const SizedBox(height: DSSpacing.base),
           Text(
             'Bem-vindo de volta',
@@ -227,7 +237,7 @@ class _LoginWebViewState extends State<LoginWebView> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Icon(Icons.lock_reset_rounded, size: 56, color: colors.primaryColor),
+        Icon(Icons.lock_reset_rounded, size: 56, color: colors.secundaryColor),
         const SizedBox(height: DSSpacing.base),
         Text(
           'Recuperar Senha',

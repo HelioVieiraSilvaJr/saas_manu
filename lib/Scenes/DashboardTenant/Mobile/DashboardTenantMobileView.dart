@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../Commons/Widgets/DesignSystem/DSColors.dart';
 import '../../../Commons/Widgets/DesignSystem/DSSpacing.dart';
 import '../../../Commons/Widgets/DesignSystem/DSMetricCard.dart';
-import '../../../Commons/Widgets/DesignSystem/LoadingIndicator.dart';
+import '../../../Commons/Widgets/DesignSystem/DSShimmer.dart';
 import '../../../Commons/Extensions/String+Extensions.dart';
 import '../DashboardTenantPresenter.dart';
 import '../DashboardTenantViewModel.dart';
@@ -27,7 +27,30 @@ class DashboardTenantMobileView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (viewModel.isLoading) {
-      return const LoadingIndicator(message: 'Carregando dashboard...');
+      return Padding(
+        padding: const EdgeInsets.all(DSSpacing.base),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(child: DSShimmer.metricCard()),
+                const SizedBox(width: DSSpacing.sm),
+                Expanded(child: DSShimmer.metricCard()),
+              ],
+            ),
+            const SizedBox(height: DSSpacing.sm),
+            Row(
+              children: [
+                Expanded(child: DSShimmer.metricCard()),
+                const SizedBox(width: DSSpacing.sm),
+                Expanded(child: DSShimmer.metricCard()),
+              ],
+            ),
+            const SizedBox(height: DSSpacing.base),
+            DSShimmer.metricCard(height: 200),
+          ],
+        ),
+      );
     }
 
     return RefreshIndicator(

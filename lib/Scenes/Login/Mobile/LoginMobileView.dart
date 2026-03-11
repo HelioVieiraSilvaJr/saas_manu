@@ -74,10 +74,20 @@ class _LoginMobileViewState extends State<LoginMobileView> {
             const SizedBox(height: DSSpacing.huge),
 
             // Logo
-            Icon(
-              Icons.storefront_rounded,
-              size: 64,
-              color: colors.primaryColor,
+            Center(
+              child: Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  gradient: DSColors().primaryGradient,
+                  borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+                ),
+                child: const Icon(
+                  Icons.storefront_rounded,
+                  size: 36,
+                  color: Colors.white,
+                ),
+              ),
             ),
             const SizedBox(height: DSSpacing.xl),
 
@@ -221,7 +231,11 @@ class _LoginMobileViewState extends State<LoginMobileView> {
         children: [
           const SizedBox(height: DSSpacing.huge),
 
-          Icon(Icons.lock_reset_rounded, size: 64, color: colors.primaryColor),
+          Icon(
+            Icons.lock_reset_rounded,
+            size: 64,
+            color: colors.secundaryColor,
+          ),
           const SizedBox(height: DSSpacing.xl),
 
           Text(

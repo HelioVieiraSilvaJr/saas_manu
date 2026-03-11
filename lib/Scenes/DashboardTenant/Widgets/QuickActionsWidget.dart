@@ -26,16 +26,16 @@ class QuickActionsWidget extends StatelessWidget {
     final textStyles = DSTextStyle();
 
     return Container(
-      padding: const EdgeInsets.all(DSSpacing.base),
+      padding: const EdgeInsets.all(DSSpacing.cardPaddingLg),
       decoration: BoxDecoration(
         color: colors.cardBackground,
-        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
         border: Border.all(color: colors.divider),
         boxShadow: [
           BoxShadow(
             color: colors.shadowColor,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            blurRadius: DSSpacing.elevationSmBlur,
+            offset: const Offset(0, DSSpacing.elevationSmOffset),
           ),
         ],
       ),

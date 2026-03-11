@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../Commons/Utils/ScreenResponsive.dart';
 import '../../Commons/Widgets/DesignSystem/DSAlertDialog.dart';
+import '../../Commons/Widgets/DesignSystem/DSColors.dart';
 import '../../Sources/Coordinators/AppShell.dart';
 import 'TenantsListPresenter.dart';
 import 'Web/TenantsListWebView.dart';
@@ -132,7 +133,7 @@ class _TenantsListPageState extends State<TenantsListPage> {
                 }
               }
             },
-            child: const Text('Excluir', style: TextStyle(color: Colors.red)),
+            child: Text('Excluir', style: TextStyle(color: DSColors().red)),
           ),
         ],
       ),

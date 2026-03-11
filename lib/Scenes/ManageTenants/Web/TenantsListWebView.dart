@@ -36,7 +36,10 @@ class TenantsListWebView extends StatelessWidget {
     final textStyles = DSTextStyle();
 
     return Padding(
-      padding: const EdgeInsets.all(DSSpacing.xl),
+      padding: const EdgeInsets.symmetric(
+        horizontal: DSSpacing.pagePaddingHorizontalWeb,
+        vertical: DSSpacing.pagePaddingVerticalWeb,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

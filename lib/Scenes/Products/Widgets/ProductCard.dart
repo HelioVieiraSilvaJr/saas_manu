@@ -45,7 +45,7 @@ class _ProductCardState extends State<ProductCard> {
           duration: const Duration(milliseconds: 200),
           decoration: BoxDecoration(
             color: colors.cardBackground,
-            borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+            borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
             border: Border.all(
               color: _isHovered
                   ? colors.primaryColor.withValues(alpha: 0.3)
@@ -56,8 +56,8 @@ class _ProductCardState extends State<ProductCard> {
                 color: _isHovered
                     ? colors.primaryColor.withValues(alpha: 0.08)
                     : colors.shadowColor,
-                blurRadius: _isHovered ? 12 : 8,
-                offset: const Offset(0, 2),
+                blurRadius: _isHovered ? DSSpacing.elevationMdBlur : DSSpacing.elevationSmBlur,
+                offset: Offset(0, _isHovered ? DSSpacing.elevationMdOffset : DSSpacing.elevationSmOffset),
               ),
             ],
           ),
@@ -139,7 +139,7 @@ class _ProductCardState extends State<ProductCard> {
         url: widget.product.imageUrl,
         fit: BoxFit.cover,
         borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(DSSpacing.radiusMd),
+          top: Radius.circular(DSSpacing.radiusLg),
         ),
         placeholder: Icon(
           Icons.inventory_2_outlined,

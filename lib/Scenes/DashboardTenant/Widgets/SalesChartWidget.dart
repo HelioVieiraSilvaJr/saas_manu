@@ -20,16 +20,16 @@ class SalesChartWidget extends StatelessWidget {
     final textStyles = DSTextStyle();
 
     return Container(
-      padding: const EdgeInsets.all(DSSpacing.base),
+      padding: const EdgeInsets.all(DSSpacing.cardPaddingLg),
       decoration: BoxDecoration(
         color: colors.cardBackground,
-        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
         border: Border.all(color: colors.divider),
         boxShadow: [
           BoxShadow(
             color: colors.shadowColor,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            blurRadius: DSSpacing.elevationSmBlur,
+            offset: const Offset(0, DSSpacing.elevationSmOffset),
           ),
         ],
       ),
@@ -151,7 +151,7 @@ class SalesChartWidget extends StatelessWidget {
             ),
             isCurved: true,
             curveSmoothness: 0.3,
-            color: colors.primaryColor,
+            color: colors.secundaryColor,
             barWidth: 3,
             isStrokeCapRound: true,
             dotData: FlDotData(
@@ -159,14 +159,14 @@ class SalesChartWidget extends StatelessWidget {
               getDotPainter: (spot, percent, barData, index) =>
                   FlDotCirclePainter(
                     radius: 4,
-                    color: colors.primaryColor,
+                    color: colors.secundaryColor,
                     strokeWidth: 2,
                     strokeColor: colors.white,
                   ),
             ),
             belowBarData: BarAreaData(
               show: true,
-              color: colors.primaryColor.withValues(alpha: 0.08),
+              color: colors.secundaryColor.withValues(alpha: 0.10),
             ),
           ),
         ],

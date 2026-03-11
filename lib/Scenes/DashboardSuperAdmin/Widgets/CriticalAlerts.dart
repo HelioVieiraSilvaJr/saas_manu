@@ -29,10 +29,10 @@ class CriticalAlerts extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.all(DSSpacing.base),
+      padding: const EdgeInsets.all(DSSpacing.cardPaddingLg),
       decoration: BoxDecoration(
         color: colors.cardBackground,
-        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
         border: Border.all(color: colors.divider),
       ),
       child: Column(

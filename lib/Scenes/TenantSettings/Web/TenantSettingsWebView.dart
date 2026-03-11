@@ -33,7 +33,10 @@ class TenantSettingsWebView extends StatelessWidget {
     final textStyles = DSTextStyle();
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(DSSpacing.xl),
+      padding: const EdgeInsets.symmetric(
+        horizontal: DSSpacing.pagePaddingHorizontalWeb,
+        vertical: DSSpacing.pagePaddingVerticalWeb,
+      ),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),

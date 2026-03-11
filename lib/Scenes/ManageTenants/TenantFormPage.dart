@@ -287,7 +287,7 @@ class _TenantFormPageState extends State<TenantFormPage> {
 
     return InkWell(
       onTap: () => _presenter.setPlan(value),
-      borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+      borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
       child: Container(
         padding: const EdgeInsets.all(DSSpacing.md),
         decoration: BoxDecoration(
@@ -295,7 +295,7 @@ class _TenantFormPageState extends State<TenantFormPage> {
             color: isSelected ? colors.primaryColor : colors.inputBorder,
             width: isSelected ? 2 : 1,
           ),
-          borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+          borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
           color: isSelected
               ? colors.primaryColor.withValues(alpha: 0.05)
               : colors.cardBackground,

@@ -82,7 +82,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     final product = _product!;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(DSSpacing.xl),
+      padding: const EdgeInsets.symmetric(
+        horizontal: DSSpacing.pagePaddingHorizontalWeb,
+        vertical: DSSpacing.pagePaddingVerticalWeb,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -198,11 +201,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       height: size,
       decoration: BoxDecoration(
         color: colors.scaffoldBackground,
-        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
         border: Border.all(color: colors.divider),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
         child: AppNetworkImage(
           url: product.imageUrl,
           width: size,
@@ -228,10 +231,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     final product = _product!;
 
     return Container(
-      padding: const EdgeInsets.all(DSSpacing.lg),
+      padding: const EdgeInsets.all(DSSpacing.cardPaddingLg),
       decoration: BoxDecoration(
         color: colors.cardBackground,
-        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
         border: Border.all(color: colors.divider),
       ),
       child: Column(

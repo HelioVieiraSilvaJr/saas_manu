@@ -90,7 +90,10 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
     final customer = _customer!;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(DSSpacing.xl),
+      padding: const EdgeInsets.symmetric(
+        horizontal: DSSpacing.pagePaddingHorizontalWeb,
+        vertical: DSSpacing.pagePaddingVerticalWeb,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -196,10 +199,10 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
     CustomerModel customer,
   ) {
     return Container(
-      padding: const EdgeInsets.all(DSSpacing.xl),
+      padding: const EdgeInsets.all(DSSpacing.cardPaddingLg),
       decoration: BoxDecoration(
         color: colors.cardBackground,
-        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
         border: Border.all(color: colors.divider),
       ),
       child: Column(
@@ -376,10 +379,10 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
     final customer = _customer!;
 
     return Container(
-      padding: const EdgeInsets.all(DSSpacing.lg),
+      padding: const EdgeInsets.all(DSSpacing.cardPaddingLg),
       decoration: BoxDecoration(
         color: colors.cardBackground,
-        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
         border: Border.all(color: colors.divider),
       ),
       child: Column(

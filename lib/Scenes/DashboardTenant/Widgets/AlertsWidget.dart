@@ -75,7 +75,7 @@ class _AlertCard extends StatelessWidget {
       padding: const EdgeInsets.all(DSSpacing.md),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
         border: Border.all(color: borderColor),
       ),
       child: Row(

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../Commons/Widgets/DesignSystem/DSColors.dart';
 import '../../../Commons/Widgets/DesignSystem/DSSpacing.dart';
 import '../../../Commons/Widgets/DesignSystem/DSMetricCard.dart';
-import '../../../Commons/Widgets/DesignSystem/LoadingIndicator.dart';
+import '../../../Commons/Widgets/DesignSystem/DSShimmer.dart';
 import '../../../Commons/Extensions/String+Extensions.dart';
 import '../DashboardTenantPresenter.dart';
 import '../DashboardTenantViewModel.dart';
@@ -28,7 +28,40 @@ class DashboardTenantWebView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (viewModel.isLoading) {
-      return const LoadingIndicator(message: 'Carregando dashboard...');
+      return Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: DSSpacing.pagePaddingHorizontalWeb,
+          vertical: DSSpacing.pagePaddingVerticalWeb,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: List.generate(
+                4,
+                (_) => Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: DSSpacing.sm,
+                    ),
+                    child: DSShimmer.metricCard(),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: DSSpacing.xl),
+            DSShimmer.metricCard(height: 260),
+            const SizedBox(height: DSSpacing.base),
+            ...List.generate(
+              3,
+              (_) => Padding(
+                padding: const EdgeInsets.only(bottom: DSSpacing.sm),
+                child: DSShimmer.listTile(),
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     return RefreshIndicator(
@@ -36,7 +69,10 @@ class DashboardTenantWebView extends StatelessWidget {
       color: DSColors().primaryColor,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(DSSpacing.xl),
+        padding: const EdgeInsets.symmetric(
+          horizontal: DSSpacing.pagePaddingHorizontalWeb,
+          vertical: DSSpacing.pagePaddingVerticalWeb,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

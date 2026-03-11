@@ -77,11 +77,11 @@ class SaleListItem extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: DSSpacing.sm),
       elevation: 1,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
       ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
         child: Padding(
           padding: const EdgeInsets.all(DSSpacing.base),
           child: Column(

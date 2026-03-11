@@ -148,7 +148,10 @@ class _SaleFormPageState extends State<SaleFormPage> {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 700),
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(DSSpacing.xl),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: DSSpacing.pagePaddingHorizontalWeb,
+                    vertical: DSSpacing.pagePaddingVerticalWeb,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -192,7 +195,7 @@ class _SaleFormPageState extends State<SaleFormPage> {
                         decoration: BoxDecoration(
                           color: colors.cardBackground,
                           borderRadius: BorderRadius.circular(
-                            DSSpacing.radiusMd,
+                            DSSpacing.radiusLg,
                           ),
                           border: Border.all(color: colors.divider),
                         ),
@@ -512,15 +515,15 @@ class _SaleFormPageState extends State<SaleFormPage> {
     if (vm.selectedCustomer != null) {
       final customer = vm.selectedCustomer!;
       return Container(
-        padding: const EdgeInsets.all(DSSpacing.base),
+        padding: const EdgeInsets.all(DSSpacing.cardPaddingLg),
         decoration: BoxDecoration(
           color: colors.cardBackground,
-          borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+          borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
           border: Border.all(color: colors.green),
         ),
         child: Row(
           children: [
-            const Icon(Icons.check_circle, color: Colors.green),
+            Icon(Icons.check_circle_rounded, color: colors.green),
             const SizedBox(width: DSSpacing.sm),
             DSAvatar(name: customer.name, size: 40),
             const SizedBox(width: DSSpacing.sm),

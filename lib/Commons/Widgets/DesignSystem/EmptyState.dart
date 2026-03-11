@@ -4,7 +4,7 @@ import 'DSTextStyle.dart';
 import 'DSSpacing.dart';
 import 'DSButton.dart';
 
-/// Design System - Widget para estados vazios (Empty State).
+/// Design System v2.0 — Widget para estados vazios USE3D.
 class EmptyState extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -33,13 +33,13 @@ class EmptyState extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Icon
+            // Icon — container arredondado
             Container(
-              width: 80,
-              height: 80,
+              width: 88,
+              height: 88,
               decoration: BoxDecoration(
-                color: colors.primaryColor.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
+                color: colors.primarySurface,
+                borderRadius: BorderRadius.circular(DSSpacing.radiusXl),
               ),
               child: Icon(
                 icon,
@@ -68,10 +68,10 @@ class EmptyState extends StatelessWidget {
               ),
             ],
 
-            // Action Button
+            // Action Button — accent
             if (actionLabel != null && onAction != null) ...[
               const SizedBox(height: DSSpacing.xl),
-              DSButton.primary(label: actionLabel!, onTap: onAction),
+              DSButton.accent(label: actionLabel!, onTap: onAction),
             ],
           ],
         ),

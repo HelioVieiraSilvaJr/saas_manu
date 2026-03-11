@@ -1,141 +1,176 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'DSColors.dart';
 
-/// Design System - Estilos de texto padronizados.
+/// Design System v2.0 — Tipografia USE3D (DM Sans).
 ///
 /// NUNCA usar TextStyle hardcoded. Sempre referenciar DSTextStyle().
 class DSTextStyle {
   final DSColors _colors = DSColors();
 
-  // MARK: Headlines
-  TextStyle get headline1 => TextStyle(
-    fontSize: 32,
+  // ══════════════════════════════════════════════
+  // DISPLAY — Números grandes, hero sections
+  // ══════════════════════════════════════════════
+  TextStyle get displayLarge => GoogleFonts.dmSans(
+    fontSize: 40,
     fontWeight: FontWeight.w700,
     color: _colors.textPrimary,
-    height: 1.2,
+    height: 1.1,
+    letterSpacing: -0.5,
   );
 
-  TextStyle get headline2 => TextStyle(
-    fontSize: 24,
-    fontWeight: FontWeight.w700,
-    color: _colors.textPrimary,
-    height: 1.3,
-  );
-
-  TextStyle get headline3 => TextStyle(
-    fontSize: 20,
-    fontWeight: FontWeight.w600,
-    color: _colors.textPrimary,
-    height: 1.3,
-  );
-
-  // Alias usado no ARCHITECTURE.md
-  TextStyle get headline => headline2;
-
-  // MARK: Body
-  TextStyle get bodyLarge => TextStyle(
-    fontSize: 16,
-    fontWeight: FontWeight.w400,
-    color: _colors.textPrimary,
-    height: 1.5,
-  );
-
-  TextStyle get bodyMedium => TextStyle(
-    fontSize: 14,
-    fontWeight: FontWeight.w400,
-    color: _colors.textPrimary,
-    height: 1.5,
-  );
-
-  TextStyle get bodySmall => TextStyle(
-    fontSize: 12,
-    fontWeight: FontWeight.w400,
-    color: _colors.textSecondary,
-    height: 1.5,
-  );
-
-  // MARK: Labels
-  TextStyle get labelLarge => TextStyle(
-    fontSize: 14,
-    fontWeight: FontWeight.w600,
-    color: _colors.textPrimary,
-    height: 1.4,
-  );
-
-  TextStyle get labelMedium => TextStyle(
-    fontSize: 12,
-    fontWeight: FontWeight.w500,
-    color: _colors.textSecondary,
-    height: 1.4,
-  );
-
-  TextStyle get labelSmall => TextStyle(
-    fontSize: 10,
-    fontWeight: FontWeight.w500,
-    color: _colors.textTertiary,
-    height: 1.4,
-  );
-
-  // MARK: Specialized
-  TextStyle get textField => TextStyle(
-    fontSize: 14,
-    fontWeight: FontWeight.w400,
-    color: _colors.textPrimary,
-    height: 1.5,
-  );
-
-  TextStyle get textFieldLabel => TextStyle(
-    fontSize: 14,
-    fontWeight: FontWeight.w500,
-    color: _colors.textSecondary,
-    height: 1.4,
-  );
-
-  TextStyle get textFieldHint => TextStyle(
-    fontSize: 14,
-    fontWeight: FontWeight.w400,
-    color: _colors.textTertiary,
-    height: 1.5,
-  );
-
-  TextStyle get textFieldError => TextStyle(
-    fontSize: 12,
-    fontWeight: FontWeight.w400,
-    color: _colors.red,
-    height: 1.4,
-  );
-
-  TextStyle get menuItem => TextStyle(
-    fontSize: 14,
-    fontWeight: FontWeight.w500,
-    color: _colors.textPrimary,
-    height: 1.4,
-  );
-
-  TextStyle get button =>
-      TextStyle(fontSize: 14, fontWeight: FontWeight.w600, height: 1.4);
-
-  TextStyle get caption => TextStyle(
-    fontSize: 12,
-    fontWeight: FontWeight.w400,
-    color: _colors.textTertiary,
-    height: 1.4,
-  );
-
-  TextStyle get price => TextStyle(
-    fontSize: 18,
-    fontWeight: FontWeight.w700,
-    color: _colors.primaryColor,
-    height: 1.3,
-  );
-
-  TextStyle get metricValue => TextStyle(
+  // ══════════════════════════════════════════════
+  // HEADLINES — Títulos de página e seção
+  // ══════════════════════════════════════════════
+  TextStyle get headline1 => GoogleFonts.dmSans(
     fontSize: 28,
     fontWeight: FontWeight.w700,
     color: _colors.textPrimary,
     height: 1.2,
+    letterSpacing: -0.3,
+  );
+
+  TextStyle get headline2 => GoogleFonts.dmSans(
+    fontSize: 22,
+    fontWeight: FontWeight.w600,
+    color: _colors.textPrimary,
+    height: 1.3,
+    letterSpacing: -0.2,
+  );
+
+  TextStyle get headline3 => GoogleFonts.dmSans(
+    fontSize: 18,
+    fontWeight: FontWeight.w600,
+    color: _colors.textPrimary,
+    height: 1.3,
+  );
+
+  TextStyle get headline => headline2;
+
+  // ══════════════════════════════════════════════
+  // BODY — Corpo de texto
+  // ══════════════════════════════════════════════
+  TextStyle get bodyLarge => GoogleFonts.dmSans(
+    fontSize: 16,
+    fontWeight: FontWeight.w400,
+    color: _colors.textPrimary,
+    height: 1.6,
+  );
+
+  TextStyle get bodyMedium => GoogleFonts.dmSans(
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    color: _colors.textPrimary,
+    height: 1.5,
+  );
+
+  TextStyle get bodySmall => GoogleFonts.dmSans(
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    color: _colors.textSecondary,
+    height: 1.5,
+  );
+
+  // ══════════════════════════════════════════════
+  // LABELS — Elementos de UI
+  // ══════════════════════════════════════════════
+  TextStyle get labelLarge => GoogleFonts.dmSans(
+    fontSize: 14,
+    fontWeight: FontWeight.w600,
+    color: _colors.textPrimary,
+    height: 1.4,
+    letterSpacing: 0.1,
+  );
+
+  TextStyle get labelMedium => GoogleFonts.dmSans(
+    fontSize: 12,
+    fontWeight: FontWeight.w500,
+    color: _colors.textSecondary,
+    height: 1.4,
+  );
+
+  TextStyle get labelSmall => GoogleFonts.dmSans(
+    fontSize: 10,
+    fontWeight: FontWeight.w500,
+    color: _colors.textTertiary,
+    height: 1.4,
+    letterSpacing: 0.5,
+  );
+
+  // ══════════════════════════════════════════════
+  // FORM — Campos de formulário
+  // ══════════════════════════════════════════════
+  TextStyle get textField => GoogleFonts.dmSans(
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    color: _colors.textPrimary,
+    height: 1.5,
+  );
+
+  TextStyle get textFieldLabel => GoogleFonts.dmSans(
+    fontSize: 13,
+    fontWeight: FontWeight.w500,
+    color: _colors.textSecondary,
+    height: 1.4,
+  );
+
+  TextStyle get textFieldHint => GoogleFonts.dmSans(
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    color: _colors.textTertiary,
+    height: 1.5,
+  );
+
+  TextStyle get textFieldError => GoogleFonts.dmSans(
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    color: _colors.red,
+  );
+
+  // ══════════════════════════════════════════════
+  // ESPECIAIS
+  // ══════════════════════════════════════════════
+  TextStyle get button => GoogleFonts.dmSans(
+    fontSize: 14,
+    fontWeight: FontWeight.w600,
+    color: _colors.textPrimary,
+    height: 1.4,
+    letterSpacing: 0.2,
+  );
+
+  TextStyle get caption => GoogleFonts.dmSans(
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    color: _colors.textTertiary,
+  );
+
+  TextStyle get menuItem => GoogleFonts.dmSans(
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    color: _colors.textPrimary,
+  );
+
+  TextStyle get price => GoogleFonts.dmSans(
+    fontSize: 18,
+    fontWeight: FontWeight.w700,
+    color: _colors.primaryColor,
+  );
+
+  TextStyle get metricValue => GoogleFonts.dmSans(
+    fontSize: 32,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.5,
   );
 
   TextStyle get metricComparison =>
-      TextStyle(fontSize: 12, fontWeight: FontWeight.w500, height: 1.4);
+      GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w500);
+
+  // NOVO — Overline para headers de seção
+  TextStyle get overline => GoogleFonts.dmSans(
+    fontSize: 11,
+    fontWeight: FontWeight.w600,
+    color: _colors.textTertiary,
+    height: 1.4,
+    letterSpacing: 1.2,
+  );
 }

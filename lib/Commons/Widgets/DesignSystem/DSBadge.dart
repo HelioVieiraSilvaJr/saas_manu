@@ -9,12 +9,13 @@ enum DSBadgeType {
   error, // Vermelho (Cancelado, Inativo)
   info, // Azul (Manual, Info)
   primary, // Cor primária (WhatsApp Bot, Premium)
+  neutral, // Cinza (Rascunho, Indefinido)
 }
 
 /// Tamanhos de badge.
 enum DSBadgeSize { small, medium, large }
 
-/// Design System - Badge / Tag para status, labels.
+/// Design System v2.0 — Badge / Tag para status, labels USE3D.
 class DSBadge extends StatelessWidget {
   final String label;
   final DSBadgeType type;
@@ -54,8 +55,12 @@ class DSBadge extends StatelessWidget {
         fgColor = colors.blue;
         break;
       case DSBadgeType.primary:
-        bgColor = colors.primaryColor.withValues(alpha: 0.1);
+        bgColor = colors.primarySurface;
         fgColor = colors.primaryColor;
+        break;
+      case DSBadgeType.neutral:
+        bgColor = colors.greyLightest;
+        fgColor = colors.grey;
         break;
     }
 
@@ -68,19 +73,19 @@ class DSBadge extends StatelessWidget {
       case DSBadgeSize.small:
         fontSize = 10;
         paddingH = DSSpacing.sm;
-        paddingV = DSSpacing.xxs;
+        paddingV = DSSpacing.xs;
         iconSize = 10;
         break;
       case DSBadgeSize.medium:
         fontSize = 12;
-        paddingH = DSSpacing.sm;
+        paddingH = DSSpacing.md;
         paddingV = DSSpacing.xs;
         iconSize = 12;
         break;
       case DSBadgeSize.large:
         fontSize = 14;
-        paddingH = DSSpacing.md;
-        paddingV = DSSpacing.xs;
+        paddingH = DSSpacing.base;
+        paddingV = DSSpacing.sm;
         iconSize = 14;
         break;
     }

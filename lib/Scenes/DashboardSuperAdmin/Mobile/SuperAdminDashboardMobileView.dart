@@ -46,7 +46,7 @@ class SuperAdminDashboardMobileView extends StatelessWidget {
             Row(
               children: [
                 Icon(
-                  Icons.admin_panel_settings,
+                  Icons.admin_panel_settings_rounded,
                   color: colors.primaryColor,
                   size: 24,
                 ),
@@ -154,10 +154,10 @@ class SuperAdminDashboardMobileView extends StatelessWidget {
     DSTextStyle textStyles,
   ) {
     return Container(
-      padding: const EdgeInsets.all(DSSpacing.sm),
+      padding: const EdgeInsets.all(DSSpacing.md),
       decoration: BoxDecoration(
         color: colors.cardBackground,
-        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
         border: Border.all(color: colors.divider),
       ),
       child: Column(

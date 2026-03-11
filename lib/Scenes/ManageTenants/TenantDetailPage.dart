@@ -93,7 +93,10 @@ class _TenantDetailPageState extends State<TenantDetailPage> {
     final textStyles = DSTextStyle();
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(DSSpacing.xl),
+      padding: const EdgeInsets.symmetric(
+        horizontal: DSSpacing.pagePaddingHorizontalWeb,
+        vertical: DSSpacing.pagePaddingVerticalWeb,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -668,7 +671,7 @@ class _TenantDetailPageState extends State<TenantDetailPage> {
                 }
               }
             },
-            child: const Text('Excluir', style: TextStyle(color: Colors.red)),
+            child: Text('Excluir', style: TextStyle(color: DSColors().red)),
           ),
         ],
       ),
@@ -698,10 +701,10 @@ class _TenantDetailPageState extends State<TenantDetailPage> {
   }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(DSSpacing.lg),
+      padding: const EdgeInsets.all(DSSpacing.cardPaddingLg),
       decoration: BoxDecoration(
         color: colors.cardBackground,
-        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
         border: Border.all(color: colors.divider),
       ),
       child: Column(

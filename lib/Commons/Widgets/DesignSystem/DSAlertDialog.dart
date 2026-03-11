@@ -183,21 +183,21 @@ class DSAlertDialog {
       builder: (context) {
         return Dialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+            borderRadius: BorderRadius.circular(DSSpacing.radiusXl),
           ),
           child: Container(
             constraints: const BoxConstraints(maxWidth: 420),
-            padding: const EdgeInsets.all(DSSpacing.xl),
+            padding: const EdgeInsets.all(28),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Icon
+                // Icon — square-rounded
                 Container(
                   width: 56,
                   height: 56,
                   decoration: BoxDecoration(
                     color: iconColor.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
                   ),
                   child: Icon(iconData, color: iconColor, size: 28),
                 ),
@@ -233,7 +233,7 @@ class DSAlertDialog {
                   children: [
                     if (showCancel) ...[
                       Expanded(
-                        child: DSButton.secondary(
+                        child: DSButton.ghost(
                           label: cancelLabel,
                           onTap: () => Navigator.pop(context, false),
                         ),

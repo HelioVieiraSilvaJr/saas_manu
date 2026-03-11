@@ -180,7 +180,9 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: isWeb ? 700 : double.infinity),
           child: Padding(
-            padding: EdgeInsets.all(isWeb ? DSSpacing.xl : DSSpacing.base),
+            padding: EdgeInsets.all(
+              isWeb ? DSSpacing.pagePaddingHorizontalWeb : DSSpacing.base,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -188,12 +190,12 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
                 Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.arrow_back),
+                      icon: const Icon(Icons.arrow_back_rounded),
                       onPressed: () => Navigator.pop(context),
                     ),
                     const Spacer(),
                     IconButton(
-                      icon: Icon(Icons.delete, color: colors.red),
+                      icon: Icon(Icons.delete_rounded, color: colors.red),
                       tooltip: 'Deletar venda',
                       onPressed: _deleteSale,
                     ),
@@ -266,10 +268,10 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
     DSTextStyle textStyles,
   ) {
     return Container(
-      padding: const EdgeInsets.all(DSSpacing.base),
+      padding: const EdgeInsets.all(DSSpacing.cardPaddingLg),
       decoration: BoxDecoration(
         color: colors.cardBackground,
-        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
         border: Border.all(color: colors.divider),
       ),
       child: Row(
@@ -309,10 +311,10 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
     DSTextStyle textStyles,
   ) {
     return Container(
-      padding: const EdgeInsets.all(DSSpacing.base),
+      padding: const EdgeInsets.all(DSSpacing.cardPaddingLg),
       decoration: BoxDecoration(
         color: colors.cardBackground,
-        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
         border: Border.all(color: colors.divider),
       ),
       child: Column(
@@ -354,10 +356,10 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
     DSTextStyle textStyles,
   ) {
     return Container(
-      padding: const EdgeInsets.all(DSSpacing.base),
+      padding: const EdgeInsets.all(DSSpacing.cardPaddingLg),
       decoration: BoxDecoration(
         color: colors.cardBackground,
-        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
         border: Border.all(color: colors.divider),
       ),
       child: Column(
@@ -400,10 +402,10 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
     DSTextStyle textStyles,
   ) {
     return Container(
-      padding: const EdgeInsets.all(DSSpacing.base),
+      padding: const EdgeInsets.all(DSSpacing.cardPaddingLg),
       decoration: BoxDecoration(
         color: colors.cardBackground,
-        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
         border: Border.all(color: colors.divider),
       ),
       child: Column(
@@ -440,10 +442,10 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
   ) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(DSSpacing.base),
+      padding: const EdgeInsets.all(DSSpacing.cardPaddingLg),
       decoration: BoxDecoration(
         color: colors.cardBackground,
-        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
         border: Border.all(color: colors.divider),
       ),
       child: Column(

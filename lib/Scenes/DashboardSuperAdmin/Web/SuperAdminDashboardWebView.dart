@@ -36,7 +36,10 @@ class SuperAdminDashboardWebView extends StatelessWidget {
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(DSSpacing.xl),
+      padding: const EdgeInsets.symmetric(
+        horizontal: DSSpacing.pagePaddingHorizontalWeb,
+        vertical: DSSpacing.pagePaddingVerticalWeb,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -44,7 +47,7 @@ class SuperAdminDashboardWebView extends StatelessWidget {
           Row(
             children: [
               Icon(
-                Icons.admin_panel_settings,
+                Icons.admin_panel_settings_rounded,
                 color: colors.primaryColor,
                 size: 28,
               ),
@@ -52,7 +55,7 @@ class SuperAdminDashboardWebView extends StatelessWidget {
               Text('Dashboard Super Admin', style: textStyles.headline2),
               const Spacer(),
               IconButton(
-                icon: const Icon(Icons.refresh),
+                icon: const Icon(Icons.refresh_rounded),
                 tooltip: 'Atualizar',
                 onPressed: presenter.refresh,
               ),
@@ -71,7 +74,7 @@ class SuperAdminDashboardWebView extends StatelessWidget {
                   trend: vm.newTenantsThisMonth > 0
                       ? TrendType.up
                       : TrendType.neutral,
-                  icon: Icons.business,
+                  icon: Icons.business_rounded,
                   color: colors.blueLight,
                 ),
               ),
@@ -83,7 +86,7 @@ class SuperAdminDashboardWebView extends StatelessWidget {
                   comparison:
                       '${vm.activePercentage.toStringAsFixed(0)}% do total',
                   trend: TrendType.up,
-                  icon: Icons.check_circle,
+                  icon: Icons.check_circle_rounded,
                   color: colors.greenLight,
                 ),
               ),
@@ -96,7 +99,7 @@ class SuperAdminDashboardWebView extends StatelessWidget {
                   trend: vm.trialExpiringIn7Days > 0
                       ? TrendType.down
                       : TrendType.neutral,
-                  icon: Icons.timer,
+                  icon: Icons.timer_rounded,
                   color: colors.orangeLight,
                 ),
               ),
@@ -107,7 +110,7 @@ class SuperAdminDashboardWebView extends StatelessWidget {
                   value: vm.mrr.formatToBRL(),
                   comparison: '${vm.basicCount} Basic + ${vm.fullCount} Full',
                   trend: TrendType.up,
-                  icon: Icons.attach_money,
+                  icon: Icons.attach_money_rounded,
                   color: colors.greenLight,
                 ),
               ),
