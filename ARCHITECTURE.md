@@ -810,33 +810,58 @@ class WhatsAppService {
 
 ### Navegação por Plataforma
 
+**Navegação Global:**
+O `main.dart` usa `onGenerateRoute` com `DSPageRoute` (transição fade+slide suave, 250ms):
+
+```dart
+// main.dart — trecho
+onGenerateRoute: (settings) {
+  final routes = <String, WidgetBuilder>{
+    '/': (context) => const SplashPage(),
+    '/login': (context) => const LoginPage(),
+    '/dashboard': (context) => const DashboardTenantPage(),
+    '/products': (context) => const ProductsListPage(),
+    // ... demais rotas
+  };
+  final builder = routes[settings.name];
+  if (builder == null) return null;
+  return DSPageRoute(builder: builder, settings: settings);
+},
+```
+
+**Rotas existentes:**
+```
+/                     → SplashPage
+/login                → LoginPage
+/dashboard            → DashboardTenantPage
+/products             → ProductsListPage
+/products/new         → ProductFormPage
+/products/edit        → ProductFormPage
+/products/detail      → ProductDetailPage
+/customers            → CustomersListPage
+/customers/new|edit   → CustomerFormPage
+/customers/detail     → CustomerDetailPage
+/sales                → SalesListPage
+/sales/new            → SaleFormPage
+/sales/detail         → SaleDetailPage
+/admin/dashboard      → SuperAdminDashboardPage
+/admin/tenants        → TenantsListPage
+/admin/tenants/new|edit → TenantFormPage
+/admin/tenants/detail → TenantDetailPage
+/settings             → TenantSettingsPage
+/team                 → TeamManagementPage
+/team/add             → AddMemberPage
+```
+
+**Para adicionar nova rota:**
+1. Importar a Page no `main.dart`
+2. Adicionar entrada no mapa `routes` dentro de `onGenerateRoute`
+3. A rota será automaticamente envolvida em `DSPageRoute` (transição suave)
+
 **Mobile (iOS/Android):**
 - Usar navegação **Push/Pop** nativa do Flutter
 - Stack navigation pattern
 - Transições nativas de cada plataforma
-
-```dart
-// Push para nova tela
-Navigator.push(
-  context,
-  MaterialPageRoute(builder: (context) => ProductDetailPage(product)),
-);
-
-// Pop (voltar)
-Navigator.pop(context);
-
-// Pop com resultado
-Navigator.pop(context, result);
-```
-
-**Web:**
-- Pode usar rotas nomeadas ou tabs
-- Deep linking habilitado
-- URLs amigáveis
-
-```dart
-Navigator.pushNamed(context, '/tenant/${tenantId}/products');
-```
 
 ### Coordinators
 
@@ -913,8 +938,8 @@ class ProductListPage extends StatelessWidget {
 ```
 
 **Breakpoints:**
-- `>= 1000px` → Web
-- `< 1000px` → Mobile
+- `>= DSSpacing.breakpointTablet (1000px)` → Web
+- `< DSSpacing.breakpointTablet (1000px)` → Mobile
 
 ---
 
@@ -922,51 +947,174 @@ class ProductListPage extends StatelessWidget {
 
 O projeto utiliza **Riverpod** para gerenciamento de estado reativo.
 
+**Configurações globais do MaterialApp:**
+- `scrollBehavior: BouncingScrollPhysics()` — scroll suave globalmente
+- `onGenerateRoute` com `DSPageRoute` — transição de páginas (fade+slide 250ms)
+- ThemeData completo com tokens DSColors + DSSpacing + DSTextStyle
+
 ---
 
-## 🎨 Design System
+## 🎨 Design System — USE3D v2.0
 
-**IMPORTANTE:** O Design System será criado após **pesquisa de mercado** em:
-- CRMs similares (HubSpot, Pipedrive, RD Station)
-- Plataformas de atendimento IA/WhatsApp (Zenvia, Blip, TakeBlip)
+O Design System v2.0 foi implementado com base em pesquisa de mercado de CRMs modernos (HubSpot, Pipedrive, RD Station) e plataformas de IA/WhatsApp. Usa fonte **DM Sans** (via `google_fonts`) com paleta Navy/Teal/Amber.
 
-Identificar melhores práticas de **UX** e padrões **UI modernos e elegantes**.
+### Paleta de Cores (DSColors)
+
+```dart
+// PRIMÁRIAS
+DSColors().primaryColor      // Navy #1E3A5F — confiança, profissionalismo
+DSColors().primaryLight       // #2D5F8A
+DSColors().primaryDark        // #0F2440
+DSColors().primarySurface     // #E8EFF7 — fundo leve para destaque primário
+
+// SECUNDÁRIAS
+DSColors().secundaryColor     // Teal #0D9488 — ação, energia, gráficos
+DSColors().secundaryLight     // #2DD4BF
+DSColors().secundarySurface   // #E6F7F5
+
+// ACCENT & DESTAQUES
+DSColors().highlights         // Amber #F59E0B — CTAs especiais
+DSColors().accentWarm         // #E67E22
+
+// SEMÂNTICAS
+DSColors().red / redLight     // Erro/Exclusão
+DSColors().green / greenLight // Sucesso
+DSColors().yellow / yellowLight // Aviso
+DSColors().blue / blueLight   // Info
+DSColors().whatsappGreen      // #25D366
+
+// BACKGROUNDS (sistema de camadas)
+DSColors().background         // #F7F9FC
+DSColors().scaffoldBackground // #F0F4F8
+DSColors().surfaceColor       // White
+DSColors().surfaceElevated    // White
+DSColors().surfaceOverlay     // #F8FAFD — campos readOnly
+
+// TEXT HIERARCHY
+DSColors().textPrimary        // #0B1929
+DSColors().textSecondary      // #3D4F63
+DSColors().textTertiary       // #8696A7
+
+// INPUTS
+DSColors().inputBorder / inputBorderFocused / inputError / inputSuccess
+
+// SHADOWS
+DSColors().shadowColor / shadowMedium / shadowStrong
+
+// GRADIENTES
+DSColors().primaryGradient    // Navy → NavyLight
+DSColors().accentGradient     // Teal → TealLight
+DSColors().warmGradient       // Amber → Orange
+```
+
+**REGRA:** NUNCA usar `Colors.xxx` em Scenes. Sempre `DSColors()`. Exceções: `Colors.white`, `Colors.transparent`.
+
+### Tipografia (DSTextStyle)
+
+Fonte: **DM Sans** via `google_fonts: ^6.1.0`
+
+```dart
+DSTextStyle().displayLarge  // 40px w700 — hero numbers
+DSTextStyle().headline1     // 28px w700 — títulos de página
+DSTextStyle().headline2     // 22px w600 — subtítulos (alias: headline)
+DSTextStyle().headline3     // 18px w600 — títulos de seção/card
+DSTextStyle().bodyLarge     // 16px w400 — texto principal
+DSTextStyle().bodyMedium    // 14px w400 — texto padrão
+DSTextStyle().bodySmall     // 12px w400 — texto auxiliar
+DSTextStyle().labelLarge    // 14px w600 — labels de UI
+DSTextStyle().labelMedium   // 12px w500 — badges, chips
+DSTextStyle().labelSmall    // 10px w500 — micro labels
+DSTextStyle().overline      // 11px w600 letterSpacing:1.2 — headers seção sidebar
+DSTextStyle().button        // 14px w600 — texto de botões
+DSTextStyle().caption       // 12px w400 — captions
+DSTextStyle().menuItem      // 14px w500 — itens de menu
+DSTextStyle().price         // 18px w700 — preços
+DSTextStyle().metricValue   // 32px w700 — valores de métricas
+DSTextStyle().metricComparison // 12px w500 — comparação de métricas
+DSTextStyle().textField     // 14px w400 — input text
+DSTextStyle().textFieldLabel / textFieldHint / textFieldError
+```
+
+### Espaçamentos (DSSpacing)
+
+```dart
+// ESCALA BASE
+DSSpacing.xxs  = 2    DSSpacing.xs   = 4    DSSpacing.sm   = 8
+DSSpacing.md   = 12   DSSpacing.base = 16   DSSpacing.lg   = 20
+DSSpacing.xl   = 24   DSSpacing.xxl  = 32   DSSpacing.xxxl = 40
+DSSpacing.huge = 48   DSSpacing.massive = 64
+
+// CONTENT PADDING
+DSSpacing.pagePaddingHorizontal    = 24   // Mobile
+DSSpacing.pagePaddingVertical      = 16
+DSSpacing.pagePaddingHorizontalWeb = 32   // Web (mais respiro)
+DSSpacing.pagePaddingVerticalWeb   = 24
+DSSpacing.cardPadding              = 16
+DSSpacing.cardPaddingLg            = 20   // Cards destacados
+
+// BORDER RADIUS
+DSSpacing.radiusXs   = 4    // Micro elementos (progress bars)
+DSSpacing.radiusSm   = 8    // Inputs, botões, campos
+DSSpacing.radiusMd   = 12   // Inputs decorados, chips
+DSSpacing.radiusLg   = 16   // Cards, containers
+DSSpacing.radiusXl   = 20   // Dialogs, modais
+DSSpacing.radiusFull = 999  // Circular (pills, avatars)
+
+// ELEVATION (Box Shadows)
+DSSpacing.elevationSmBlur = 4   / elevationSmOffset = 1   // Cards sutis
+DSSpacing.elevationMdBlur = 12  / elevationMdOffset = 4   // Cards elevados
+DSSpacing.elevationLgBlur = 24  / elevationLgOffset = 8   // Modais, dropdowns
+
+// SIDEBAR
+DSSpacing.sidebarWidthCollapsed = 72
+DSSpacing.sidebarWidthExpanded  = 260
+
+// BREAKPOINTS
+DSSpacing.breakpointMobile  = 600
+DSSpacing.breakpointTablet  = 1000  // ScreenResponsive usa este
+DSSpacing.breakpointDesktop = 1400
+```
+
+**REGRA de Radius:** Cards/containers → `radiusLg`. Inputs/botões → `radiusSm`. Dialogs → `radiusXl`.
 
 ### Componentes do Design System
 
-- **DSColors** - Paleta completa (primary, secondary, semantic, neutral)
-- **DSTextStyle** - Typography system
-- **DSSpacing** - Sistema de espaçamento (paddings, margins)
-- **DSBorderRadius** - Raios de borda padronizados
-- **DSShadows** - Elevações e sombras
-- **DSAnimations** - Transições e animações
+Localização: `Commons/Widgets/DesignSystem/`
 
-### DSColors
-Cores padronizadas do projeto:
-```dart
-DSColors().primaryColor      // Cor principal
-DSColors().secundaryColor    // Cor secundária
-DSColors().tint              // Cor de destaques para ícones
-DSColors().highlights        // Cor de destaque principal
-DSColors().background        // Cor de fundo
-DSColors().white             // Branco
-DSColors().red               // Vermelho (erros)
-DSColors().green             // Verde (sucesso)
-```
+| Componente | Arquivo | Descrição |
+|------------|---------|-----------|
+| **DSButton** | DSButton.dart | Botões com factories: `.primary()`, `.secundary()`, `.accent()`, `.ghost()`, `.danger()` |
+| **DSMetricCard** | DSMetricCard.dart | Card de métrica com hover, trend, ícone — StatefulWidget |
+| **DSListTile** | DSListTile.dart | Item de lista com hover, avatar, badge, divider indent 66 |
+| **DSBadge** | DSBadge.dart | Tags de status (success, warning, error, info, neutral) |
+| **DSAvatar** | DSAvatar.dart | Avatar com iniciais, borda opcional, indicador de status |
+| **DSSearchField** | DSSearchField.dart | Campo de busca padronizado |
+| **DSDropdown** | DSDropdown.dart | Dropdown estilizado com tokens DS |
+| **DSSectionHeader** | DSSectionHeader.dart | Header de seção (overline + título + ação) |
+| **DSShimmer** | DSShimmer.dart | Loading skeleton — factories: `.metricCard()`, `.listTile()`, `.chart()` |
+| **DSAlertDialog** | DSAlertDialog.dart | Modais (delete, warning, success, info, confirm) |
+| **DSPageRoute** | DSPageRoute.dart (Utils/) | Transição de página (fade + slide, 250ms easeOutCubic) |
+| **FormTextField** | FormTextField.dart | Campo de formulário com validação e helper widget |
+| **EmptyState** | EmptyState.dart | Estado vazio com ícone 88x88, título, mensagem e CTA |
+| **LoadingIndicator** | LoadingIndicator.dart | Indicador de carregamento circular |
 
-### DSTextStyle
-Estilos de texto padronizados:
-```dart
-DSTextStyle().headline       // Títulos
-DSTextStyle().textField      // Campos de texto
-DSTextStyle().menuItem       // Itens de menu
-```
+### DSButtons — Factories
 
-### DSButtons
-Botões padronizados:
 ```dart
-DSButton().primary(icon: Icons, label: 'Texto', onTap: () {})
-DSButton().secundary(icon: Icons, label: 'Salvar', onTap: () {})
+// Primário (Navy filled)
+DSButton.primary(icon: Icons.add_rounded, label: 'Novo Produto', onTap: () {})
+
+// Secundário (outlined)
+DSButton.secundary(icon: Icons.edit_rounded, label: 'Editar', onTap: () {})
+
+// Accent (Amber filled — CTAs especiais)
+DSButton.accent(label: 'Upgrade', onTap: () {})
+
+// Ghost (transparent, sem borda — cancelar, fechar)
+DSButton.ghost(label: 'Cancelar', onTap: () {})
+
+// Danger (vermelho — ações destrutivas)
+DSButton.danger(label: 'Excluir', onTap: () {})
 ```
 
 ---
@@ -1004,6 +1152,7 @@ enum DSBadgeType {
   error,      // Vermelho (Cancelado, Inativo)
   info,       // Azul (Manual, Info)
   primary,    // Cor primária (WhatsApp Bot, Premium)
+  neutral,    // Cinza (primarySurface) — tags neutras
 }
 ```
 
@@ -1046,6 +1195,8 @@ DSAvatar(
 - `size` (double) - Tamanho do avatar (48, 64, 80, etc)
 - `imageUrl` (String?) - URL da foto (opcional)
 - `fontSize` (double?) - Tamanho da fonte das iniciais (auto se null)
+- `showBorder` (bool) - Borda branca ao redor (ex: sidebar user avatar)
+- `statusColor` (Color?) - Indicador de status circular (online, away, etc)
 
 **Implementação:**
 ```dart
@@ -1215,20 +1366,20 @@ DSListTile(
 
 ### Botões de Ação em Listagens
 
-**IMPORTANTE:** Padronizar botões de ação para consistência em todos os módulos.
+**IMPORTANTE:** Padronizar botões de ação para consistência em todos os módulos. Sempre usar variantes `_rounded` dos ícones.
 
 #### **Web (Desktop):**
 Usar **apenas ícones** com tooltip ao hover:
 
 ```dart
 IconButton(
-  icon: Icon(Icons.edit),
+  icon: Icon(Icons.edit_rounded),
   tooltip: 'Editar',
   onPressed: () => editItem(),
 )
 
 IconButton(
-  icon: Icon(Icons.delete),
+  icon: Icon(Icons.delete_outline_rounded),
   tooltip: 'Deletar',
   onPressed: () => deleteItem(),
 )
@@ -1244,13 +1395,13 @@ Usar **ícone + texto** para melhor acessibilidade:
 
 ```dart
 TextButton.icon(
-  icon: Icon(Icons.edit),
+  icon: Icon(Icons.edit_rounded),
   label: Text('Editar'),
   onPressed: () => editItem(),
 )
 
 TextButton.icon(
-  icon: Icon(Icons.delete),
+  icon: Icon(Icons.delete_outline_rounded),
   label: Text('Deletar'),
   onPressed: () => deleteItem(),
 )
@@ -1452,12 +1603,49 @@ EmptyState(
 
 Localização: `Commons/Widgets/DesignSystem/LoadingIndicator.dart`
 
-Indicador de carregamento padronizado.
+Indicador de carregamento circular simples.
 
-**Exemplo:**
 ```dart
 if (isLoading) {
   return LoadingIndicator();
+}
+```
+
+### DSShimmer (Skeleton Loading)
+
+Localização: `Commons/Widgets/DesignSystem/DSShimmer.dart`
+
+Shimmer skeleton para loading states com animação pulsante. **Preferir DSShimmer sobre LoadingIndicator** para telas de listagem e dashboards.
+
+**Factories disponíveis:**
+```dart
+// Card de métrica (dashboard)
+DSShimmer.metricCard()                // default height: 120
+DSShimmer.metricCard(height: 260)     // custom height (ex: gráfico)
+
+// Item de lista
+DSShimmer.listTile()
+
+// Gráfico/area grande
+DSShimmer.chart()
+```
+
+**Exemplo em DashboardWebView:**
+```dart
+if (viewModel.isLoading) {
+  return Column(
+    children: [
+      Row(children: [
+        Expanded(child: DSShimmer.metricCard()),
+        const SizedBox(width: DSSpacing.base),
+        Expanded(child: DSShimmer.metricCard()),
+      ]),
+      const SizedBox(height: DSSpacing.base),
+      DSShimmer.metricCard(height: 260), // chart placeholder
+      const SizedBox(height: DSSpacing.base),
+      ...List.generate(3, (_) => DSShimmer.listTile()),
+    ],
+  );
 }
 ```
 
@@ -1978,10 +2166,37 @@ AppLogger.error('Erro ocorreu', error: e, stackTrace: stack);
    }
    ```
 
-4. **Usar Design System para UI:**
-   - Cores: `DSColors()`
-   - Textos: `DSTextStyle()`
-   - Widgets: `FormTextField`, `SearchableModal`, `DSAlertDialog`, etc.
+4. **Usar Design System v2.0 para UI:**
+   - Cores: `final colors = DSColors();`
+   - Textos: `final textStyles = DSTextStyle();`
+   - Espaçamentos: `DSSpacing.base`, `DSSpacing.radiusLg`, etc.
+   - Widgets: `DSButton`, `DSMetricCard`, `DSListTile`, `DSBadge`, `DSAvatar`, `DSSearchField`, `DSDropdown`, `DSSectionHeader`, `DSShimmer`, `FormTextField`, `EmptyState`, `DSAlertDialog`
+
+5. **Seguir convenções de Design System:**
+   - Ícones: sempre usar variante `_rounded` (`Icons.edit_rounded`, `Icons.delete_outline_rounded`)
+   - Cards/containers: `BorderRadius.circular(DSSpacing.radiusLg)` (16)
+   - Inputs/botões: `BorderRadius.circular(DSSpacing.radiusSm)` (8)
+   - Page padding Web: `DSSpacing.pagePaddingHorizontalWeb` (32) / `DSSpacing.pagePaddingVerticalWeb` (24)
+   - Card padding: `DSSpacing.cardPaddingLg` (20) para cards destacados
+   - Shadows: `DSSpacing.elevationSmBlur`/`elevationSmOffset` com `colors.shadowColor`
+   - Cores: nunca `Colors.xxx` (exceto .white/.transparent), sempre `DSColors().`
+   - Opacity: `color.withValues(alpha: 0.1)` — NUNCA usar `withOpacity()`
+   - Estado vazio: usar `EmptyState(icon:, title:, message:, actionLabel:, onAction:)`
+   - Loading: usar `DSShimmer.metricCard()`, `DSShimmer.listTile()`, `DSShimmer.chart()`
+   - Dialogs de confirmação: `DSAlertDialog.showDelete(...)`, `DSAlertDialog.showSuccess(...)`
+
+6. **Registrar rota no `main.dart`:**
+   - Importar a Page
+   - Adicionar entrada no mapa `routes` dentro de `onGenerateRoute`
+   - A rota será automaticamente envolvida em `DSPageRoute` (transição fade+slide suave)
+
+7. **Adicionar navegação no AppShell:**
+   - Menu sidebar (Web): `_buildNavItem(...)` em `AppShell.dart`
+   - Menu drawer (Mobile): entrada no drawer na mesma classe
+
+8. **Verificar com `flutter analyze`:**
+   - Deve retornar 0 erros e 0 warnings
+   - Infos de naming convention são aceitáveis (PascalCase é padrão do projeto)
 
 ---
 
@@ -2036,9 +2251,16 @@ firebase deploy --only hosting:production
 | Biblioteca | Uso |
 |------------|-----|
 | `firebase_core`, `firebase_auth`, `cloud_firestore` | Backend Firebase |
+| `firebase_storage` | Upload de imagens |
+| `google_fonts` (^6.1.0) | Tipografia DM Sans |
+| `fl_chart` | Gráficos (linhas, pizza) |
 | `riverpod` | Gerenciamento de estado reativo |
-| `pdf`, `printing` | Geração de PDFs |
-| `elegant_notification` | Notificações elegantes |
+| `cached_network_image` | Cache de imagens remotas |
+| `elegant_notification` | Notificações toast elegantes |
 | `intl` | Formatação de datas e números |
+| `mask_text_input_formatter` | Máscara de input (telefone, CPF) |
+| `image_picker` | Seleção de imagens (galeria/câmera) |
+| `url_launcher` | Abrir links/WhatsApp externos |
+| `pdf`, `printing` | Geração de PDFs |
 
 ---
