@@ -1,13 +1,30 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../Commons/Models/CustomerModel.dart';
 import '../../Commons/Utils/AppLogger.dart';
+import '../../Commons/Utils/DataCache.dart';
 import '../../Sources/SessionManager.dart';
 
 /// Repository do módulo Clientes.
 ///
 /// Acessa `tenants/{tenant_id}/customers/`.
+/// Usa cache estático compartilhado entre Presenters.
 class CustomersRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  /// Cache compartilhado entre todas as instâncias.
+  static final DataCache<CustomerModel> customersCache =
+      DataCache<CustomerModel>(ttl: const Duration(minutes: 5));
+
+  /// Registra limpeza de cache no SessionManager.
+  // ignore: unused_field
+  static final bool _registered = _register();
+  static bool _register() {
+    SessionManager.registerCacheClear(clearCache);
+    return true;
+  }
+
+  /// Limpa cache (usar ao trocar tenant ou logout).
+  static void clearCache() => customersCache.clear();
 
   /// Referência da subcoleção customers do tenant ativo.
   CollectionReference<Map<String, dynamic>> get _collection {
@@ -17,17 +34,24 @@ class CustomersRepository {
 
   // MARK: - CRUD
 
-  /// Busca todos os clientes.
-  Future<List<CustomerModel>> getAll() async {
+  /// Busca todos os clientes. Usa cache se fresco.
+  Future<List<CustomerModel>> getAll({bool forceRefresh = false}) async {
+    if (!forceRefresh && customersCache.isFresh) {
+      return customersCache.data;
+    }
+
     try {
       final snapshot = await _collection
           .orderBy('created_at', descending: true)
           .get();
-      return snapshot.docs
+      final customers = snapshot.docs
           .map((doc) => CustomerModel.fromDocumentSnapshot(doc))
           .toList();
+      customersCache.set(customers);
+      return customers;
     } catch (e) {
       AppLogger.error('Erro ao buscar clientes', error: e);
+      if (customersCache.hasData) return customersCache.data;
       return [];
     }
   }

@@ -54,7 +54,7 @@ class _OrdersKanbanPageState extends State<OrdersKanbanPage> {
         mobile: OrdersKanbanMobileView(
           presenter: _presenter,
           onViewDetails: _handleViewDetails,
-          onRefresh: () => _presenter.loadOrders(),
+          onRefresh: () => _presenter.loadOrders(forceRefresh: true),
         ),
       ),
     );

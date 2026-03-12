@@ -21,12 +21,20 @@ class CustomersListPresenter {
 
   // MARK: - Load
 
-  /// Carrega todos os clientes do tenant.
-  Future<void> loadCustomers() async {
+  /// Carrega clientes. Usa cache se disponível.
+  Future<void> loadCustomers({bool forceRefresh = false}) async {
+    // Se cache está fresco, usa sem loading
+    if (!forceRefresh && CustomersRepository.customersCache.isFresh) {
+      final customers = CustomersRepository.customersCache.data;
+      _update(_viewModel.copyWith(isLoading: false, allCustomers: customers));
+      _applyFiltersAndSort();
+      return;
+    }
+
     _update(_viewModel.copyWith(isLoading: true));
 
     try {
-      final customers = await _repository.getAll();
+      final customers = await _repository.getAll(forceRefresh: forceRefresh);
       _update(_viewModel.copyWith(isLoading: false, allCustomers: customers));
       _applyFiltersAndSort();
       AppLogger.info('Clientes carregados: ${customers.length}');
@@ -42,9 +50,9 @@ class CustomersListPresenter {
     }
   }
 
-  /// Recarregar clientes.
+  /// Recarregar clientes (forçando refresh do Firestore).
   Future<void> refresh() async {
-    await loadCustomers();
+    await loadCustomers(forceRefresh: true);
   }
 
   // MARK: - Search
@@ -127,7 +135,8 @@ class CustomersListPresenter {
             title: 'Cliente Inativado',
             message: '${customer.name} foi inativado com sucesso.',
           );
-          await loadCustomers();
+          CustomersRepository.customersCache.invalidate();
+          await loadCustomers(forceRefresh: true);
         }
       }
     } else {
@@ -154,7 +163,8 @@ class CustomersListPresenter {
             title: 'Cliente Excluído',
             message: '${customer.name} foi removido permanentemente.',
           );
-          await loadCustomers();
+          CustomersRepository.customersCache.invalidate();
+          await loadCustomers(forceRefresh: true);
         }
       }
     }

@@ -663,7 +663,7 @@ class _SaleTableRowState extends State<_SaleTableRow> {
                       ),
                     ],
 
-                    // Cancelar
+                    // Cancelar (pendentes e cobrança enviada)
                     if (sale.canCancel && !sale.isConfirmed) ...[
                       const SizedBox(width: DSSpacing.xs),
                       _QuickActionButton(
@@ -675,14 +675,22 @@ class _SaleTableRowState extends State<_SaleTableRow> {
                       ),
                     ],
 
-                    // Se confirmada — mostra badge do Kanban
-                    if (sale.isConfirmed && sale.orderStatus != null) ...[
+                    // Se confirmada com orderStatus — badge Kanban
+                    if (sale.isConfirmed && sale.orderStatus != null)
                       DSBadge(
                         label: sale.orderStatus!.label,
                         type: _orderStatusBadgeType(sale.orderStatus!),
                         size: DSBadgeSize.small,
                       ),
-                    ],
+
+                    // Se confirmada sem orderStatus (vendas legadas) — 
+                    // oferecer enviar para esteira
+                    if (sale.isConfirmed && sale.orderStatus == null)
+                      DSBadge(
+                        label: 'Pago',
+                        type: DSBadgeType.success,
+                        size: DSBadgeSize.small,
+                      ),
 
                     // Se cancelada
                     if (sale.isCancelled)

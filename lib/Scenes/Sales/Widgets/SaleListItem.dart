@@ -19,6 +19,9 @@ class SaleListItem extends StatelessWidget {
   final bool isWeb;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
+  final VoidCallback? onSendPaymentRequest;
+  final VoidCallback? onConfirmPayment;
+  final VoidCallback? onCancelSale;
 
   const SaleListItem({
     super.key,
@@ -26,6 +29,9 @@ class SaleListItem extends StatelessWidget {
     required this.isWeb,
     this.onTap,
     this.onDelete,
+    this.onSendPaymentRequest,
+    this.onConfirmPayment,
+    this.onCancelSale,
   });
 
   @override
@@ -149,7 +155,7 @@ class SaleListItem extends StatelessWidget {
                     size: DSBadgeSize.small,
                   ),
                   const Spacer(),
-                  // Ações
+                  // Deletar
                   IconButton(
                     icon: Icon(
                       Icons.delete_outline,
@@ -164,6 +170,51 @@ class SaleListItem extends StatelessWidget {
                   ),
                 ],
               ),
+
+              // Ações rápidas (pendentes / cobrança enviada)
+              if (sale.canSendPaymentRequest ||
+                  sale.canConfirmPayment ||
+                  (sale.canCancel && !sale.isConfirmed)) ...[
+                const SizedBox(height: DSSpacing.sm),
+                Row(
+                  children: [
+                    if (sale.canSendPaymentRequest)
+                      Expanded(
+                        child: _ActionChipButton(
+                          label: 'Cobrar',
+                          icon: Icons.send_rounded,
+                          color: colors.blue,
+                          bgColor: colors.blueLight,
+                          onTap: onSendPaymentRequest,
+                        ),
+                      ),
+                    if (sale.canSendPaymentRequest && sale.canConfirmPayment)
+                      const SizedBox(width: DSSpacing.xs),
+                    if (sale.canConfirmPayment)
+                      Expanded(
+                        child: _ActionChipButton(
+                          label: 'Pago',
+                          icon: Icons.check_circle_rounded,
+                          color: colors.green,
+                          bgColor: colors.greenLight,
+                          onTap: onConfirmPayment,
+                        ),
+                      ),
+                    if (sale.canCancel && !sale.isConfirmed) ...[
+                      const SizedBox(width: DSSpacing.xs),
+                      Expanded(
+                        child: _ActionChipButton(
+                          label: 'Cancelar',
+                          icon: Icons.cancel_rounded,
+                          color: colors.red,
+                          bgColor: colors.redLight,
+                          onTap: onCancelSale,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
             ],
           ),
         ),
@@ -184,5 +235,55 @@ class SaleListItem extends StatelessWidget {
       case SaleStatus.cancelled:
         return DSBadgeType.error;
     }
+  }
+}
+
+/// Botão de ação compacto para cards mobile.
+class _ActionChipButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final Color bgColor;
+  final VoidCallback? onTap;
+
+  const _ActionChipButton({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.bgColor,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: bgColor,
+      borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: DSSpacing.sm,
+            vertical: DSSpacing.xs,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: DSSpacing.xxs),
+              Text(
+                label,
+                style: DSTextStyle().caption.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

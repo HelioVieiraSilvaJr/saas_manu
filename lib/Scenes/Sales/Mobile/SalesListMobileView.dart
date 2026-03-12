@@ -17,6 +17,9 @@ class SalesListMobileView extends StatelessWidget {
   final VoidCallback onNewSale;
   final void Function(String saleId) onViewDetails;
   final void Function(String saleId) onDeleteSale;
+  final void Function(String saleId) onSendPaymentRequest;
+  final void Function(String saleId) onConfirmPayment;
+  final void Function(String saleId) onCancelSale;
   final VoidCallback onRefresh;
 
   const SalesListMobileView({
@@ -26,6 +29,9 @@ class SalesListMobileView extends StatelessWidget {
     required this.onNewSale,
     required this.onViewDetails,
     required this.onDeleteSale,
+    required this.onSendPaymentRequest,
+    required this.onConfirmPayment,
+    required this.onCancelSale,
     required this.onRefresh,
   });
 
@@ -232,6 +238,10 @@ class SalesListMobileView extends StatelessWidget {
                             isWeb: false,
                             onTap: () => onViewDetails(sale.uid),
                             onDelete: () => onDeleteSale(sale.uid),
+                            onSendPaymentRequest: () =>
+                                onSendPaymentRequest(sale.uid),
+                            onConfirmPayment: () => onConfirmPayment(sale.uid),
+                            onCancelSale: () => onCancelSale(sale.uid),
                           );
                         }, childCount: vm.filteredSales.length),
                       ),

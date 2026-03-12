@@ -7,6 +7,8 @@ import 'OrdersKanbanViewModel.dart';
 /// Presenter do Kanban de pedidos.
 ///
 /// Gerencia carregamento e movimentação de pedidos na esteira.
+/// Usa o cache do SalesRepository e optimistic updates para
+/// evitar re-downloads desnecessários do Firestore.
 class OrdersKanbanPresenter {
   final SalesRepository _repository = SalesRepository();
 
@@ -19,8 +21,22 @@ class OrdersKanbanPresenter {
 
   // MARK: - Carregamento
 
-  /// Carrega pedidos confirmados inicialmente.
-  Future<void> loadOrders() async {
+  /// Carrega pedidos confirmados (usa cache se disponível).
+  Future<void> loadOrders({bool forceRefresh = false}) async {
+    // Se há dados no cache, mostra imediatamente sem loading
+    final cachedOrders = SalesRepository.salesCache.data
+        .where((s) => s.isConfirmed)
+        .toList();
+
+    if (cachedOrders.isNotEmpty && !forceRefresh) {
+      _viewModel = _viewModel.copyWith(
+        isLoading: false,
+        allOrders: cachedOrders,
+      );
+      onUpdate?.call();
+      return;
+    }
+
     _viewModel = _viewModel.copyWith(isLoading: true);
     onUpdate?.call();
 
@@ -34,12 +50,13 @@ class OrdersKanbanPresenter {
   void watchOrders() {
     _ordersSubscription?.cancel();
     _ordersSubscription = _repository.watchConfirmedOrders().listen((orders) {
+      // Atualiza cache global com os dados confirmados
       _viewModel = _viewModel.copyWith(isLoading: false, allOrders: orders);
       onUpdate?.call();
     });
   }
 
-  // MARK: - Movimentação
+  // MARK: - Movimentação (Optimistic Updates)
 
   /// Move pedido para o próximo status.
   Future<bool> moveToNext(String saleId) async {
@@ -52,17 +69,20 @@ class OrdersKanbanPresenter {
     final nextStatus = order.orderStatus!.next;
     if (nextStatus == null) return false;
 
-    _viewModel = _viewModel.copyWith(movingOrderId: saleId);
-    onUpdate?.call();
+    // Optimistic: atualiza localmente primeiro
+    _applyOptimisticMove(saleId, nextStatus);
 
     final success = await _repository.updateOrderStatus(saleId, nextStatus);
 
-    _viewModel = _viewModel.copyWith(movingOrderId: null);
-
-    if (success) {
-      await loadOrders();
+    if (!success) {
+      // Rollback: reverte para status anterior
+      _applyOptimisticMove(saleId, order.orderStatus!);
     } else {
-      onUpdate?.call();
+      // Atualiza cache global
+      SalesRepository.salesCache.updateWhere(
+        (s) => s.uid == saleId,
+        order.copyWith(orderStatus: nextStatus),
+      );
     }
 
     return success;
@@ -79,17 +99,19 @@ class OrdersKanbanPresenter {
     final previousStatus = order.orderStatus!.previous;
     if (previousStatus == null) return false;
 
-    _viewModel = _viewModel.copyWith(movingOrderId: saleId);
-    onUpdate?.call();
+    // Optimistic: atualiza localmente primeiro
+    _applyOptimisticMove(saleId, previousStatus);
 
     final success = await _repository.updateOrderStatus(saleId, previousStatus);
 
-    _viewModel = _viewModel.copyWith(movingOrderId: null);
-
-    if (success) {
-      await loadOrders();
+    if (!success) {
+      // Rollback
+      _applyOptimisticMove(saleId, order.orderStatus!);
     } else {
-      onUpdate?.call();
+      SalesRepository.salesCache.updateWhere(
+        (s) => s.uid == saleId,
+        order.copyWith(orderStatus: previousStatus),
+      );
     }
 
     return success;
@@ -97,20 +119,44 @@ class OrdersKanbanPresenter {
 
   /// Move pedido para um status específico.
   Future<bool> moveToStatus(String saleId, OrderStatus status) async {
-    _viewModel = _viewModel.copyWith(movingOrderId: saleId);
-    onUpdate?.call();
+    final order = _viewModel.allOrders
+        .where((o) => o.uid == saleId)
+        .firstOrNull;
+
+    if (order == null) return false;
+
+    final oldStatus = order.orderStatus;
+
+    _applyOptimisticMove(saleId, status);
 
     final success = await _repository.updateOrderStatus(saleId, status);
 
-    _viewModel = _viewModel.copyWith(movingOrderId: null);
-
-    if (success) {
-      await loadOrders();
-    } else {
-      onUpdate?.call();
+    if (!success && oldStatus != null) {
+      _applyOptimisticMove(saleId, oldStatus);
+    } else if (success) {
+      SalesRepository.salesCache.updateWhere(
+        (s) => s.uid == saleId,
+        order.copyWith(orderStatus: status),
+      );
     }
 
     return success;
+  }
+
+  /// Aplica atualização otimista local (sem Firestore).
+  void _applyOptimisticMove(String saleId, OrderStatus newStatus) {
+    final updatedOrders = _viewModel.allOrders.map((o) {
+      if (o.uid == saleId) {
+        return o.copyWith(orderStatus: newStatus);
+      }
+      return o;
+    }).toList();
+
+    _viewModel = _viewModel.copyWith(
+      allOrders: updatedOrders,
+      movingOrderId: null,
+    );
+    onUpdate?.call();
   }
 
   // MARK: - Dispose

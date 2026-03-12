@@ -110,6 +110,7 @@ class SessionManager {
   /// Trocar de tenant (quando user pertence a múltiplos).
   Future<void> switchTenant(String tenantId) async {
     AppLogger.info('Trocando para tenant: $tenantId');
+    clearAllCaches();
     await _loadTenantData(tenantId);
     await PreferencesManager.instance.setLastTenantId(tenantId);
     AppLogger.info('Tenant trocado: ${currentTenant!.name}');
@@ -125,6 +126,25 @@ class SessionManager {
     currentTenant = null;
     currentMembership = null;
     allMemberships = [];
+    clearAllCaches();
+  }
+
+  /// Limpa todos os caches de dados (usar ao trocar tenant ou logout).
+  void clearAllCaches() {
+    // Imports circulares evitados: repositories importam SessionManager,
+    // então chamamos os clearCache estáticos diretamente nos repositórios
+    // que são importados via barrel ou via chamada direta.
+    for (final cb in _cacheClearCallbacks) {
+      cb();
+    }
+  }
+
+  /// Registra um callback para limpeza de cache.
+  /// Cada Repository deve registrar seu clearCache aqui.
+  static final List<void Function()> _cacheClearCallbacks = [];
+
+  static void registerCacheClear(void Function() callback) {
+    _cacheClearCallbacks.add(callback);
   }
 
   // MARK: - Check Membership Status

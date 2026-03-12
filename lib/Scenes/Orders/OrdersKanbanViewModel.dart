@@ -1,6 +1,9 @@
 import '../../Commons/Enums/OrderStatus.dart';
 import '../../Commons/Models/SaleModel.dart';
 
+/// Sentinel para distinguir "não passou parâmetro" de "passou null".
+const _sentinel = Object();
+
 /// ViewModel do Kanban de pedidos.
 class OrdersKanbanViewModel {
   final bool isLoading;
@@ -34,13 +37,15 @@ class OrdersKanbanViewModel {
     bool? isLoading,
     List<SaleModel>? allOrders,
     String? errorMessage,
-    String? movingOrderId,
+    Object? movingOrderId = _sentinel,
   }) {
     return OrdersKanbanViewModel(
       isLoading: isLoading ?? this.isLoading,
       allOrders: allOrders ?? this.allOrders,
       errorMessage: errorMessage ?? this.errorMessage,
-      movingOrderId: movingOrderId ?? this.movingOrderId,
+      movingOrderId: movingOrderId == _sentinel
+          ? this.movingOrderId
+          : movingOrderId as String?,
     );
   }
 }

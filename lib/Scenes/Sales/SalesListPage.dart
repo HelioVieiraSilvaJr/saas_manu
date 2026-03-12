@@ -48,7 +48,7 @@ class _SalesListPageState extends State<SalesListPage> {
             '${newSales.length} nova(s) venda(s) automática(s).',
           ),
         ).show(context);
-        _presenter.loadSales();
+        _presenter.loadSales(forceRefresh: true);
       }
     });
   }
@@ -185,7 +185,7 @@ class _SalesListPageState extends State<SalesListPage> {
   void _handleNewSale() async {
     final result = await _coordinator.navigateToCreate();
     if (result == true) {
-      _presenter.loadSales();
+      _presenter.loadSales(forceRefresh: true);
     }
   }
 
@@ -210,7 +210,10 @@ class _SalesListPageState extends State<SalesListPage> {
           onNewSale: _handleNewSale,
           onViewDetails: _handleViewDetails,
           onDeleteSale: _handleDeleteSale,
-          onRefresh: () => _presenter.loadSales(),
+          onSendPaymentRequest: _handleSendPaymentRequest,
+          onConfirmPayment: _handleConfirmPayment,
+          onCancelSale: _handleCancelSale,
+          onRefresh: () => _presenter.loadSales(forceRefresh: true),
         ),
       ),
     );

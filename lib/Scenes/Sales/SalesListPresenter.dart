@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../../Commons/Enums/SaleStatus.dart';
+import '../../Commons/Enums/OrderStatus.dart';
 import '../../Commons/Models/SaleModel.dart';
 import 'SalesListViewModel.dart';
 import 'SalesRepository.dart';
@@ -8,6 +9,8 @@ import 'SalesRepository.dart';
 /// Presenter da listagem de vendas.
 ///
 /// Gerencia carregamento, busca, filtros, ordenação e exclusão.
+/// Usa cache do SalesRepository para evitar re-downloads.
+/// Mutações usam optimistic updates (atualiza localmente primeiro).
 class SalesListPresenter {
   final SalesRepository _repository = SalesRepository();
 
@@ -20,14 +23,24 @@ class SalesListPresenter {
 
   // MARK: - Carregamento
 
-  /// Carrega todas as vendas e calcula métricas.
-  Future<void> loadSales() async {
+  /// Carrega vendas. Usa cache se disponível.
+  Future<void> loadSales({bool forceRefresh = false}) async {
+    // Se cache está fresco e não é refresh forçado, usa dados cacheados
+    if (!forceRefresh && SalesRepository.salesCache.isFresh) {
+      final sales = SalesRepository.salesCache.data;
+      _updateViewModelWithSales(sales);
+      return;
+    }
+
     _viewModel = _viewModel.copyWith(isLoading: true);
     onUpdate?.call();
 
-    final sales = await _repository.getAll();
+    final sales = await _repository.getAll(forceRefresh: forceRefresh);
+    _updateViewModelWithSales(sales);
+  }
 
-    // Métricas
+  /// Calcula métricas e atualiza o ViewModel com a lista de vendas.
+  void _updateViewModelWithSales(List<SaleModel> sales) {
     final now = DateTime.now();
     final startOfDay = DateTime(now.year, now.month, now.day);
     final startOfMonth = DateTime(now.year, now.month, 1);
@@ -183,6 +196,10 @@ class SalesListPresenter {
     final success = await _repository.delete(saleId);
 
     if (success) {
+      // Remove do cache global
+      SalesRepository.salesCache.removeWhere((s) => s.uid == saleId);
+
+      // Remove do ViewModel local
       final updatedSales = _viewModel.allSales
           .where((s) => s.uid != saleId)
           .toList();
@@ -202,27 +219,70 @@ class SalesListPresenter {
     return success;
   }
 
-  // MARK: - Ações de Pagamento
+  // MARK: - Ações de Pagamento (Optimistic Updates)
 
   /// Envia solicitação de pagamento.
   Future<bool> sendPaymentRequest(String saleId) async {
     final success = await _repository.sendPaymentRequest(saleId);
-    if (success) await loadSales();
+    if (success) {
+      _updateSaleLocally(
+        saleId,
+        (sale) => sale.copyWith(
+          status: SaleStatus.payment_sent,
+          paymentRequestedAt: DateTime.now(),
+        ),
+      );
+    }
     return success;
   }
 
   /// Confirma pagamento (move para esteira de pedidos).
   Future<bool> confirmPayment(String saleId) async {
     final success = await _repository.confirmPayment(saleId);
-    if (success) await loadSales();
+    if (success) {
+      _updateSaleLocally(
+        saleId,
+        (sale) => sale.copyWith(
+          status: SaleStatus.confirmed,
+          orderStatus: OrderStatus.separating,
+          paymentConfirmedAt: DateTime.now(),
+        ),
+      );
+    }
     return success;
   }
 
   /// Cancela venda.
   Future<bool> cancelSale(String saleId) async {
     final success = await _repository.cancelSale(saleId);
-    if (success) await loadSales();
+    if (success) {
+      _updateSaleLocally(
+        saleId,
+        (sale) => sale.copyWith(status: SaleStatus.cancelled),
+      );
+    }
     return success;
+  }
+
+  /// Atualiza uma venda localmente no cache e no ViewModel.
+  void _updateSaleLocally(
+    String saleId,
+    SaleModel Function(SaleModel) transform,
+  ) {
+    // Atualiza no cache global
+    final sale = _viewModel.allSales.where((s) => s.uid == saleId).firstOrNull;
+    if (sale != null) {
+      final updated = transform(sale);
+      SalesRepository.salesCache.updateWhere((s) => s.uid == saleId, updated);
+    }
+
+    // Atualiza no ViewModel local
+    final updatedSales = _viewModel.allSales.map((s) {
+      if (s.uid == saleId) return transform(s);
+      return s;
+    }).toList();
+
+    _updateViewModelWithSales(updatedSales);
   }
 
   // MARK: - Stream

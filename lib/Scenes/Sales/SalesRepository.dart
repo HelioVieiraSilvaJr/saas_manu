@@ -3,13 +3,31 @@ import '../../Commons/Enums/SaleStatus.dart';
 import '../../Commons/Enums/OrderStatus.dart';
 import '../../Commons/Models/SaleModel.dart';
 import '../../Commons/Utils/AppLogger.dart';
+import '../../Commons/Utils/DataCache.dart';
 import '../../Sources/SessionManager.dart';
 
 /// Repository do módulo Vendas.
 ///
 /// Acessa `tenants/{tenant_id}/sales/`.
+/// Usa cache estático compartilhado entre Presenters.
 class SalesRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  /// Cache compartilhado entre todas as instâncias (singleton por app).
+  static final DataCache<SaleModel> salesCache = DataCache<SaleModel>(
+    ttl: const Duration(minutes: 5),
+  );
+
+  /// Registra limpeza de cache no SessionManager.
+  // ignore: unused_field
+  static final bool _registered = _register();
+  static bool _register() {
+    SessionManager.registerCacheClear(clearCache);
+    return true;
+  }
+
+  /// Limpa cache (usar ao trocar tenant ou logout).
+  static void clearCache() => salesCache.clear();
 
   /// Referência da subcoleção sales do tenant ativo.
   CollectionReference<Map<String, dynamic>> get _collection {
@@ -19,17 +37,25 @@ class SalesRepository {
 
   // MARK: - CRUD
 
-  /// Busca todas as vendas.
-  Future<List<SaleModel>> getAll() async {
+  /// Busca todas as vendas. Usa cache se fresco.
+  Future<List<SaleModel>> getAll({bool forceRefresh = false}) async {
+    if (!forceRefresh && salesCache.isFresh) {
+      return salesCache.data;
+    }
+
     try {
       final snapshot = await _collection
           .orderBy('created_at', descending: true)
           .get();
-      return snapshot.docs
+      final sales = snapshot.docs
           .map((doc) => SaleModel.fromDocumentSnapshot(doc))
           .toList();
+      salesCache.set(sales);
+      return sales;
     } catch (e) {
       AppLogger.error('Erro ao buscar vendas', error: e);
+      // Retorna dados stale se disponíveis
+      if (salesCache.hasData) return salesCache.data;
       return [];
     }
   }
@@ -168,8 +194,17 @@ class SalesRepository {
     }
   }
 
-  /// Busca pedidos confirmados (para o Kanban).
-  Future<List<SaleModel>> getConfirmedOrders() async {
+  /// Busca pedidos confirmados (para o Kanban). Usa cache se disponível.
+  Future<List<SaleModel>> getConfirmedOrders({
+    bool forceRefresh = false,
+  }) async {
+    // Se cache de vendas está fresco, filtra localmente
+    if (!forceRefresh && salesCache.isFresh) {
+      return salesCache.data
+          .where((s) => s.status == SaleStatus.confirmed)
+          .toList();
+    }
+
     try {
       final snapshot = await _collection
           .where('status', isEqualTo: SaleStatus.confirmed.name)

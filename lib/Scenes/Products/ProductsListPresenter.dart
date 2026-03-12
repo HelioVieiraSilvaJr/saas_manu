@@ -21,12 +21,20 @@ class ProductsListPresenter {
 
   // MARK: - Load
 
-  /// Carrega todos os produtos do tenant.
-  Future<void> loadProducts() async {
+  /// Carrega produtos. Usa cache se disponível.
+  Future<void> loadProducts({bool forceRefresh = false}) async {
+    // Se cache está fresco, usa sem loading
+    if (!forceRefresh && ProductsRepository.productsCache.isFresh) {
+      final products = ProductsRepository.productsCache.data;
+      _update(_viewModel.copyWith(isLoading: false, allProducts: products));
+      _applyFiltersAndSort();
+      return;
+    }
+
     _update(_viewModel.copyWith(isLoading: true));
 
     try {
-      final products = await _repository.getAll();
+      final products = await _repository.getAll(forceRefresh: forceRefresh);
       _update(_viewModel.copyWith(isLoading: false, allProducts: products));
       _applyFiltersAndSort();
       AppLogger.info('Produtos carregados: ${products.length}');
@@ -42,9 +50,9 @@ class ProductsListPresenter {
     }
   }
 
-  /// Recarregar produtos.
+  /// Recarregar produtos (forçando refresh do Firestore).
   Future<void> refresh() async {
-    await loadProducts();
+    await loadProducts(forceRefresh: true);
   }
 
   // MARK: - Search
@@ -130,7 +138,8 @@ class ProductsListPresenter {
             title: 'Produto Inativado',
             message: '${product.name} foi inativado com sucesso.',
           );
-          await loadProducts();
+          ProductsRepository.productsCache.invalidate();
+          await loadProducts(forceRefresh: true);
         }
       }
     } else {
@@ -163,7 +172,8 @@ class ProductsListPresenter {
             title: 'Produto Excluído',
             message: '${product.name} foi removido permanentemente.',
           );
-          await loadProducts();
+          ProductsRepository.productsCache.invalidate();
+          await loadProducts(forceRefresh: true);
         }
       }
     }

@@ -3,14 +3,32 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../../Commons/Models/ProductModel.dart';
 import '../../Commons/Utils/AppLogger.dart';
+import '../../Commons/Utils/DataCache.dart';
 import '../../Sources/SessionManager.dart';
 
 /// Repositório de produtos.
 ///
 /// Usa path NESTED: `tenants/{tenant_id}/products/`
+/// Usa cache estático compartilhado entre Presenters.
 class ProductsRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
+
+  /// Cache compartilhado entre todas as instâncias.
+  static final DataCache<ProductModel> productsCache = DataCache<ProductModel>(
+    ttl: const Duration(minutes: 5),
+  );
+
+  /// Registra limpeza de cache no SessionManager.
+  // ignore: unused_field
+  static final bool _registered = _register();
+  static bool _register() {
+    SessionManager.registerCacheClear(clearCache);
+    return true;
+  }
+
+  /// Limpa cache (usar ao trocar tenant ou logout).
+  static void clearCache() => productsCache.clear();
 
   String get _tenantId => SessionManager.instance.currentTenant!.uid;
 
@@ -19,18 +37,25 @@ class ProductsRepository {
 
   // MARK: - CRUD
 
-  /// Busca todos os produtos do tenant.
-  Future<List<ProductModel>> getAll() async {
+  /// Busca todos os produtos. Usa cache se fresco.
+  Future<List<ProductModel>> getAll({bool forceRefresh = false}) async {
+    if (!forceRefresh && productsCache.isFresh) {
+      return productsCache.data;
+    }
+
     try {
       final snapshot = await _collection
           .orderBy('created_at', descending: true)
           .get();
 
-      return snapshot.docs
+      final products = snapshot.docs
           .map((doc) => ProductModel.fromDocumentSnapshot(doc))
           .toList();
+      productsCache.set(products);
+      return products;
     } catch (e) {
       AppLogger.error('Erro ao buscar produtos', error: e);
+      if (productsCache.hasData) return productsCache.data;
       return [];
     }
   }
