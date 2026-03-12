@@ -287,6 +287,14 @@ class _AppShellState extends State<AppShell> {
                     colors: colors,
                     textStyles: textStyles,
                   ),
+                  _buildNavItem(
+                    icon: Icons.view_kanban_outlined,
+                    selectedIcon: Icons.view_kanban_rounded,
+                    label: 'Pedidos',
+                    route: '/orders',
+                    colors: colors,
+                    textStyles: textStyles,
+                  ),
                 ],
 
                 if (session.canManageTenant() && !session.isSuperAdmin) ...[
@@ -429,6 +437,13 @@ class _AppShellState extends State<AppShell> {
                       icon: Icons.shopping_cart_rounded,
                       label: 'Vendas',
                       route: '/sales',
+                      colors: colors,
+                      textStyles: textStyles,
+                    ),
+                    _buildDrawerItem(
+                      icon: Icons.view_kanban_rounded,
+                      label: 'Pedidos',
+                      route: '/orders',
                       colors: colors,
                       textStyles: textStyles,
                     ),

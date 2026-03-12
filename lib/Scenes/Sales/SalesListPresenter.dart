@@ -202,6 +202,29 @@ class SalesListPresenter {
     return success;
   }
 
+  // MARK: - Ações de Pagamento
+
+  /// Envia solicitação de pagamento.
+  Future<bool> sendPaymentRequest(String saleId) async {
+    final success = await _repository.sendPaymentRequest(saleId);
+    if (success) await loadSales();
+    return success;
+  }
+
+  /// Confirma pagamento (move para esteira de pedidos).
+  Future<bool> confirmPayment(String saleId) async {
+    final success = await _repository.confirmPayment(saleId);
+    if (success) await loadSales();
+    return success;
+  }
+
+  /// Cancela venda.
+  Future<bool> cancelSale(String saleId) async {
+    final success = await _repository.cancelSale(saleId);
+    if (success) await loadSales();
+    return success;
+  }
+
   // MARK: - Stream
 
   /// Stream para novas vendas automáticas.

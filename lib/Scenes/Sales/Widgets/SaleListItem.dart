@@ -179,6 +179,8 @@ class SaleListItem extends StatelessWidget {
         return DSBadgeType.success;
       case SaleStatus.pending:
         return DSBadgeType.warning;
+      case SaleStatus.payment_sent:
+        return DSBadgeType.info;
       case SaleStatus.cancelled:
         return DSBadgeType.error;
     }

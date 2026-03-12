@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../Commons/Enums/SaleStatus.dart';
+import '../../Commons/Enums/OrderStatus.dart';
 import '../../Commons/Models/SaleModel.dart';
 import '../../Commons/Utils/AppLogger.dart';
 import '../../Sources/SessionManager.dart';
@@ -98,6 +99,102 @@ class SalesRepository {
       AppLogger.error('Erro ao atualizar status da venda', error: e);
       return false;
     }
+  }
+
+  // MARK: - Fluxo de Pagamento
+
+  /// Marca cobrança como enviada.
+  Future<bool> sendPaymentRequest(String saleId) async {
+    try {
+      await _collection.doc(saleId).update({
+        'status': SaleStatus.payment_sent.name,
+        'payment_requested_at': Timestamp.fromDate(DateTime.now()),
+        'updated_at': Timestamp.fromDate(DateTime.now()),
+      });
+      AppLogger.info('Cobrança enviada para venda $saleId');
+      return true;
+    } catch (e) {
+      AppLogger.error('Erro ao enviar cobrança', error: e);
+      return false;
+    }
+  }
+
+  /// Confirma pagamento e inicia esteira de pedidos.
+  Future<bool> confirmPayment(String saleId) async {
+    try {
+      await _collection.doc(saleId).update({
+        'status': SaleStatus.confirmed.name,
+        'order_status': OrderStatus.separating.name,
+        'payment_confirmed_at': Timestamp.fromDate(DateTime.now()),
+        'updated_at': Timestamp.fromDate(DateTime.now()),
+      });
+      AppLogger.info('Pagamento confirmado para venda $saleId');
+      return true;
+    } catch (e) {
+      AppLogger.error('Erro ao confirmar pagamento', error: e);
+      return false;
+    }
+  }
+
+  /// Cancela venda.
+  Future<bool> cancelSale(String saleId) async {
+    try {
+      await _collection.doc(saleId).update({
+        'status': SaleStatus.cancelled.name,
+        'updated_at': Timestamp.fromDate(DateTime.now()),
+      });
+      AppLogger.info('Venda $saleId cancelada');
+      return true;
+    } catch (e) {
+      AppLogger.error('Erro ao cancelar venda', error: e);
+      return false;
+    }
+  }
+
+  // MARK: - Esteira de Pedidos (Kanban)
+
+  /// Atualiza o status do pedido na esteira.
+  Future<bool> updateOrderStatus(String saleId, OrderStatus newStatus) async {
+    try {
+      await _collection.doc(saleId).update({
+        'order_status': newStatus.name,
+        'updated_at': Timestamp.fromDate(DateTime.now()),
+      });
+      AppLogger.info('Pedido $saleId movido para ${newStatus.name}');
+      return true;
+    } catch (e) {
+      AppLogger.error('Erro ao atualizar status do pedido', error: e);
+      return false;
+    }
+  }
+
+  /// Busca pedidos confirmados (para o Kanban).
+  Future<List<SaleModel>> getConfirmedOrders() async {
+    try {
+      final snapshot = await _collection
+          .where('status', isEqualTo: SaleStatus.confirmed.name)
+          .orderBy('payment_confirmed_at', descending: true)
+          .get();
+      return snapshot.docs
+          .map((doc) => SaleModel.fromDocumentSnapshot(doc))
+          .toList();
+    } catch (e) {
+      AppLogger.error('Erro ao buscar pedidos confirmados', error: e);
+      return [];
+    }
+  }
+
+  /// Stream de pedidos confirmados (tempo real para o Kanban).
+  Stream<List<SaleModel>> watchConfirmedOrders() {
+    return _collection
+        .where('status', isEqualTo: SaleStatus.confirmed.name)
+        .orderBy('payment_confirmed_at', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => SaleModel.fromDocumentSnapshot(doc))
+              .toList(),
+        );
   }
 
   // MARK: - Consultas

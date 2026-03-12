@@ -62,7 +62,6 @@ class _SalesListPageState extends State<SalesListPage> {
   }
 
   Future<void> _handleDeleteSale(String saleId) async {
-    // Buscar venda para devolver estoque e atualizar stats
     final sale = _presenter.viewModel.allSales
         .where((s) => s.uid == saleId)
         .firstOrNull;
@@ -77,18 +76,15 @@ class _SalesListPageState extends State<SalesListPage> {
 
     if (confirm != true || !mounted) return;
 
-    // 1. Devolver produtos ao estoque
     for (var item in sale.items) {
       await _productsRepository.incrementStock(item.productId, item.quantity);
     }
 
-    // 2. Atualizar stats do cliente
     await _customersRepository.decrementPurchaseStats(
       sale.customerId,
       sale.total,
     );
 
-    // 3. Deletar venda
     final success = await _presenter.deleteSale(saleId);
 
     if (success && mounted) {
@@ -97,6 +93,83 @@ class _SalesListPageState extends State<SalesListPage> {
         title: 'Venda Excluída',
         message: 'A venda foi excluída e o estoque atualizado.',
       );
+    }
+  }
+
+  Future<void> _handleSendPaymentRequest(String saleId) async {
+    final confirm = await DSAlertDialog.showConfirm(
+      context: context,
+      title: 'Enviar Cobrança',
+      message: 'Enviar solicitação de pagamento ao cliente via WhatsApp?',
+      confirmLabel: 'Enviar',
+    );
+
+    if (confirm != true || !mounted) return;
+
+    final success = await _presenter.sendPaymentRequest(saleId);
+
+    if (success && mounted) {
+      ElegantNotification.success(
+        title: const Text('Cobrança Enviada'),
+        description: const Text('Solicitação de pagamento enviada.'),
+      ).show(context);
+    }
+  }
+
+  Future<void> _handleConfirmPayment(String saleId) async {
+    final confirm = await DSAlertDialog.showConfirm(
+      context: context,
+      title: 'Confirmar Pagamento',
+      message:
+          'Confirmar o recebimento do pagamento? O pedido entrará na esteira de processamento.',
+      confirmLabel: 'Confirmar',
+    );
+
+    if (confirm != true || !mounted) return;
+
+    final success = await _presenter.confirmPayment(saleId);
+
+    if (success && mounted) {
+      ElegantNotification.success(
+        title: const Text('Pagamento Confirmado'),
+        description: const Text(
+          'Pedido adicionado à esteira de processamento.',
+        ),
+      ).show(context);
+    }
+  }
+
+  Future<void> _handleCancelSale(String saleId) async {
+    final confirm = await DSAlertDialog.showDelete(
+      context: context,
+      title: 'Cancelar Venda',
+      message: 'Tem certeza que deseja cancelar esta venda?',
+      confirmLabel: 'Cancelar Venda',
+    );
+
+    if (confirm != true || !mounted) return;
+
+    final sale = _presenter.viewModel.allSales
+        .where((s) => s.uid == saleId)
+        .firstOrNull;
+
+    if (sale != null) {
+      for (var item in sale.items) {
+        await _productsRepository.incrementStock(item.productId, item.quantity);
+      }
+      await _customersRepository.decrementPurchaseStats(
+        sale.customerId,
+        sale.total,
+      );
+    }
+
+    final success = await _presenter.cancelSale(saleId);
+
+    if (success && mounted) {
+      ElegantNotification.success(
+        title: const Text('Venda Cancelada'),
+        description: const Text('Venda cancelada e estoque devolvido.'),
+      ).show(context);
     }
   }
 
@@ -127,6 +200,9 @@ class _SalesListPageState extends State<SalesListPage> {
           onNewSale: _handleNewSale,
           onViewDetails: _handleViewDetails,
           onDeleteSale: _handleDeleteSale,
+          onSendPaymentRequest: _handleSendPaymentRequest,
+          onConfirmPayment: _handleConfirmPayment,
+          onCancelSale: _handleCancelSale,
         ),
         mobile: SalesListMobileView(
           presenter: _presenter,

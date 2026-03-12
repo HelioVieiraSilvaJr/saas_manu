@@ -1,12 +1,19 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../Commons/Enums/SaleStatus.dart';
 import '../../Commons/Enums/SaleSource.dart';
+import '../../Commons/Enums/OrderStatus.dart';
 import 'SaleItemModel.dart';
 
 /// Modelo de venda.
 ///
 /// Subcoleção: `tenants/{tenant_id}/sales/{sale_id}`
 /// NÃO contém campo tenant_id (path NESTED).
+///
+/// Ciclo de vida:
+/// 1. Venda criada (pending) → ações: enviar cobrança, confirmar pgto, cancelar
+/// 2. Cobrança enviada (payment_sent) → ações: confirmar pgto, cancelar
+/// 3. Pagamento confirmado (confirmed) → entra no Kanban (orderStatus)
+/// 4. Kanban: separating → packing → ready → completed
 class SaleModel {
   String uid;
   String customerId;
@@ -16,10 +23,13 @@ class SaleModel {
   double total;
   SaleStatus status;
   SaleSource source;
+  OrderStatus? orderStatus;
   String? notes;
   String? conversationId;
   DateTime createdAt;
   DateTime? updatedAt;
+  DateTime? paymentRequestedAt;
+  DateTime? paymentConfirmedAt;
 
   SaleModel({
     required this.uid,
@@ -30,10 +40,13 @@ class SaleModel {
     required this.total,
     required this.status,
     required this.source,
+    this.orderStatus,
     this.notes,
     this.conversationId,
     required this.createdAt,
     this.updatedAt,
+    this.paymentRequestedAt,
+    this.paymentConfirmedAt,
   });
 
   // MARK: - Factory
@@ -56,6 +69,9 @@ class SaleModel {
       total: (data['total'] ?? 0).toDouble(),
       status: SaleStatus.fromString(data['status'] ?? 'pending'),
       source: SaleSource.fromString(data['source'] ?? 'manual'),
+      orderStatus: data['order_status'] != null
+          ? OrderStatus.fromString(data['order_status'])
+          : null,
       notes: data['notes'],
       conversationId: data['conversation_id'],
       createdAt: data['created_at'] != null
@@ -63,6 +79,12 @@ class SaleModel {
           : DateTime.now(),
       updatedAt: data['updated_at'] != null
           ? (data['updated_at'] as Timestamp).toDate()
+          : null,
+      paymentRequestedAt: data['payment_requested_at'] != null
+          ? (data['payment_requested_at'] as Timestamp).toDate()
+          : null,
+      paymentConfirmedAt: data['payment_confirmed_at'] != null
+          ? (data['payment_confirmed_at'] as Timestamp).toDate()
           : null,
     );
   }
@@ -78,11 +100,18 @@ class SaleModel {
       'total': total,
       'status': status.name,
       'source': source.name,
+      'order_status': orderStatus?.name,
       'notes': notes,
       'conversation_id': conversationId,
       'item_product_ids': items.map((item) => item.productId).toList(),
       'created_at': Timestamp.fromDate(createdAt),
       'updated_at': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
+      'payment_requested_at': paymentRequestedAt != null
+          ? Timestamp.fromDate(paymentRequestedAt!)
+          : null,
+      'payment_confirmed_at': paymentConfirmedAt != null
+          ? Timestamp.fromDate(paymentConfirmedAt!)
+          : null,
     };
   }
 
@@ -111,10 +140,13 @@ class SaleModel {
     double? total,
     SaleStatus? status,
     SaleSource? source,
+    OrderStatus? orderStatus,
     String? notes,
     String? conversationId,
     DateTime? createdAt,
     DateTime? updatedAt,
+    DateTime? paymentRequestedAt,
+    DateTime? paymentConfirmedAt,
   }) {
     return SaleModel(
       uid: uid ?? this.uid,
@@ -125,10 +157,13 @@ class SaleModel {
       total: total ?? this.total,
       status: status ?? this.status,
       source: source ?? this.source,
+      orderStatus: orderStatus ?? this.orderStatus,
       notes: notes ?? this.notes,
       conversationId: conversationId ?? this.conversationId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      paymentRequestedAt: paymentRequestedAt ?? this.paymentRequestedAt,
+      paymentConfirmedAt: paymentConfirmedAt ?? this.paymentConfirmedAt,
     );
   }
 
@@ -154,4 +189,21 @@ class SaleModel {
 
   /// Verifica se está cancelada.
   bool get isCancelled => status == SaleStatus.cancelled;
+
+  /// Verifica se cobrança foi enviada.
+  bool get isPaymentSent => status == SaleStatus.payment_sent;
+
+  /// Verifica se está na esteira de pedidos (Kanban).
+  bool get isInOrderPipeline =>
+      status == SaleStatus.confirmed && orderStatus != null;
+
+  /// Verifica se o pedido foi concluído.
+  bool get isOrderCompleted => orderStatus == OrderStatus.completed;
+
+  /// Verifica se pode enviar cobrança.
+  bool get canSendPaymentRequest => status == SaleStatus.pending;
+
+  /// Verifica se pode confirmar pagamento.
+  bool get canConfirmPayment =>
+      status == SaleStatus.pending || status == SaleStatus.payment_sent;
 }

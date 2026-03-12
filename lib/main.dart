@@ -17,6 +17,7 @@ import 'Scenes/Customers/CustomerFormPage.dart';
 import 'Scenes/Sales/SalesListPage.dart';
 import 'Scenes/Sales/SaleFormPage.dart';
 import 'Scenes/Sales/SaleDetailPage.dart';
+import 'Scenes/Orders/OrdersKanbanPage.dart';
 import 'Scenes/DashboardSuperAdmin/SuperAdminDashboardPage.dart';
 import 'Scenes/ManageTenants/TenantsListPage.dart';
 import 'Scenes/ManageTenants/TenantFormPage.dart';
@@ -163,6 +164,7 @@ class SaasManApp extends StatelessWidget {
           '/sales': (context) => const SalesListPage(),
           '/sales/new': (context) => const SaleFormPage(),
           '/sales/detail': (context) => const SaleDetailPage(),
+          '/orders': (context) => const OrdersKanbanPage(),
           '/admin/dashboard': (context) => const SuperAdminDashboardPage(),
           '/admin/tenants': (context) => const TenantsListPage(),
           '/admin/tenants/new': (context) => const TenantFormPage(),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../Commons/Enums/SaleStatus.dart';
+import '../../../Commons/Enums/OrderStatus.dart';
 import '../../../Commons/Extensions/String+Extensions.dart';
 import '../../../Commons/Models/SaleModel.dart';
 import '../../../Commons/Widgets/DesignSystem/DSBadge.dart';
@@ -15,13 +16,16 @@ import '../SalesListViewModel.dart';
 
 /// View Web da listagem de vendas.
 ///
-/// Catálogo moderno com metric cards, filtros e tabela de dados.
+/// Catálogo moderno com metric cards, filtros, tabela e ações rápidas de pagamento.
 class SalesListWebView extends StatelessWidget {
   final SalesListPresenter presenter;
   final TextEditingController searchController;
   final VoidCallback onNewSale;
   final void Function(String saleId) onViewDetails;
   final void Function(String saleId) onDeleteSale;
+  final void Function(String saleId) onSendPaymentRequest;
+  final void Function(String saleId) onConfirmPayment;
+  final void Function(String saleId) onCancelSale;
 
   const SalesListWebView({
     super.key,
@@ -30,6 +34,9 @@ class SalesListWebView extends StatelessWidget {
     required this.onNewSale,
     required this.onViewDetails,
     required this.onDeleteSale,
+    required this.onSendPaymentRequest,
+    required this.onConfirmPayment,
+    required this.onCancelSale,
   });
 
   @override
@@ -157,7 +164,8 @@ class SalesListWebView extends StatelessWidget {
           items: const {
             SaleStatusFilter.all: 'Todos os status',
             SaleStatusFilter.pending: 'Pendente',
-            SaleStatusFilter.confirmed: 'Confirmada',
+            SaleStatusFilter.paymentSent: 'Cobrança Enviada',
+            SaleStatusFilter.confirmed: 'Pago',
             SaleStatusFilter.cancelled: 'Cancelada',
           },
           onChanged: (v) =>
@@ -447,6 +455,9 @@ class SalesListWebView extends StatelessWidget {
                   textStyles: textStyles,
                   onTap: () => onViewDetails(sale.uid),
                   onDelete: () => onDeleteSale(sale.uid),
+                  onSendPaymentRequest: () => onSendPaymentRequest(sale.uid),
+                  onConfirmPayment: () => onConfirmPayment(sale.uid),
+                  onCancelSale: () => onCancelSale(sale.uid),
                 ),
                 if (!isLast) Divider(height: 1, color: colors.divider),
               ],
@@ -476,7 +487,7 @@ class SalesListWebView extends StatelessWidget {
           Expanded(flex: 2, child: Text('Valor', style: headerStyle)),
           Expanded(flex: 2, child: Text('Status', style: headerStyle)),
           Expanded(flex: 2, child: Text('Origem', style: headerStyle)),
-          const SizedBox(width: 50, child: Text('')),
+          Expanded(flex: 3, child: Text('Ações', style: headerStyle)),
         ],
       ),
     );
@@ -490,6 +501,9 @@ class _SaleTableRow extends StatefulWidget {
   final DSTextStyle textStyles;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
+  final VoidCallback? onSendPaymentRequest;
+  final VoidCallback? onConfirmPayment;
+  final VoidCallback? onCancelSale;
 
   const _SaleTableRow({
     required this.sale,
@@ -497,6 +511,9 @@ class _SaleTableRow extends StatefulWidget {
     required this.textStyles,
     this.onTap,
     this.onDelete,
+    this.onSendPaymentRequest,
+    this.onConfirmPayment,
+    this.onCancelSale,
   });
 
   @override
@@ -617,19 +634,64 @@ class _SaleTableRowState extends State<_SaleTableRow> {
                 ),
               ),
 
-              // Ações
-              SizedBox(
-                width: 50,
+              // Ações rápidas
+              Expanded(
+                flex: 3,
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    _ActionIcon(
-                      icon: Icons.delete_outline_rounded,
-                      tooltip: 'Excluir',
-                      color: colors.textTertiary,
-                      hoverColor: colors.red,
-                      onTap: widget.onDelete,
-                    ),
+                    // Enviar cobrança
+                    if (sale.canSendPaymentRequest)
+                      _QuickActionButton(
+                        label: 'Cobrar',
+                        icon: Icons.send_rounded,
+                        color: colors.blue,
+                        bgColor: colors.blueLight,
+                        onTap: widget.onSendPaymentRequest,
+                      ),
+
+                    // Confirmar pagamento
+                    if (sale.canConfirmPayment) ...[
+                      if (sale.canSendPaymentRequest)
+                        const SizedBox(width: DSSpacing.xs),
+                      _QuickActionButton(
+                        label: 'Pago',
+                        icon: Icons.check_circle_rounded,
+                        color: colors.green,
+                        bgColor: colors.greenLight,
+                        onTap: widget.onConfirmPayment,
+                      ),
+                    ],
+
+                    // Cancelar
+                    if (sale.canCancel && !sale.isConfirmed) ...[
+                      const SizedBox(width: DSSpacing.xs),
+                      _QuickActionButton(
+                        label: 'Cancelar',
+                        icon: Icons.cancel_rounded,
+                        color: colors.red,
+                        bgColor: colors.redLight,
+                        onTap: widget.onCancelSale,
+                      ),
+                    ],
+
+                    // Se confirmada — mostra badge do Kanban
+                    if (sale.isConfirmed && sale.orderStatus != null) ...[
+                      DSBadge(
+                        label: sale.orderStatus!.label,
+                        type: _orderStatusBadgeType(sale.orderStatus!),
+                        size: DSBadgeSize.small,
+                      ),
+                    ],
+
+                    // Se cancelada
+                    if (sale.isCancelled)
+                      Text(
+                        '—',
+                        style: textStyles.bodySmall.copyWith(
+                          color: colors.textTertiary,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -646,8 +708,23 @@ class _SaleTableRowState extends State<_SaleTableRow> {
         return DSBadgeType.success;
       case SaleStatus.pending:
         return DSBadgeType.warning;
+      case SaleStatus.payment_sent:
+        return DSBadgeType.info;
       case SaleStatus.cancelled:
         return DSBadgeType.error;
+    }
+  }
+
+  DSBadgeType _orderStatusBadgeType(OrderStatus status) {
+    switch (status) {
+      case OrderStatus.separating:
+        return DSBadgeType.warning;
+      case OrderStatus.packing:
+        return DSBadgeType.info;
+      case OrderStatus.ready:
+        return DSBadgeType.primary;
+      case OrderStatus.completed:
+        return DSBadgeType.success;
     }
   }
 
@@ -656,27 +733,27 @@ class _SaleTableRowState extends State<_SaleTableRow> {
   }
 }
 
-/// Ícone de ação com hover animado.
-class _ActionIcon extends StatefulWidget {
+/// Botão de ação rápida compacto para a tabela.
+class _QuickActionButton extends StatefulWidget {
+  final String label;
   final IconData icon;
-  final String tooltip;
   final Color color;
-  final Color hoverColor;
+  final Color bgColor;
   final VoidCallback? onTap;
 
-  const _ActionIcon({
+  const _QuickActionButton({
+    required this.label,
     required this.icon,
-    required this.tooltip,
     required this.color,
-    required this.hoverColor,
+    required this.bgColor,
     this.onTap,
   });
 
   @override
-  State<_ActionIcon> createState() => _ActionIconState();
+  State<_QuickActionButton> createState() => _QuickActionButtonState();
 }
 
-class _ActionIconState extends State<_ActionIcon> {
+class _QuickActionButtonState extends State<_QuickActionButton> {
   bool _hovered = false;
 
   @override
@@ -685,19 +762,41 @@ class _ActionIconState extends State<_ActionIcon> {
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: Tooltip(
-        message: widget.tooltip,
+        message: widget.label,
         child: InkWell(
           onTap: widget.onTap,
           borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
-          child: Padding(
-            padding: const EdgeInsets.all(DSSpacing.xs),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              child: Icon(
-                widget.icon,
-                size: DSSpacing.iconMd,
-                color: _hovered ? widget.hoverColor : widget.color,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(
+              horizontal: DSSpacing.sm,
+              vertical: DSSpacing.xs,
+            ),
+            decoration: BoxDecoration(
+              color: _hovered
+                  ? widget.color.withValues(alpha: 0.15)
+                  : widget.bgColor,
+              borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
+              border: Border.all(
+                color: _hovered
+                    ? widget.color
+                    : widget.color.withValues(alpha: 0.3),
               ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(widget.icon, size: 14, color: widget.color),
+                const SizedBox(width: DSSpacing.xxs),
+                Text(
+                  widget.label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: widget.color,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -705,3 +804,4 @@ class _ActionIconState extends State<_ActionIcon> {
     );
   }
 }
+

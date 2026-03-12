@@ -6,6 +6,7 @@ import '../../Commons/Models/SaleModel.dart';
 enum SaleStatusFilter {
   all,
   pending,
+  paymentSent,
   confirmed,
   cancelled;
 
@@ -15,8 +16,10 @@ enum SaleStatusFilter {
         return 'Todos';
       case SaleStatusFilter.pending:
         return 'Pendente';
+      case SaleStatusFilter.paymentSent:
+        return 'Cobrança Enviada';
       case SaleStatusFilter.confirmed:
-        return 'Confirmada';
+        return 'Pago';
       case SaleStatusFilter.cancelled:
         return 'Cancelada';
     }
@@ -28,6 +31,8 @@ enum SaleStatusFilter {
         return null;
       case SaleStatusFilter.pending:
         return SaleStatus.pending;
+      case SaleStatusFilter.paymentSent:
+        return SaleStatus.payment_sent;
       case SaleStatusFilter.confirmed:
         return SaleStatus.confirmed;
       case SaleStatusFilter.cancelled:
