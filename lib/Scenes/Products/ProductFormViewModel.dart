@@ -1,4 +1,33 @@
+import 'dart:typed_data';
+
 import '../../Commons/Models/ProductModel.dart';
+
+/// Representa uma imagem no form (nova local ou existente remota).
+class ProductImageItem {
+  final Uint8List? bytes;
+  final String? fileName;
+  final String? url;
+  final bool isMain;
+
+  const ProductImageItem({
+    this.bytes,
+    this.fileName,
+    this.url,
+    this.isMain = false,
+  });
+
+  bool get isLocal => bytes != null;
+  bool get isRemote => url != null && url!.isNotEmpty;
+
+  ProductImageItem copyWith({bool? isMain}) {
+    return ProductImageItem(
+      bytes: bytes,
+      fileName: fileName,
+      url: url,
+      isMain: isMain ?? this.isMain,
+    );
+  }
+}
 
 /// Estado do formulário de produto.
 class ProductFormViewModel {
@@ -8,8 +37,8 @@ class ProductFormViewModel {
   final String? successMessage;
   final ProductModel? product;
   final bool isEditing;
-  final bool hasImageChanged;
-  final String? imagePreviewUrl;
+  final List<ProductImageItem> images;
+  final List<String> removedImageUrls;
 
   const ProductFormViewModel({
     this.isLoading = false,
@@ -18,9 +47,19 @@ class ProductFormViewModel {
     this.successMessage,
     this.product,
     this.isEditing = false,
-    this.hasImageChanged = false,
-    this.imagePreviewUrl,
+    this.images = const [],
+    this.removedImageUrls = const [],
   });
+
+  /// Índice da imagem principal.
+  int get mainImageIndex =>
+      images.indexWhere((i) => i.isMain).clamp(0, images.length - 1);
+
+  /// Quantidade de imagens.
+  int get imageCount => images.length;
+
+  /// Pode adicionar mais imagens (máximo 5).
+  bool get canAddImage => images.length < 5;
 
   ProductFormViewModel copyWith({
     bool? isLoading,
@@ -29,8 +68,8 @@ class ProductFormViewModel {
     String? successMessage,
     ProductModel? product,
     bool? isEditing,
-    bool? hasImageChanged,
-    String? imagePreviewUrl,
+    List<ProductImageItem>? images,
+    List<String>? removedImageUrls,
     bool clearError = true,
     bool clearSuccess = true,
   }) {
@@ -45,8 +84,8 @@ class ProductFormViewModel {
           : (successMessage ?? this.successMessage),
       product: product ?? this.product,
       isEditing: isEditing ?? this.isEditing,
-      hasImageChanged: hasImageChanged ?? this.hasImageChanged,
-      imagePreviewUrl: imagePreviewUrl ?? this.imagePreviewUrl,
+      images: images ?? this.images,
+      removedImageUrls: removedImageUrls ?? this.removedImageUrls,
     );
   }
 }

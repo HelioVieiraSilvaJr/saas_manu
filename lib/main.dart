@@ -10,10 +10,10 @@ import 'Scenes/Login/LoginPage.dart';
 import 'Scenes/DashboardTenant/DashboardTenantPage.dart';
 import 'Scenes/Products/ProductsListPage.dart';
 import 'Scenes/Products/ProductFormPage.dart';
-import 'Scenes/Products/ProductDetailPage.dart';
+
 import 'Scenes/Customers/CustomersListPage.dart';
 import 'Scenes/Customers/CustomerFormPage.dart';
-import 'Scenes/Customers/CustomerDetailPage.dart';
+
 import 'Scenes/Sales/SalesListPage.dart';
 import 'Scenes/Sales/SaleFormPage.dart';
 import 'Scenes/Sales/SaleDetailPage.dart';
@@ -157,11 +157,9 @@ class SaasManApp extends StatelessWidget {
           '/products': (context) => const ProductsListPage(),
           '/products/new': (context) => const ProductFormPage(),
           '/products/edit': (context) => const ProductFormPage(),
-          '/products/detail': (context) => const ProductDetailPage(),
           '/customers': (context) => const CustomersListPage(),
           '/customers/new': (context) => const CustomerFormPage(),
           '/customers/edit': (context) => const CustomerFormPage(),
-          '/customers/detail': (context) => const CustomerDetailPage(),
           '/sales': (context) => const SalesListPage(),
           '/sales/new': (context) => const SaleFormPage(),
           '/sales/detail': (context) => const SaleDetailPage(),

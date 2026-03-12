@@ -203,6 +203,13 @@ class ProductsRepository {
     }
   }
 
+  /// Remove múltiplas imagens do Storage.
+  Future<void> deleteImages(List<String> imageUrls) async {
+    for (final url in imageUrls) {
+      await deleteImage(url);
+    }
+  }
+
   // MARK: - Contagem
 
   /// Retorna o total de produtos.

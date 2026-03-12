@@ -149,9 +149,9 @@ class ProductsListPresenter {
       if (confirm == true) {
         _update(_viewModel.copyWith(isDeleting: true));
 
-        // Remover imagem se existir
-        if (product.imageUrl != null && product.imageUrl!.isNotEmpty) {
-          await _repository.deleteImage(product.imageUrl!);
+        // Remover todas as imagens do Storage
+        if (product.imageUrls.isNotEmpty) {
+          await _repository.deleteImages(product.imageUrls);
         }
 
         final success = await _repository.delete(product.uid);

@@ -18,9 +18,9 @@ class CustomersCoordinator {
     Navigator.pushNamed(context, '/customers/edit', arguments: customer.uid);
   }
 
-  /// Navega para detalhes do cliente.
+  /// Navega para detalhes do cliente (redireciona para edição).
   static void navigateToDetail(BuildContext context, CustomerModel customer) {
-    Navigator.pushNamed(context, '/customers/detail', arguments: customer);
+    navigateToEdit(context, customer);
   }
 
   /// Voltar.

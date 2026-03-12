@@ -207,7 +207,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
         child: AppNetworkImage(
-          url: product.imageUrl,
+          url: product.mainImageUrl,
           width: size,
           height: size,
           fit: BoxFit.cover,

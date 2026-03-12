@@ -230,7 +230,7 @@ class _ProductSearchContentState extends State<_ProductSearchContent> {
                 final product = _filtered[index];
                 return ListTile(
                   leading: AppNetworkImage(
-                    url: product.imageUrl,
+                    url: product.mainImageUrl,
                     width: 48,
                     height: 48,
                     fit: BoxFit.cover,

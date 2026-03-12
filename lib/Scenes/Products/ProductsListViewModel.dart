@@ -56,6 +56,22 @@ class ProductsListViewModel {
   /// Verifica se tem busca ativa.
   bool get hasSearch => searchQuery.isNotEmpty;
 
+  /// Total de produtos ativos.
+  int get activeCount => allProducts.where((p) => p.isActive).length;
+
+  /// Percentual de produtos ativos.
+  int get activePercent =>
+      totalCount > 0 ? ((activeCount / totalCount) * 100).round() : 0;
+
+  /// Total de produtos com estoque baixo (< 10 e > 0).
+  int get lowStockCount => allProducts.where((p) => p.isLowStock).length;
+
+  /// Total de produtos sem estoque.
+  int get outOfStockCount => allProducts.where((p) => p.isOutOfStock).length;
+
+  /// Estoque total somado.
+  int get totalStock => allProducts.fold(0, (sum, p) => sum + p.stock);
+
   ProductsListViewModel copyWith({
     bool? isLoading,
     String? errorMessage,

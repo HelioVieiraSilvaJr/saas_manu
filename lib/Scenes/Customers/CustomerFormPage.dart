@@ -119,27 +119,223 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
-          Row(
-            children: [
-              IconButton(
-                onPressed: () => CustomersCoordinator.navigateBack(context),
-                icon: const Icon(Icons.arrow_back_rounded),
+          _buildWebHeader(colors, textStyles),
+          const SizedBox(height: DSSpacing.xl),
+
+          if (_viewModel.errorMessage != null) ...[
+            _buildErrorBanner(colors, textStyles),
+            const SizedBox(height: DSSpacing.lg),
+          ],
+
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 900),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    _buildInfoCard(colors, textStyles),
+                    const SizedBox(height: DSSpacing.huge),
+                  ],
+                ),
               ),
-              const SizedBox(width: DSSpacing.sm),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWebHeader(DSColors colors, DSTextStyle textStyles) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Text(
                 _viewModel.isEditing ? 'Editar Cliente' : 'Novo Cliente',
                 style: textStyles.headline1,
               ),
+              const SizedBox(height: DSSpacing.xs),
+              Text(
+                _viewModel.isEditing
+                    ? 'Atualize as informações do cliente'
+                    : 'Preencha as informações para cadastrar um novo cliente',
+                style: textStyles.bodyMedium.copyWith(
+                  color: colors.textTertiary,
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: DSSpacing.xl),
+        ),
+        DSButton.secondary(
+          label: 'Cancelar',
+          onTap: () => CustomersCoordinator.navigateBack(context),
+        ),
+        const SizedBox(width: DSSpacing.md),
+        DSButton.primary(
+          label: _viewModel.isEditing
+              ? 'Salvar Alterações'
+              : 'Cadastrar Cliente',
+          icon: _viewModel.isEditing ? Icons.save_rounded : Icons.add_rounded,
+          isLoading: _viewModel.isSaving,
+          onTap: _viewModel.isSaving ? null : _handleSave,
+        ),
+      ],
+    );
+  }
 
-          // Formulário centralizado
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 600),
-              child: _buildForm(colors, textStyles, isWeb: true),
+  Widget _buildErrorBanner(DSColors colors, DSTextStyle textStyles) {
+    return Container(
+      padding: const EdgeInsets.all(DSSpacing.base),
+      decoration: BoxDecoration(
+        color: colors.redLight,
+        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        border: Border.all(color: colors.red.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline, color: colors.red, size: DSSpacing.iconMd),
+          const SizedBox(width: DSSpacing.sm),
+          Expanded(
+            child: Text(
+              _viewModel.errorMessage!,
+              style: textStyles.bodyMedium.copyWith(color: colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(
+    DSColors colors,
+    DSTextStyle textStyles, {
+    required IconData icon,
+    required String title,
+    String? badgeLabel,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        DSSpacing.lg,
+        DSSpacing.lg,
+        DSSpacing.lg,
+        DSSpacing.base,
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: DSSpacing.iconMd, color: colors.primaryColor),
+          const SizedBox(width: DSSpacing.sm),
+          Text(title, style: textStyles.headline3),
+          const Spacer(),
+          if (badgeLabel != null)
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: DSSpacing.md,
+                vertical: DSSpacing.xs,
+              ),
+              decoration: BoxDecoration(
+                color: colors.scaffoldBackground,
+                borderRadius: BorderRadius.circular(DSSpacing.radiusFull),
+                border: Border.all(color: colors.divider),
+              ),
+              child: Text(
+                badgeLabel,
+                style: textStyles.caption.copyWith(
+                  color: colors.textTertiary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoCard(DSColors colors, DSTextStyle textStyles) {
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.cardBackground,
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
+        border: Border.all(color: colors.divider),
+        boxShadow: [
+          BoxShadow(
+            color: colors.shadowColor,
+            blurRadius: DSSpacing.elevationSmBlur,
+            offset: const Offset(0, DSSpacing.elevationSmOffset),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader(
+            colors,
+            textStyles,
+            icon: Icons.person_outline_rounded,
+            title: 'Dados do Cliente',
+            badgeLabel: 'obrigatório',
+          ),
+          Divider(height: 1, color: colors.divider),
+
+          Padding(
+            padding: const EdgeInsets.all(DSSpacing.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: FormTextField(
+                        label: 'Nome Completo *',
+                        controller: _nameController,
+                        hintText: 'Ex: João da Silva',
+                        prefixIcon: Icons.person_outline,
+                        maxLength: 100,
+                        validator: _validateName,
+                        textInputAction: TextInputAction.next,
+                      ),
+                    ),
+                    const SizedBox(width: DSSpacing.lg),
+                    Expanded(
+                      child: FormTextField(
+                        label: 'WhatsApp *',
+                        controller: _whatsappController,
+                        hintText: '(11) 98765-4321',
+                        prefixIcon: Icons.phone_android_rounded,
+                        keyboardType: TextInputType.phone,
+                        inputFormatters: [_whatsappMask],
+                        validator: _validateWhatsApp,
+                        helperText: 'Principal meio de contato',
+                        textInputAction: TextInputAction.next,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: DSSpacing.lg),
+
+                FormTextField(
+                  label: 'Email',
+                  controller: _emailController,
+                  hintText: 'email@exemplo.com',
+                  prefixIcon: Icons.email_outlined,
+                  keyboardType: TextInputType.emailAddress,
+                  validator: _validateEmail,
+                  textInputAction: TextInputAction.next,
+                ),
+                const SizedBox(height: DSSpacing.lg),
+
+                FormTextField(
+                  label: 'Observações',
+                  controller: _notesController,
+                  hintText: 'Observações sobre o cliente (opcional)',
+                  maxLength: 500,
+                  maxLines: 4,
+                  textInputAction: TextInputAction.done,
+                ),
+              ],
             ),
           ),
         ],
@@ -172,24 +368,17 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(DSSpacing.md),
-        child: _buildForm(colors, textStyles, isWeb: false),
+        child: _buildMobileForm(colors, textStyles),
       ),
     );
   }
 
-  // MARK: - Form
-
-  Widget _buildForm(
-    DSColors colors,
-    DSTextStyle textStyles, {
-    required bool isWeb,
-  }) {
+  Widget _buildMobileForm(DSColors colors, DSTextStyle textStyles) {
     return Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Mensagem de erro
           if (_viewModel.errorMessage != null) ...[
             Container(
               padding: const EdgeInsets.all(DSSpacing.md),
@@ -218,7 +407,6 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
             const SizedBox(height: DSSpacing.lg),
           ],
 
-          // Nome
           FormTextField(
             label: 'Nome Completo *',
             controller: _nameController,
@@ -230,7 +418,6 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
           ),
           const SizedBox(height: DSSpacing.lg),
 
-          // WhatsApp
           FormTextField(
             label: 'WhatsApp *',
             controller: _whatsappController,
@@ -244,7 +431,6 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
           ),
           const SizedBox(height: DSSpacing.lg),
 
-          // Email
           FormTextField(
             label: 'Email',
             controller: _emailController,
@@ -256,7 +442,6 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
           ),
           const SizedBox(height: DSSpacing.lg),
 
-          // Observações
           FormTextField(
             label: 'Observações',
             controller: _notesController,
@@ -267,37 +452,16 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
           ),
           const SizedBox(height: DSSpacing.xl),
 
-          // Botões
-          _buildActionButtons(colors, isWeb),
+          DSButton.primary(
+            label: _viewModel.isEditing ? 'Salvar Alterações' : 'Salvar',
+            icon: _viewModel.isEditing ? Icons.save_rounded : Icons.add_rounded,
+            isLoading: _viewModel.isSaving,
+            isExpanded: true,
+            onTap: _viewModel.isSaving ? null : _handleSave,
+          ),
           const SizedBox(height: DSSpacing.xl),
         ],
       ),
-    );
-  }
-
-  // MARK: - Action Buttons
-
-  Widget _buildActionButtons(DSColors colors, bool isWeb) {
-    return Row(
-      mainAxisAlignment: isWeb
-          ? MainAxisAlignment.end
-          : MainAxisAlignment.center,
-      children: [
-        if (isWeb) ...[
-          DSButton.secondary(
-            label: 'Cancelar',
-            onTap: () => CustomersCoordinator.navigateBack(context),
-          ),
-          const SizedBox(width: DSSpacing.md),
-        ],
-        DSButton.primary(
-          label: _viewModel.isEditing ? 'Salvar Alterações' : 'Salvar',
-          icon: _viewModel.isEditing ? Icons.save_rounded : Icons.add_rounded,
-          isLoading: _viewModel.isSaving,
-          isExpanded: !isWeb,
-          onTap: _viewModel.isSaving ? null : _handleSave,
-        ),
-      ],
     );
   }
 

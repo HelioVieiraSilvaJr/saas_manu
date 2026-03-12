@@ -28,7 +28,7 @@ class DashboardTenantWebView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (viewModel.isLoading) {
-      return Padding(
+      return SingleChildScrollView(
         padding: const EdgeInsets.symmetric(
           horizontal: DSSpacing.pagePaddingHorizontalWeb,
           vertical: DSSpacing.pagePaddingVerticalWeb,

@@ -25,12 +25,12 @@ class ProductsCoordinator {
     );
   }
 
-  /// Navega para detalhes do produto.
+  /// Navega para detalhes do produto (redireciona para edição).
   static Future<dynamic> navigateToDetail(
     BuildContext context,
     ProductModel product,
   ) {
-    return Navigator.pushNamed(context, '/products/detail', arguments: product);
+    return navigateToEdit(context, product);
   }
 
   /// Voltar.

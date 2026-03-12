@@ -5,7 +5,7 @@
       "name": "DEVELOPMENT",
       "request": "launch",
       "type": "dart",
-      "program": "lib/main_development.dart",
+      "program": "lib/main.dart",
       "args": []
     },
     {
@@ -19,7 +19,7 @@
       "name": "PRODUCTION",
       "request": "launch",
       "type": "dart",
-      "program": "lib/main_production.dart",
+      "program": "lib/main.dart",
       "args": []
     }
   ]

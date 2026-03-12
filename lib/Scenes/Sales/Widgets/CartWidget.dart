@@ -114,7 +114,7 @@ class CartWidget extends StatelessWidget {
         children: [
           // Imagem/Placeholder
           AppNetworkImage(
-            url: item.product.imageUrl,
+            url: item.product.mainImageUrl,
             width: 40,
             height: 40,
             fit: BoxFit.cover,

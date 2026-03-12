@@ -57,6 +57,20 @@ class CustomersListViewModel {
   /// Total de clientes filtrados.
   int get filteredCount => filteredCustomers.length;
 
+  /// Clientes ativos (já compraram).
+  int get activeCount =>
+      allCustomers.where((c) => (c.purchaseCount ?? 0) > 0).length;
+
+  /// Total gasto por todos os clientes.
+  double get totalSpentAll =>
+      allCustomers.fold(0.0, (sum, c) => sum + (c.totalSpent ?? 0));
+
+  /// Novos clientes nos últimos 30 dias.
+  int get recentCount {
+    final cutoff = DateTime.now().subtract(const Duration(days: 30));
+    return allCustomers.where((c) => c.createdAt.isAfter(cutoff)).length;
+  }
+
   /// Verifica se existem filtros ativos.
   bool get hasActiveFilters =>
       statusFilter != CustomerStatusFilter.all ||

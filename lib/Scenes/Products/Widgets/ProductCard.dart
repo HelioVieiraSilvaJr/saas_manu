@@ -136,7 +136,7 @@ class _ProductCardState extends State<ProductCard> {
     return AspectRatio(
       aspectRatio: 4 / 3,
       child: AppNetworkImage(
-        url: widget.product.imageUrl,
+        url: widget.product.mainImageUrl,
         fit: BoxFit.cover,
         borderRadius: const BorderRadius.vertical(
           top: Radius.circular(DSSpacing.radiusLg),
