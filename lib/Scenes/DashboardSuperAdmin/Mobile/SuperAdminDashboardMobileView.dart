@@ -10,6 +10,7 @@ import '../Widgets/ActivityTimeline.dart';
 import '../Widgets/CriticalAlerts.dart';
 import '../Widgets/PlanDistributionChart.dart';
 import '../Widgets/TenantGrowthChart.dart';
+import '../Widgets/TopTenantsTable.dart';
 
 /// View Mobile do Dashboard SuperAdmin.
 class SuperAdminDashboardMobileView extends StatelessWidget {
@@ -52,11 +53,82 @@ class SuperAdminDashboardMobileView extends StatelessWidget {
                 ),
                 const SizedBox(width: DSSpacing.xs),
                 Text('Super Admin', style: textStyles.headline3),
+                const Spacer(),
+                if (vm.analyticsLastUpdated != null)
+                  Text(
+                    vm.analyticsAgeLabel,
+                    style: textStyles.bodySmall.copyWith(
+                      color: colors.textTertiary,
+                      fontSize: 10,
+                    ),
+                  ),
               ],
             ),
             const SizedBox(height: DSSpacing.base),
 
-            // 2x2 Mini métricas
+            // ── Vendas Globais ──
+            _buildSectionLabel('VENDAS GLOBAIS', textStyles, colors),
+            const SizedBox(height: DSSpacing.sm),
+            Row(
+              children: [
+                Expanded(
+                  child: _miniMetricCard(
+                    'Vendas Hoje',
+                    vm.totalSalesToday.formatToBRL(),
+                    '${vm.salesCountToday} vendas',
+                    Icons.point_of_sale,
+                    colors.green,
+                    colors,
+                    textStyles,
+                  ),
+                ),
+                const SizedBox(width: DSSpacing.sm),
+                Expanded(
+                  child: _miniMetricCard(
+                    'Vendas Mês',
+                    vm.totalSalesMonth.formatToBRL(),
+                    '${vm.salesCountMonth} vendas',
+                    Icons.calendar_month,
+                    colors.blue,
+                    colors,
+                    textStyles,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: DSSpacing.sm),
+            Row(
+              children: [
+                Expanded(
+                  child: _miniMetricCard(
+                    'Clientes',
+                    vm.totalCustomers.toString(),
+                    '+${vm.newCustomersMonth} este mês',
+                    Icons.people,
+                    colors.orange,
+                    colors,
+                    textStyles,
+                  ),
+                ),
+                const SizedBox(width: DSSpacing.sm),
+                Expanded(
+                  child: _miniMetricCard(
+                    'Ticket Médio',
+                    vm.averageTicketMonth.formatToBRL(),
+                    'Média do mês',
+                    Icons.receipt_long,
+                    colors.green,
+                    colors,
+                    textStyles,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: DSSpacing.xl),
+
+            // ── Métricas de Tenants ──
+            _buildSectionLabel('PLATAFORMA', textStyles, colors),
+            const SizedBox(height: DSSpacing.sm),
             Row(
               children: [
                 Expanded(
@@ -124,6 +196,12 @@ class SuperAdminDashboardMobileView extends StatelessWidget {
             ),
             const SizedBox(height: DSSpacing.xl),
 
+            // Top Tenants
+            if (vm.topTenants.isNotEmpty) ...[
+              TopTenantsTable(topTenants: vm.topTenants),
+              const SizedBox(height: DSSpacing.xl),
+            ],
+
             // Alertas
             if (vm.hasAlerts) ...[
               CriticalAlerts(
@@ -140,6 +218,20 @@ class SuperAdminDashboardMobileView extends StatelessWidget {
             const SizedBox(height: DSSpacing.xl),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSectionLabel(
+    String title,
+    DSTextStyle textStyles,
+    DSColors colors,
+  ) {
+    return Text(
+      title,
+      style: textStyles.overline.copyWith(
+        color: colors.textSecondary,
+        letterSpacing: 1.2,
       ),
     );
   }

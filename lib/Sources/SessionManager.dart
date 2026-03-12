@@ -77,6 +77,9 @@ class SessionManager {
       throw Exception('Usuário sem acesso a nenhum tenant');
     }
 
+    // 2b. Enriquecer memberships com nomes dos tenants (se não denormalizado)
+    await _loadTenantNamesForMemberships();
+
     // 3. Determinar qual tenant usar
     String? targetTenantId;
 
@@ -147,6 +150,33 @@ class SessionManager {
   bool get hasMultipleTenants => allMemberships.length > 1;
 
   // MARK: - Private
+
+  /// Carrega nomes dos tenants para cada membership (enriquecimento).
+  Future<void> _loadTenantNamesForMemberships() async {
+    final missingNames = allMemberships
+        .where((m) => m.tenantName == null || m.tenantName!.isEmpty)
+        .toList();
+
+    if (missingNames.isEmpty) return;
+
+    // Buscar tenants em batch
+    final tenantIds = missingNames.map((m) => m.tenantId).toSet();
+    for (final tenantId in tenantIds) {
+      try {
+        final doc = await _firestore.collection('tenants').doc(tenantId).get();
+        if (doc.exists) {
+          final name = (doc.data() as Map<String, dynamic>)['name'] ?? '';
+          for (final m in allMemberships.where((m) => m.tenantId == tenantId)) {
+            m.tenantName = name;
+          }
+        }
+      } catch (e) {
+        AppLogger.warning(
+          'Não foi possível carregar nome do tenant: $tenantId',
+        );
+      }
+    }
+  }
 
   Future<void> _loadTenantData(String tenantId) async {
     // Carregar tenant

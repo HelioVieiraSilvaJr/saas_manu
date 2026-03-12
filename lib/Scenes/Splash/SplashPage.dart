@@ -62,7 +62,10 @@ class _SplashPageState extends State<SplashPage> {
         await SessionManager.instance.loadSession(firebaseUser);
 
         if (mounted) {
-          Navigator.of(context).pushReplacementNamed('/dashboard');
+          final route = SessionManager.instance.isSuperAdmin
+              ? '/admin/dashboard'
+              : '/dashboard';
+          Navigator.of(context).pushReplacementNamed(route);
         }
       } catch (e) {
         AppLogger.error('Erro ao carregar sessão: $e');

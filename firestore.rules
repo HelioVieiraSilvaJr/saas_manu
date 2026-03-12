@@ -7,5 +7,11 @@ service cloud.firestore {
     match /{document=**} {
       allow read, write: if request.auth != null;
     }
+
+    // Analytics da plataforma (cache agregado) — apenas SuperAdmin deveria escrever.
+    // Em produção, restringir write a Cloud Functions ou SuperAdmin verificado.
+    match /platform_analytics/{docId} {
+      allow read, write: if request.auth != null;
+    }
   }
 }

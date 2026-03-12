@@ -15,6 +15,7 @@ class MembershipModel {
   // Campos denormalizados
   String? userName;
   String? userEmail;
+  String? tenantName;
   String? addedBy;
   DateTime? removedAt;
   String? removedBy;
@@ -28,6 +29,7 @@ class MembershipModel {
     required this.createdAt,
     this.userName,
     this.userEmail,
+    this.tenantName,
     this.addedBy,
     this.removedAt,
     this.removedBy,
@@ -48,6 +50,7 @@ class MembershipModel {
           : DateTime.now(),
       userName: data['user_name'],
       userEmail: data['user_email'],
+      tenantName: data['tenant_name'],
       addedBy: data['added_by'],
       removedAt: data['removed_at'] != null
           ? (data['removed_at'] as Timestamp).toDate()
@@ -67,6 +70,7 @@ class MembershipModel {
       'created_at': Timestamp.fromDate(createdAt),
       'user_name': userName,
       'user_email': userEmail,
+      'tenant_name': tenantName,
       'added_by': addedBy,
       'removed_at': removedAt != null ? Timestamp.fromDate(removedAt!) : null,
       'removed_by': removedBy,
@@ -84,6 +88,7 @@ class MembershipModel {
     DateTime? createdAt,
     String? userName,
     String? userEmail,
+    String? tenantName,
     String? addedBy,
     DateTime? removedAt,
     String? removedBy,
@@ -97,6 +102,7 @@ class MembershipModel {
       createdAt: createdAt ?? this.createdAt,
       userName: userName ?? this.userName,
       userEmail: userEmail ?? this.userEmail,
+      tenantName: tenantName ?? this.tenantName,
       addedBy: addedBy ?? this.addedBy,
       removedAt: removedAt ?? this.removedAt,
       removedBy: removedBy ?? this.removedBy,

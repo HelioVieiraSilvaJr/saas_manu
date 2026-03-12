@@ -107,6 +107,8 @@ class _AppShellState extends State<AppShell> {
             itemBuilder: (context) {
               return session.allMemberships.map((m) {
                 final isSelected = m.tenantId == session.currentTenant?.uid;
+                final displayName = m.tenantName ?? m.tenantId;
+                final roleLabel = m.role.label;
                 return PopupMenuItem<String>(
                   value: m.tenantId,
                   child: Row(
@@ -123,7 +125,7 @@ class _AppShellState extends State<AppShell> {
                       const SizedBox(width: DSSpacing.sm),
                       Expanded(
                         child: Text(
-                          m.tenantId,
+                          '$displayName ($roleLabel)',
                           style: textStyles.bodyMedium.copyWith(
                             fontWeight: isSelected
                                 ? FontWeight.w600
@@ -252,38 +254,42 @@ class _AppShellState extends State<AppShell> {
                   icon: Icons.dashboard_outlined,
                   selectedIcon: Icons.dashboard_rounded,
                   label: 'Dashboard',
-                  route: '/dashboard',
+                  route: session.isSuperAdmin
+                      ? '/admin/dashboard'
+                      : '/dashboard',
                   colors: colors,
                   textStyles: textStyles,
                 ),
 
-                _buildSectionHeader('CRM', textStyles, colors),
-                _buildNavItem(
-                  icon: Icons.inventory_2_outlined,
-                  selectedIcon: Icons.inventory_2_rounded,
-                  label: 'Produtos',
-                  route: '/products',
-                  colors: colors,
-                  textStyles: textStyles,
-                ),
-                _buildNavItem(
-                  icon: Icons.people_outline_rounded,
-                  selectedIcon: Icons.people_rounded,
-                  label: 'Clientes',
-                  route: '/customers',
-                  colors: colors,
-                  textStyles: textStyles,
-                ),
-                _buildNavItem(
-                  icon: Icons.shopping_cart_outlined,
-                  selectedIcon: Icons.shopping_cart_rounded,
-                  label: 'Vendas',
-                  route: '/sales',
-                  colors: colors,
-                  textStyles: textStyles,
-                ),
+                if (!session.isSuperAdmin) ...[
+                  _buildSectionHeader('CRM', textStyles, colors),
+                  _buildNavItem(
+                    icon: Icons.inventory_2_outlined,
+                    selectedIcon: Icons.inventory_2_rounded,
+                    label: 'Produtos',
+                    route: '/products',
+                    colors: colors,
+                    textStyles: textStyles,
+                  ),
+                  _buildNavItem(
+                    icon: Icons.people_outline_rounded,
+                    selectedIcon: Icons.people_rounded,
+                    label: 'Clientes',
+                    route: '/customers',
+                    colors: colors,
+                    textStyles: textStyles,
+                  ),
+                  _buildNavItem(
+                    icon: Icons.shopping_cart_outlined,
+                    selectedIcon: Icons.shopping_cart_rounded,
+                    label: 'Vendas',
+                    route: '/sales',
+                    colors: colors,
+                    textStyles: textStyles,
+                  ),
+                ],
 
-                if (session.canManageTenant()) ...[
+                if (session.canManageTenant() && !session.isSuperAdmin) ...[
                   _buildSectionHeader('Administração', textStyles, colors),
                   _buildNavItem(
                     icon: Icons.settings_outlined,
@@ -304,15 +310,7 @@ class _AppShellState extends State<AppShell> {
                 ],
 
                 if (session.isSuperAdmin) ...[
-                  _buildSectionHeader('Super Admin', textStyles, colors),
-                  _buildNavItem(
-                    icon: Icons.admin_panel_settings_outlined,
-                    selectedIcon: Icons.admin_panel_settings_rounded,
-                    label: 'Dashboard Admin',
-                    route: '/admin/dashboard',
-                    colors: colors,
-                    textStyles: textStyles,
-                  ),
+                  _buildSectionHeader('Gerenciamento', textStyles, colors),
                   _buildNavItem(
                     icon: Icons.business_outlined,
                     selectedIcon: Icons.business_rounded,
@@ -395,44 +393,48 @@ class _AppShellState extends State<AppShell> {
                   _buildDrawerItem(
                     icon: Icons.dashboard_rounded,
                     label: 'Dashboard',
-                    route: '/dashboard',
+                    route: session.isSuperAdmin
+                        ? '/admin/dashboard'
+                        : '/dashboard',
                     colors: colors,
                     textStyles: textStyles,
                   ),
 
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: DSSpacing.base,
+                  if (!session.isSuperAdmin) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: DSSpacing.base,
+                      ),
+                      child: Divider(
+                        color: colors.divider,
+                        height: DSSpacing.base,
+                      ),
                     ),
-                    child: Divider(
-                      color: colors.divider,
-                      height: DSSpacing.base,
+                    _buildDrawerSectionHeader('CRM', textStyles, colors),
+                    _buildDrawerItem(
+                      icon: Icons.inventory_2_rounded,
+                      label: 'Produtos',
+                      route: '/products',
+                      colors: colors,
+                      textStyles: textStyles,
                     ),
-                  ),
-                  _buildDrawerSectionHeader('CRM', textStyles, colors),
-                  _buildDrawerItem(
-                    icon: Icons.inventory_2_rounded,
-                    label: 'Produtos',
-                    route: '/products',
-                    colors: colors,
-                    textStyles: textStyles,
-                  ),
-                  _buildDrawerItem(
-                    icon: Icons.people_rounded,
-                    label: 'Clientes',
-                    route: '/customers',
-                    colors: colors,
-                    textStyles: textStyles,
-                  ),
-                  _buildDrawerItem(
-                    icon: Icons.shopping_cart_rounded,
-                    label: 'Vendas',
-                    route: '/sales',
-                    colors: colors,
-                    textStyles: textStyles,
-                  ),
+                    _buildDrawerItem(
+                      icon: Icons.people_rounded,
+                      label: 'Clientes',
+                      route: '/customers',
+                      colors: colors,
+                      textStyles: textStyles,
+                    ),
+                    _buildDrawerItem(
+                      icon: Icons.shopping_cart_rounded,
+                      label: 'Vendas',
+                      route: '/sales',
+                      colors: colors,
+                      textStyles: textStyles,
+                    ),
+                  ],
 
-                  if (session.canManageTenant()) ...[
+                  if (session.canManageTenant() && !session.isSuperAdmin) ...[
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: DSSpacing.base,
@@ -474,16 +476,9 @@ class _AppShellState extends State<AppShell> {
                       ),
                     ),
                     _buildDrawerSectionHeader(
-                      'Super Admin',
+                      'Gerenciamento',
                       textStyles,
                       colors,
-                    ),
-                    _buildDrawerItem(
-                      icon: Icons.admin_panel_settings_rounded,
-                      label: 'Dashboard Admin',
-                      route: '/admin/dashboard',
-                      colors: colors,
-                      textStyles: textStyles,
                     ),
                     _buildDrawerItem(
                       icon: Icons.business_rounded,
@@ -514,6 +509,8 @@ class _AppShellState extends State<AppShell> {
                     ...session.allMemberships.map((m) {
                       final isSelected =
                           m.tenantId == session.currentTenant?.uid;
+                      final displayName = m.tenantName ?? m.tenantId;
+                      final roleLabel = m.role.label;
                       return ListTile(
                         dense: true,
                         contentPadding: EdgeInsets.zero,
@@ -527,7 +524,7 @@ class _AppShellState extends State<AppShell> {
                           size: DSSpacing.iconMd,
                         ),
                         title: Text(
-                          m.tenantId,
+                          '$displayName ($roleLabel)',
                           style: textStyles.bodySmall.copyWith(
                             fontWeight: isSelected
                                 ? FontWeight.w600
@@ -733,8 +730,10 @@ class _AppShellState extends State<AppShell> {
     try {
       await SessionManager.instance.switchTenant(tenantId);
       if (mounted) {
-        // Recarregar a tela atual
-        Navigator.of(context).pushReplacementNamed('/dashboard');
+        final route = SessionManager.instance.isSuperAdmin
+            ? '/admin/dashboard'
+            : '/dashboard';
+        Navigator.of(context).pushReplacementNamed(route);
       }
     } catch (e) {
       if (mounted) {
