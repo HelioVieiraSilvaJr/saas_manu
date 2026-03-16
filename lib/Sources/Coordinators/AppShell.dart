@@ -8,6 +8,7 @@ import '../../Commons/Widgets/DesignSystem/DSAvatar.dart';
 import '../../Commons/Widgets/DesignSystem/DSBadge.dart';
 import '../../Commons/Widgets/DesignSystem/DSAlertDialog.dart';
 import '../../Scenes/Escalations/EscalationsRepository.dart';
+import '../../Scenes/StockAlerts/StockAlertsRepository.dart';
 import '../../Scenes/Sales/SalesRepository.dart';
 import '../SessionManager.dart';
 import '../PreferencesManager.dart';
@@ -29,7 +30,9 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   StreamSubscription<int>? _pendingCountSub;
+  StreamSubscription<int>? _stockAlertCountSub;
   int _escalationPendingCount = 0;
+  int _stockAlertPendingCount = 0;
 
   // Static para evitar subscriptions duplicadas entre instâncias de AppShell.
   static StreamSubscription? _automatedSalesSub;
@@ -45,6 +48,13 @@ class _AppShellState extends State<AppShell> {
       ) {
         if (mounted && count != _escalationPendingCount) {
           setState(() => _escalationPendingCount = count);
+        }
+      });
+      _stockAlertCountSub = StockAlertsRepository().watchPendingCount().listen((
+        count,
+      ) {
+        if (mounted && count != _stockAlertPendingCount) {
+          setState(() => _stockAlertPendingCount = count);
         }
       });
       _setupGlobalSalesListener();
@@ -88,6 +98,7 @@ class _AppShellState extends State<AppShell> {
   @override
   void dispose() {
     _pendingCountSub?.cancel();
+    _stockAlertCountSub?.cancel();
     super.dispose();
   }
 
@@ -370,6 +381,15 @@ class _AppShellState extends State<AppShell> {
                     textStyles: textStyles,
                     badgeCount: _escalationPendingCount,
                   ),
+                  _buildNavItem(
+                    icon: Icons.notifications_outlined,
+                    selectedIcon: Icons.notifications_rounded,
+                    label: 'Avisos de Estoque',
+                    route: '/stock-alerts',
+                    colors: colors,
+                    textStyles: textStyles,
+                    badgeCount: _stockAlertPendingCount,
+                  ),
                 ],
 
                 if (session.canManageTenant() && !session.isSuperAdmin) ...[
@@ -529,6 +549,14 @@ class _AppShellState extends State<AppShell> {
                       colors: colors,
                       textStyles: textStyles,
                       badgeCount: _escalationPendingCount,
+                    ),
+                    _buildDrawerItem(
+                      icon: Icons.notifications_rounded,
+                      label: 'Avisos de Estoque',
+                      route: '/stock-alerts',
+                      colors: colors,
+                      textStyles: textStyles,
+                      badgeCount: _stockAlertPendingCount,
                     ),
                   ],
 

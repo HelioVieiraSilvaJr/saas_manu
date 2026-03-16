@@ -46,6 +46,12 @@ service cloud.firestore {
         allow read: if isAuthenticated();
         allow write: if isAuthenticated();
       }
+
+      // ─── Stock Alerts (subcoleção) ─────────────────────
+      match /stockAlerts/{alertId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
     }
 
     // ─── Memberships ────────────────────────────────────────
