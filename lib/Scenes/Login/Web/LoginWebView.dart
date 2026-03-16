@@ -150,6 +150,7 @@ class _LoginWebViewState extends State<LoginWebView> {
             prefixIcon: Icons.lock_outline,
             hintText: '••••••••',
             textInputAction: TextInputAction.done,
+            onFieldSubmitted: (_) => _handleLogin(),
             suffix: GestureDetector(
               onTap: widget.presenter.togglePasswordVisibility,
               child: Icon(

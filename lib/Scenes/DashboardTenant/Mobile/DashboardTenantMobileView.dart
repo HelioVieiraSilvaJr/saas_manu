@@ -71,6 +71,13 @@ class DashboardTenantMobileView extends StatelessWidget {
 
             // Seção 1: Métricas (2x2 grid)
             _buildMetricCards(),
+
+            // Métricas operacionais (escalações + estoque)
+            if (viewModel.pendingEscalationsCount > 0 ||
+                viewModel.pendingStockAlertsCount > 0) ...[
+              const SizedBox(height: DSSpacing.sm),
+              _buildOperationalCards(),
+            ],
             const SizedBox(height: DSSpacing.base),
 
             // Seção 4: Ações Rápidas
@@ -160,6 +167,40 @@ class DashboardTenantMobileView extends StatelessWidget {
             ),
           ],
         ),
+      ],
+    );
+  }
+
+  Widget _buildOperationalCards() {
+    return Row(
+      children: [
+        if (viewModel.pendingEscalationsCount > 0)
+          Expanded(
+            child: DSMetricCard(
+              title: 'Escalações Pendentes',
+              value: viewModel.pendingEscalationsCount.toString(),
+              icon: Icons.support_agent_rounded,
+              comparison: 'Aguardando',
+              trend: TrendType.down,
+            ),
+          ),
+        if (viewModel.pendingEscalationsCount > 0 &&
+            viewModel.pendingStockAlertsCount > 0)
+          const SizedBox(width: DSSpacing.sm),
+        if (viewModel.pendingStockAlertsCount > 0)
+          Expanded(
+            child: DSMetricCard(
+              title: 'Alertas de Estoque',
+              value: viewModel.pendingStockAlertsCount.toString(),
+              icon: Icons.inventory_2_rounded,
+              comparison: 'Estoque baixo',
+              trend: TrendType.down,
+            ),
+          ),
+        // Spacer if only one card
+        if (viewModel.pendingEscalationsCount == 0 ||
+            viewModel.pendingStockAlertsCount == 0)
+          const Expanded(child: SizedBox()),
       ],
     );
   }

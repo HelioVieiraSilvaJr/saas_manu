@@ -136,6 +136,7 @@ class _LoginMobileViewState extends State<LoginMobileView> {
               prefixIcon: Icons.lock_outline,
               hintText: '••••••••',
               textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) => _handleLogin(),
               suffix: GestureDetector(
                 onTap: widget.presenter.togglePasswordVisibility,
                 child: Icon(

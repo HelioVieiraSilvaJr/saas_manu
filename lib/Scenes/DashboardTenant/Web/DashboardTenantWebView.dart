@@ -85,6 +85,12 @@ class DashboardTenantWebView extends StatelessWidget {
 
             // Seção 1: Métricas (4 cards em linha)
             _buildMetricCards(),
+            const SizedBox(height: DSSpacing.md),
+
+            // Seção 1b: Métricas operacionais (escalações + estoque)
+            if (viewModel.pendingEscalationsCount > 0 ||
+                viewModel.pendingStockAlertsCount > 0)
+              _buildOperationalCards(),
             const SizedBox(height: DSSpacing.xl),
 
             // Seção 2 + 3: Gráfico + Vendas Recentes (lado a lado)
@@ -176,6 +182,45 @@ class DashboardTenantWebView extends StatelessWidget {
             trend: _trendFromPercent(viewModel.ticketMedioChangePercent),
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildOperationalCards() {
+    return Row(
+      children: [
+        if (viewModel.pendingEscalationsCount > 0) ...[
+          Expanded(
+            child: DSMetricCard(
+              title: 'Escalações Pendentes',
+              value: viewModel.pendingEscalationsCount.toString(),
+              icon: Icons.support_agent_rounded,
+              comparison: 'Aguardando atendimento',
+              trend: TrendType.down,
+            ),
+          ),
+          if (viewModel.pendingStockAlertsCount > 0)
+            const SizedBox(width: DSSpacing.md),
+        ],
+        if (viewModel.pendingStockAlertsCount > 0)
+          Expanded(
+            child: DSMetricCard(
+              title: 'Alertas de Estoque',
+              value: viewModel.pendingStockAlertsCount.toString(),
+              icon: Icons.inventory_2_rounded,
+              comparison: 'Itens com estoque baixo',
+              trend: TrendType.down,
+            ),
+          ),
+        // Spacers to keep card sizes consistent with 4-card row
+        if (viewModel.pendingEscalationsCount == 0 ||
+            viewModel.pendingStockAlertsCount == 0) ...[
+          const Expanded(child: SizedBox()),
+          const SizedBox(width: DSSpacing.md),
+        ],
+        const Expanded(child: SizedBox()),
+        const SizedBox(width: DSSpacing.md),
+        const Expanded(child: SizedBox()),
       ],
     );
   }

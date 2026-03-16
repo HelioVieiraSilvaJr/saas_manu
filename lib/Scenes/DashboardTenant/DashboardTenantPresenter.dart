@@ -39,6 +39,8 @@ class DashboardTenantPresenter {
         _repository.getRecentSales(),
         _repository.getTotalProducts(),
         _repository.getProductsWithoutImage(),
+        _repository.getPendingEscalationsCount(),
+        _repository.getPendingStockAlertsCount(),
       ]);
 
       final salesToday = results[0] as double;
@@ -51,6 +53,8 @@ class DashboardTenantPresenter {
       final recentSales = results[7] as List<RecentSaleDTO>;
       final totalProducts = results[8] as int;
       final productsWithoutImage = results[9] as int;
+      final pendingEscalationsCount = results[10] as int;
+      final pendingStockAlertsCount = results[11] as int;
 
       // Gerar alertas
       final alerts = await _generateAlerts(
@@ -58,6 +62,8 @@ class DashboardTenantPresenter {
         productsWithoutImage: productsWithoutImage,
         totalCustomers: totalCustomers,
         salesCountThisMonth: salesThisMonth.count,
+        pendingEscalationsCount: pendingEscalationsCount,
+        pendingStockAlertsCount: pendingStockAlertsCount,
       );
 
       _update(
@@ -76,6 +82,8 @@ class DashboardTenantPresenter {
           totalProducts: totalProducts,
           productsWithoutImage: productsWithoutImage,
           alerts: alerts,
+          pendingEscalationsCount: pendingEscalationsCount,
+          pendingStockAlertsCount: pendingStockAlertsCount,
         ),
       );
 
@@ -165,6 +173,8 @@ class DashboardTenantPresenter {
     required int productsWithoutImage,
     required int totalCustomers,
     required int salesCountThisMonth,
+    required int pendingEscalationsCount,
+    required int pendingStockAlertsCount,
   }) async {
     final alerts = <DashboardAlert>[];
     final prefs = PreferencesManager.instance;
@@ -238,6 +248,34 @@ class DashboardTenantPresenter {
           route: '/sales/new',
         ));
       }
+    }
+
+    // 6. Escalações pendentes
+    if (pendingEscalationsCount > 0) {
+      alerts.add(
+        DashboardAlert(
+          type: DashboardAlertType.pendingEscalations,
+          title:
+              'Você tem $pendingEscalationsCount escalação${pendingEscalationsCount > 1 ? "ões" : ""} pendente${pendingEscalationsCount > 1 ? "s" : ""}.',
+          actionLabel: 'Ver Escalações',
+          route: '/escalations',
+          isWarning: true,
+        ),
+      );
+    }
+
+    // 7. Alertas de estoque pendentes
+    if (pendingStockAlertsCount > 0) {
+      alerts.add(
+        DashboardAlert(
+          type: DashboardAlertType.pendingStockAlerts,
+          title:
+              'Você tem $pendingStockAlertsCount alerta${pendingStockAlertsCount > 1 ? "s" : ""} de estoque pendente${pendingStockAlertsCount > 1 ? "s" : ""}.',
+          actionLabel: 'Ver Estoque',
+          route: '/stock-alerts',
+          isWarning: true,
+        ),
+      );
     }
 
     // Ordenar por prioridade e limitar a 3

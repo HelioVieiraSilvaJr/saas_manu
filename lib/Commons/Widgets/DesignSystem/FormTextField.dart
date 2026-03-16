@@ -22,6 +22,7 @@ class FormTextField extends StatelessWidget {
   final Widget? suffix;
   final List<TextInputFormatter>? inputFormatters;
   final void Function(String)? onChanged;
+  final void Function(String)? onFieldSubmitted;
   final void Function()? onTap;
   final FocusNode? focusNode;
   final TextInputAction? textInputAction;
@@ -45,6 +46,7 @@ class FormTextField extends StatelessWidget {
     this.suffix,
     this.inputFormatters,
     this.onChanged,
+    this.onFieldSubmitted,
     this.onTap,
     this.focusNode,
     this.textInputAction,
@@ -79,6 +81,7 @@ class FormTextField extends StatelessWidget {
           textInputAction: textInputAction,
           inputFormatters: inputFormatters,
           onChanged: onChanged,
+          onFieldSubmitted: onFieldSubmitted,
           onTap: onTap,
           style: textStyles.textField,
           decoration: InputDecoration(

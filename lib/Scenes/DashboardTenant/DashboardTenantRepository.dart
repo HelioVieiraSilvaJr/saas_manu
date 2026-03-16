@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../Commons/Enums/EscalationStatus.dart';
+import '../../Commons/Enums/StockAlertStatus.dart';
 import '../../Commons/Utils/AppLogger.dart';
 import '../../Sources/SessionManager.dart';
 
@@ -58,6 +60,12 @@ class DashboardTenantRepository {
 
   CollectionReference get _productsCollection =>
       _firestore.collection('tenants').doc(_tenantId).collection('products');
+
+  CollectionReference get _escalationsCollection =>
+      _firestore.collection('tenants').doc(_tenantId).collection('escalations');
+
+  CollectionReference get _stockAlertsCollection =>
+      _firestore.collection('tenants').doc(_tenantId).collection('stockAlerts');
 
   // MARK: - Vendas Hoje
 
@@ -298,6 +306,38 @@ class DashboardTenantRepository {
       return (snapshotNull.count ?? 0) + (snapshotEmpty.count ?? 0);
     } catch (e) {
       AppLogger.error('Erro ao buscar produtos sem imagem', error: e);
+      return 0;
+    }
+  }
+
+  // MARK: - Escalações Pendentes
+
+  /// Retorna a quantidade de escalações pendentes (aguardando atendimento).
+  Future<int> getPendingEscalationsCount() async {
+    try {
+      final snapshot = await _escalationsCollection
+          .where('status', isEqualTo: EscalationStatus.pending.name)
+          .count()
+          .get();
+      return snapshot.count ?? 0;
+    } catch (e) {
+      AppLogger.error('Erro ao buscar escalações pendentes', error: e);
+      return 0;
+    }
+  }
+
+  // MARK: - Alertas de Estoque Pendentes
+
+  /// Retorna a quantidade de alertas de estoque pendentes.
+  Future<int> getPendingStockAlertsCount() async {
+    try {
+      final snapshot = await _stockAlertsCollection
+          .where('status', isEqualTo: StockAlertStatus.pending.name)
+          .count()
+          .get();
+      return snapshot.count ?? 0;
+    } catch (e) {
+      AppLogger.error('Erro ao buscar alertas de estoque pendentes', error: e);
       return 0;
     }
   }
