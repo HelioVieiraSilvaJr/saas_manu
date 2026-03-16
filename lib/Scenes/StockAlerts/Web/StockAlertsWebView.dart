@@ -106,7 +106,9 @@ class StockAlertsWebView extends StatelessWidget {
             value: vm.pendingCount.toString(),
             comparison: 'aguardando reposição',
             icon: Icons.notifications_active_rounded,
-            color: vm.pendingCount > 0 ? colors.orange : colors.green,
+            color: vm.pendingCount > 0
+                ? colors.orange
+                : colors.green.withAlpha(50),
           ),
         ),
         const SizedBox(width: DSSpacing.base),
@@ -116,7 +118,7 @@ class StockAlertsWebView extends StatelessWidget {
             value: vm.uniqueCustomersCount.toString(),
             comparison: 'clientes esperando',
             icon: Icons.people_rounded,
-            color: colors.secundaryColor,
+            color: colors.secundaryColor.withAlpha(50),
           ),
         ),
         const SizedBox(width: DSSpacing.base),

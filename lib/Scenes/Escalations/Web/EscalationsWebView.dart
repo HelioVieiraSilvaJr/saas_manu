@@ -104,7 +104,9 @@ class EscalationsWebView extends StatelessWidget {
             value: vm.pendingCount.toString(),
             comparison: 'aguardando atendente',
             icon: Icons.notification_important_rounded,
-            color: vm.pendingCount > 0 ? colors.orange : colors.green,
+            color: vm.pendingCount > 0
+                ? colors.orange.withAlpha(50)
+                : colors.green.withAlpha(50),
           ),
         ),
         const SizedBox(width: DSSpacing.base),
@@ -114,7 +116,7 @@ class EscalationsWebView extends StatelessWidget {
             value: vm.inProgressCount.toString(),
             comparison: 'sendo atendidos',
             icon: Icons.headset_mic_rounded,
-            color: colors.secundaryColor,
+            color: colors.secundaryColor.withAlpha(50),
           ),
         ),
         const SizedBox(width: DSSpacing.base),
