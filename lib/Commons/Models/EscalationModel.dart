@@ -56,16 +56,18 @@ class EscalationModel {
       assignedTo: data['assigned_to'],
       assignedToName: data['assigned_to_name'],
       notes: data['notes'],
-      createdAt: data['created_at'] != null
-          ? (data['created_at'] as Timestamp).toDate()
-          : DateTime.now(),
-      updatedAt: data['updated_at'] != null
-          ? (data['updated_at'] as Timestamp).toDate()
-          : null,
-      completedAt: data['completed_at'] != null
-          ? (data['completed_at'] as Timestamp).toDate()
-          : null,
+      createdAt: _parseDateTime(data['created_at']) ?? DateTime.now(),
+      updatedAt: _parseDateTime(data['updated_at']),
+      completedAt: _parseDateTime(data['completed_at']),
     );
+  }
+
+  /// Converte campo de data que pode ser Timestamp ou String ISO-8601.
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is Timestamp) return value.toDate();
+    if (value is String) return DateTime.tryParse(value);
+    return null;
   }
 
   // MARK: - Serialization

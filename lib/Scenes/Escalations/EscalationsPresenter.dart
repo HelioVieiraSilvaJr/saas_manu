@@ -28,14 +28,30 @@ class EscalationsPresenter {
     _viewModel = _viewModel.copyWith(isLoading: true);
     onUpdate?.call();
 
+    debugPrint('[Escalations] Presenter.startWatchingActive chamado');
+
     _activeSubscription = _repository.watchActiveEscalations().listen(
       (escalations) {
+        debugPrint(
+          '[Escalations] Presenter recebeu ${escalations.length} escalações do stream',
+        );
+        for (final e in escalations) {
+          debugPrint(
+            '[Escalations]   -> ${e.uid}: status=${e.status.name}, '
+            'customer=${e.customerName}',
+          );
+        }
+
         final pending = escalations
             .where((e) => e.status == EscalationStatus.pending)
             .length;
         final inProgress = escalations
             .where((e) => e.status == EscalationStatus.in_progress)
             .length;
+
+        debugPrint(
+          '[Escalations] Presenter: pending=$pending, inProgress=$inProgress',
+        );
 
         _viewModel = _viewModel.copyWith(
           isLoading: false,
@@ -44,8 +60,15 @@ class EscalationsPresenter {
           inProgressCount: inProgress,
         );
         _applyFilters();
+
+        debugPrint(
+          '[Escalations] Presenter filteredActive: '
+          '${_viewModel.filteredActive.length} itens',
+        );
       },
-      onError: (e) {
+      onError: (e, stackTrace) {
+        debugPrint('[Escalations] Presenter ERRO no stream: $e');
+        debugPrint('[Escalations] StackTrace: $stackTrace');
         _viewModel = _viewModel.copyWith(
           isLoading: false,
           errorMessage: 'Erro ao carregar atendimentos',

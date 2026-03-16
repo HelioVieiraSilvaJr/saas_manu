@@ -153,6 +153,12 @@ class EscalationsRepository {
 
   /// Stream de escalações ativas (pending + in_progress) — real-time.
   Stream<List<EscalationModel>> watchActiveEscalations() {
+    final tenantId = SessionManager.instance.currentTenant!.uid;
+    final path = 'tenants/$tenantId/escalations';
+    AppLogger.info(
+      '[Escalations] watchActiveEscalations -> path: $path, '
+      'whereIn: [${EscalationStatus.pending.name}, ${EscalationStatus.in_progress.name}]',
+    );
     return _collection
         .where(
           'status',
@@ -161,13 +167,37 @@ class EscalationsRepository {
             EscalationStatus.in_progress.name,
           ],
         )
-        .orderBy('created_at', descending: false)
         .snapshots()
         .map(
-          (snapshot) => snapshot.docs
+          (snapshot) {
+          AppLogger.info(
+            '[Escalations] watchActiveEscalations snapshot -> '
+            '${snapshot.docs.length} docs encontrados',
+          );
+          for (final doc in snapshot.docs) {
+            final data = doc.data();
+            AppLogger.info(
+              '[Escalations]   doc ${doc.id}: status=${data['status']}, '
+              'created_at=${data['created_at']}, '
+              'customer_name=${data['customer_name']}',
+            );
+          }
+          final list = snapshot.docs
               .map((doc) => EscalationModel.fromDocumentSnapshot(doc))
-              .toList(),
-        );
+              .toList();
+          list.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+          AppLogger.info(
+            '[Escalations] watchActiveEscalations -> retornando ${list.length} itens',
+          );
+          return list;
+        })
+        .handleError((error, stackTrace) {
+          AppLogger.error(
+            '[Escalations] watchActiveEscalations ERRO',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        });
   }
 
   /// Stream da contagem de escalações pendentes — para badge no menu.
@@ -175,7 +205,18 @@ class EscalationsRepository {
     return _collection
         .where('status', isEqualTo: EscalationStatus.pending.name)
         .snapshots()
-        .map((snapshot) => snapshot.docs.length);
+        .map((snapshot) {
+          AppLogger.info(
+            '[Escalations] watchPendingCount -> ${snapshot.docs.length} pendentes',
+          );
+          for (final doc in snapshot.docs) {
+            final data = doc.data();
+            AppLogger.info(
+              '[Escalations]   pending doc ${doc.id}: status=${data['status']}',
+            );
+          }
+          return snapshot.docs.length;
+        });
   }
 
   // MARK: - Consultas
@@ -185,12 +226,17 @@ class EscalationsRepository {
     try {
       final snapshot = await _collection
           .where('status', isEqualTo: EscalationStatus.completed.name)
-          .orderBy('completed_at', descending: true)
           .limit(limit)
           .get();
-      return snapshot.docs
+      final list = snapshot.docs
           .map((doc) => EscalationModel.fromDocumentSnapshot(doc))
           .toList();
+      list.sort(
+        (a, b) => (b.completedAt ?? b.createdAt).compareTo(
+          a.completedAt ?? a.createdAt,
+        ),
+      );
+      return list;
     } catch (e) {
       AppLogger.error('Erro ao buscar escalações finalizadas', error: e);
       return [];
