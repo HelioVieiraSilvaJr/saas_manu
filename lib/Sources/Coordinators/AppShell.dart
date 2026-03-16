@@ -945,6 +945,10 @@ class _AppShellState extends State<AppShell> {
     );
 
     if (confirm == true && mounted) {
+      _pendingCountSub?.cancel();
+      _stockAlertCountSub?.cancel();
+      _salesPendingCountSub?.cancel();
+      _orderActiveCountSub?.cancel();
       cancelGlobalListeners();
       await SessionManager.instance.signOut();
       await PreferencesManager.instance.clear();

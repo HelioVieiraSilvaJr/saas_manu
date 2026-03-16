@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../Commons/Utils/ScreenResponsive.dart';
 import '../../Sources/Coordinators/AppShell.dart';
+import '../../Sources/SessionManager.dart';
 import 'DashboardTenantPresenter.dart';
 import 'DashboardTenantViewModel.dart';
 import 'Web/DashboardTenantWebView.dart';
@@ -31,7 +32,9 @@ class _DashboardTenantPageState extends State<DashboardTenantPage> {
       },
     );
     _presenter.context = context;
-    _presenter.loadDashboard();
+    if (SessionManager.instance.currentTenant != null) {
+      _presenter.loadDashboard();
+    }
   }
 
   @override

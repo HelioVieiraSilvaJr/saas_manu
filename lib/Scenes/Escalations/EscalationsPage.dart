@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../Commons/Utils/ScreenResponsive.dart';
 import '../../Commons/Widgets/DesignSystem/DSAlertDialog.dart';
 import '../../Sources/Coordinators/AppShell.dart';
+import '../../Sources/SessionManager.dart';
 import 'EscalationsPresenter.dart';
 import 'EscalationsViewModel.dart';
 import 'Mobile/EscalationsMobileView.dart';
@@ -25,7 +26,9 @@ class _EscalationsPageState extends State<EscalationsPage> {
   void initState() {
     super.initState();
     _presenter.onUpdate = () => setState(() {});
-    _presenter.startWatchingActive();
+    if (SessionManager.instance.currentTenant != null) {
+      _presenter.startWatchingActive();
+    }
   }
 
   @override
