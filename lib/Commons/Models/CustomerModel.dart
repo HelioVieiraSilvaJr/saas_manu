@@ -19,6 +19,7 @@ class CustomerModel {
   DateTime? lastPurchaseAt; // Denormalizado
   double? totalSpent; // Denormalizado
   int? purchaseCount; // Denormalizado
+  bool agentOff; // true = agente IA pausado para este cliente
 
   CustomerModel({
     required this.uid,
@@ -32,6 +33,7 @@ class CustomerModel {
     this.lastPurchaseAt,
     this.totalSpent,
     this.purchaseCount,
+    this.agentOff = false,
   });
 
   // MARK: - Factory
@@ -58,6 +60,7 @@ class CustomerModel {
           ? (data['total_spent'] as num).toDouble()
           : null,
       purchaseCount: data['purchase_count'] as int?,
+      agentOff: data['agent_off'] ?? false,
     );
   }
 
@@ -77,6 +80,7 @@ class CustomerModel {
           : null,
       'total_spent': totalSpent,
       'purchase_count': purchaseCount,
+      'agent_off': agentOff,
     };
   }
 
@@ -90,6 +94,7 @@ class CustomerModel {
       whatsapp: '',
       isActive: true,
       createdAt: DateTime.now(),
+      agentOff: false,
     );
   }
 
@@ -107,6 +112,7 @@ class CustomerModel {
     DateTime? lastPurchaseAt,
     double? totalSpent,
     int? purchaseCount,
+    bool? agentOff,
   }) {
     return CustomerModel(
       uid: uid ?? this.uid,
@@ -120,6 +126,7 @@ class CustomerModel {
       lastPurchaseAt: lastPurchaseAt ?? this.lastPurchaseAt,
       totalSpent: totalSpent ?? this.totalSpent,
       purchaseCount: purchaseCount ?? this.purchaseCount,
+      agentOff: agentOff ?? this.agentOff,
     );
   }
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../Commons/Widgets/DesignSystem/DSColors.dart';
 import '../../Commons/Widgets/DesignSystem/DSTextStyle.dart';
@@ -5,6 +6,7 @@ import '../../Commons/Widgets/DesignSystem/DSSpacing.dart';
 import '../../Commons/Widgets/DesignSystem/DSAvatar.dart';
 import '../../Commons/Widgets/DesignSystem/DSBadge.dart';
 import '../../Commons/Widgets/DesignSystem/DSAlertDialog.dart';
+import '../../Scenes/Escalations/EscalationsRepository.dart';
 import '../SessionManager.dart';
 import '../PreferencesManager.dart';
 import '../../Scenes/Login/LoginCoordinator.dart';
@@ -24,6 +26,29 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  StreamSubscription<int>? _pendingCountSub;
+  int _escalationPendingCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    final session = SessionManager.instance;
+    if (session.currentTenant != null && !session.isSuperAdmin) {
+      _pendingCountSub = EscalationsRepository().watchPendingCount().listen((
+        count,
+      ) {
+        if (mounted && count != _escalationPendingCount) {
+          setState(() => _escalationPendingCount = count);
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _pendingCountSub?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -295,6 +320,15 @@ class _AppShellState extends State<AppShell> {
                     colors: colors,
                     textStyles: textStyles,
                   ),
+                  _buildNavItem(
+                    icon: Icons.support_agent_outlined,
+                    selectedIcon: Icons.support_agent_rounded,
+                    label: 'Atendimentos',
+                    route: '/escalations',
+                    colors: colors,
+                    textStyles: textStyles,
+                    badgeCount: _escalationPendingCount,
+                  ),
                 ],
 
                 if (session.canManageTenant() && !session.isSuperAdmin) ...[
@@ -446,6 +480,14 @@ class _AppShellState extends State<AppShell> {
                       route: '/orders',
                       colors: colors,
                       textStyles: textStyles,
+                    ),
+                    _buildDrawerItem(
+                      icon: Icons.support_agent_rounded,
+                      label: 'Atendimentos',
+                      route: '/escalations',
+                      colors: colors,
+                      textStyles: textStyles,
+                      badgeCount: _escalationPendingCount,
                     ),
                   ],
 
@@ -615,6 +657,7 @@ class _AppShellState extends State<AppShell> {
     required String route,
     required DSColors colors,
     required DSTextStyle textStyles,
+    int badgeCount = 0,
   }) {
     final isSelected = widget.currentRoute == route;
 
@@ -658,17 +701,38 @@ class _AppShellState extends State<AppShell> {
                   size: DSSpacing.iconLg,
                 ),
                 const SizedBox(width: DSSpacing.md),
-                Text(
-                  label,
-                  style: textStyles.bodyMedium.copyWith(
-                    color: isSelected
-                        ? colors.primaryColor
-                        : colors.textSecondary,
-                    fontWeight: isSelected
-                        ? FontWeight.w600
-                        : FontWeight.normal,
+                Expanded(
+                  child: Text(
+                    label,
+                    style: textStyles.bodyMedium.copyWith(
+                      color: isSelected
+                          ? colors.primaryColor
+                          : colors.textSecondary,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                    ),
                   ),
                 ),
+                if (badgeCount > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '$badgeCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -702,6 +766,7 @@ class _AppShellState extends State<AppShell> {
     required String route,
     required DSColors colors,
     required DSTextStyle textStyles,
+    int badgeCount = 0,
   }) {
     final isSelected = widget.currentRoute == route;
 
@@ -722,6 +787,23 @@ class _AppShellState extends State<AppShell> {
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
+        trailing: badgeCount > 0
+            ? Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: colors.red,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$badgeCount',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              )
+            : null,
         selected: isSelected,
         selectedTileColor: colors.primarySurface,
         shape: RoundedRectangleBorder(
