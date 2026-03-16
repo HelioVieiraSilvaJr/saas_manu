@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:elegant_notification/elegant_notification.dart';
 import 'package:flutter/material.dart';
 import '../../Commons/Widgets/DesignSystem/DSColors.dart';
 import '../../Commons/Widgets/DesignSystem/DSTextStyle.dart';
@@ -7,6 +8,7 @@ import '../../Commons/Widgets/DesignSystem/DSAvatar.dart';
 import '../../Commons/Widgets/DesignSystem/DSBadge.dart';
 import '../../Commons/Widgets/DesignSystem/DSAlertDialog.dart';
 import '../../Scenes/Escalations/EscalationsRepository.dart';
+import '../../Scenes/Sales/SalesRepository.dart';
 import '../SessionManager.dart';
 import '../PreferencesManager.dart';
 import '../../Scenes/Login/LoginCoordinator.dart';
@@ -29,6 +31,10 @@ class _AppShellState extends State<AppShell> {
   StreamSubscription<int>? _pendingCountSub;
   int _escalationPendingCount = 0;
 
+  // Static para evitar subscriptions duplicadas entre instâncias de AppShell.
+  static StreamSubscription? _automatedSalesSub;
+  static int _lastKnownSalesCount = -1;
+
   @override
   void initState() {
     super.initState();
@@ -41,7 +47,42 @@ class _AppShellState extends State<AppShell> {
           setState(() => _escalationPendingCount = count);
         }
       });
+      _setupGlobalSalesListener();
     }
+  }
+
+  void _setupGlobalSalesListener() {
+    if (_automatedSalesSub != null) return;
+    _automatedSalesSub = SalesRepository().watchNewAutomatedSales().listen((
+      newSales,
+    ) {
+      if (newSales.isEmpty) {
+        _lastKnownSalesCount = 0;
+        return;
+      }
+      if (_lastKnownSalesCount == -1) {
+        // Primeira emissão: marcar contagem sem notificar
+        _lastKnownSalesCount = newSales.length;
+        return;
+      }
+      if (newSales.length > _lastKnownSalesCount && mounted) {
+        final diff = newSales.length - _lastKnownSalesCount;
+        ElegantNotification.success(
+          title: const Text('Nova Venda WhatsApp!'),
+          description: Text(
+            '$diff nova(s) venda(s) automática(s) recebida(s).',
+          ),
+        ).show(context);
+      }
+      _lastKnownSalesCount = newSales.length;
+    });
+  }
+
+  /// Cancela a subscription global (chamado no logout).
+  static void cancelGlobalListeners() {
+    _automatedSalesSub?.cancel();
+    _automatedSalesSub = null;
+    _lastKnownSalesCount = -1;
   }
 
   @override
@@ -852,6 +893,7 @@ class _AppShellState extends State<AppShell> {
     );
 
     if (confirm == true && mounted) {
+      cancelGlobalListeners();
       await SessionManager.instance.signOut();
       await PreferencesManager.instance.clear();
       if (mounted) {

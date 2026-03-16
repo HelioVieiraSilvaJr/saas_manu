@@ -216,13 +216,66 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
           const SizedBox(height: DSSpacing.xs),
 
           // Badge
-          DSBadge(
-            label: customer.isActive
-                ? (customer.hasPurchases ? 'Cliente Ativo' : 'Novo')
-                : 'Inativo',
-            type: customer.isActive ? DSBadgeType.success : DSBadgeType.error,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              DSBadge(
+                label: customer.isActive
+                    ? (customer.hasPurchases ? 'Cliente Ativo' : 'Novo')
+                    : 'Inativo',
+                type: customer.isActive
+                    ? DSBadgeType.success
+                    : DSBadgeType.error,
+              ),
+              if (customer.agentOff) ...[
+                const SizedBox(width: DSSpacing.xs),
+                DSBadge(label: 'Agente IA Pausado', type: DSBadgeType.warning),
+              ],
+            ],
           ),
-          const SizedBox(height: DSSpacing.lg),
+          const SizedBox(height: DSSpacing.md),
+
+          // Toggle Agente IA
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: DSSpacing.base,
+              vertical: DSSpacing.xs,
+            ),
+            decoration: BoxDecoration(
+              color: customer.agentOff
+                  ? colors.orange.withValues(alpha: 0.08)
+                  : colors.green.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.smart_toy_rounded,
+                  size: 18,
+                  color: customer.agentOff ? colors.orange : colors.green,
+                ),
+                const SizedBox(width: DSSpacing.sm),
+                Text(
+                  'Agente IA',
+                  style: textStyles.bodySmall.copyWith(
+                    color: customer.agentOff ? colors.orange : colors.green,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: DSSpacing.xs),
+                SizedBox(
+                  height: 28,
+                  child: Switch.adaptive(
+                    value: !customer.agentOff,
+                    activeColor: colors.green,
+                    onChanged: (value) => _handleToggleAgent(!value),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: DSSpacing.md),
 
           Divider(color: colors.divider),
           const SizedBox(height: DSSpacing.md),
@@ -410,7 +463,10 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
               Center(
                 child: TextButton(
                   onPressed: () {
-                    // TODO: Navegar para todas as compras do cliente
+                    Navigator.of(context).pushNamed(
+                      '/sales',
+                      arguments: {'customerName': _customer!.name},
+                    );
                   },
                   child: Text(
                     'Ver Todas as Compras →',
@@ -514,6 +570,14 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
 
   void _openEmail(String email) {
     launchUrl(Uri.parse('mailto:$email'));
+  }
+
+  Future<void> _handleToggleAgent(bool agentOff) async {
+    final updated = _customer!.copyWith(agentOff: agentOff);
+    final success = await _repository.update(updated);
+    if (success && mounted) {
+      setState(() => _customer = updated);
+    }
   }
 
   Future<void> _handleDelete(CustomerModel customer) async {

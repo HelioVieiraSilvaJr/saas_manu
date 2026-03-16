@@ -335,6 +335,11 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
                   maxLines: 4,
                   textInputAction: TextInputAction.done,
                 ),
+
+                if (_viewModel.isEditing) ...[
+                  const SizedBox(height: DSSpacing.lg),
+                  _buildAgentToggle(colors, textStyles),
+                ],
               ],
             ),
           ),
@@ -450,6 +455,11 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
             maxLines: 4,
             textInputAction: TextInputAction.done,
           ),
+
+          if (_viewModel.isEditing) ...[
+            const SizedBox(height: DSSpacing.lg),
+            _buildAgentToggle(colors, textStyles),
+          ],
           const SizedBox(height: DSSpacing.xl),
 
           DSButton.primary(
@@ -460,6 +470,71 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
             onTap: _viewModel.isSaving ? null : _handleSave,
           ),
           const SizedBox(height: DSSpacing.xl),
+        ],
+      ),
+    );
+  }
+
+  // MARK: - Agent Toggle
+
+  Widget _buildAgentToggle(DSColors colors, DSTextStyle textStyles) {
+    final customer = _viewModel.customer;
+    if (customer == null) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(DSSpacing.base),
+      decoration: BoxDecoration(
+        color: customer.agentOff
+            ? colors.orange.withValues(alpha: 0.08)
+            : colors.green.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        border: Border.all(
+          color: customer.agentOff
+              ? colors.orange.withValues(alpha: 0.3)
+              : colors.green.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.smart_toy_rounded,
+            size: 22,
+            color: customer.agentOff ? colors.orange : colors.green,
+          ),
+          const SizedBox(width: DSSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Agente IA',
+                  style: textStyles.labelLarge.copyWith(
+                    color: customer.agentOff ? colors.orange : colors.green,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  customer.agentOff
+                      ? 'Pausado — atendimento humano ativo'
+                      : 'Ativo — atendendo automaticamente',
+                  style: textStyles.bodySmall.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch.adaptive(
+            value: !customer.agentOff,
+            activeColor: colors.green,
+            onChanged: (value) {
+              setState(() {
+                _viewModel = _viewModel.copyWith(
+                  customer: customer.copyWith(agentOff: !value),
+                );
+              });
+            },
+          ),
         ],
       ),
     );

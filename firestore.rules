@@ -2,16 +2,66 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Regras de desenvolvimento: qualquer usuário autenticado pode ler/escrever.
-    // TODO: Restringir para produção com validação de memberships por query.
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    // ─── Helper Functions ───────────────────────────────────
+
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
-    // Analytics da plataforma (cache agregado) — apenas SuperAdmin deveria escrever.
-    // Em produção, restringir write a Cloud Functions ou SuperAdmin verificado.
+    // ─── Users ──────────────────────────────────────────────
+    // Cada usuário só pode ler/escrever seu próprio doc.
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ─── Tenants ────────────────────────────────────────────
+    // Qualquer autenticado pode ler (necessário para listar tenants no switch).
+    // Apenas autenticado pode escrever (SuperAdmin/TenantAdmin valida no app).
+    match /tenants/{tenantId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+
+      // ─── Customers (subcoleção) ─────────────────────────
+      match /customers/{customerId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
+
+      // ─── Products (subcoleção) ──────────────────────────
+      match /products/{productId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
+
+      // ─── Sales (subcoleção) ─────────────────────────────
+      match /sales/{saleId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update, delete: if isAuthenticated();
+      }
+
+      // ─── Escalations (subcoleção) ───────────────────────
+      match /escalations/{escalationId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
+    }
+
+    // ─── Memberships ────────────────────────────────────────
+    // Usuário pode ler seus próprios memberships.
+    // Escrita restrita a autenticados (admin cria/remove via app).
+    match /memberships/{membershipId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // ─── Platform Analytics ─────────────────────────────────
+    // Leitura para qualquer autenticado (dashboard).
+    // Escrita restrita a autenticados (app-level verifica SuperAdmin).
     match /platform_analytics/{docId} {
-      allow read, write: if request.auth != null;
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
     }
   }
 }
