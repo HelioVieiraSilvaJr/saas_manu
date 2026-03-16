@@ -1,7 +1,5 @@
-import 'dart:async';
 import 'package:elegant_notification/elegant_notification.dart';
 import 'package:flutter/material.dart';
-import '../../Commons/Models/SaleModel.dart';
 import '../../Commons/Utils/ScreenResponsive.dart';
 import '../../Commons/Widgets/DesignSystem/DSAlertDialog.dart';
 import '../../Sources/Coordinators/AppShell.dart';
@@ -26,38 +24,19 @@ class _SalesListPageState extends State<SalesListPage> {
   late final SalesCoordinator _coordinator;
   final _productsRepository = ProductsRepository();
   final _customersRepository = CustomersRepository();
-  StreamSubscription<List<SaleModel>>? _automatedSalesSubscription;
 
   @override
   void initState() {
     super.initState();
     _coordinator = SalesCoordinator(context);
     _presenter.onUpdate = () => setState(() {});
-    _presenter.loadSales();
-    _setupAutomatedSalesListener();
-  }
-
-  void _setupAutomatedSalesListener() {
-    _automatedSalesSubscription = _presenter.watchNewAutomatedSales().listen((
-      newSales,
-    ) {
-      if (newSales.isNotEmpty && mounted) {
-        ElegantNotification.success(
-          title: const Text('Nova Venda!'),
-          description: Text(
-            '${newSales.length} nova(s) venda(s) automática(s).',
-          ),
-        ).show(context);
-        _presenter.loadSales(forceRefresh: true);
-      }
-    });
+    _presenter.startWatching();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     _presenter.dispose();
-    _automatedSalesSubscription?.cancel();
     super.dispose();
   }
 
@@ -183,10 +162,7 @@ class _SalesListPageState extends State<SalesListPage> {
   }
 
   void _handleNewSale() async {
-    final result = await _coordinator.navigateToCreate();
-    if (result == true) {
-      _presenter.loadSales(forceRefresh: true);
-    }
+    await _coordinator.navigateToCreate();
   }
 
   @override
@@ -213,7 +189,7 @@ class _SalesListPageState extends State<SalesListPage> {
           onSendPaymentRequest: _handleSendPaymentRequest,
           onConfirmPayment: _handleConfirmPayment,
           onCancelSale: _handleCancelSale,
-          onRefresh: () => _presenter.loadSales(forceRefresh: true),
+          onRefresh: () async {},
         ),
       ),
     );

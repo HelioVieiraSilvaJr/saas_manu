@@ -31,8 +31,12 @@ class _AppShellState extends State<AppShell> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   StreamSubscription<int>? _pendingCountSub;
   StreamSubscription<int>? _stockAlertCountSub;
+  StreamSubscription<int>? _salesPendingCountSub;
+  StreamSubscription<int>? _orderActiveCountSub;
   int _escalationPendingCount = 0;
   int _stockAlertPendingCount = 0;
+  int _salesPendingCount = 0;
+  int _orderActiveCount = 0;
 
   // Static para evitar subscriptions duplicadas entre instâncias de AppShell.
   static StreamSubscription? _automatedSalesSub;
@@ -55,6 +59,20 @@ class _AppShellState extends State<AppShell> {
       ) {
         if (mounted && count != _stockAlertPendingCount) {
           setState(() => _stockAlertPendingCount = count);
+        }
+      });
+      _salesPendingCountSub = SalesRepository().watchPendingSalesCount().listen(
+        (count) {
+          if (mounted && count != _salesPendingCount) {
+            setState(() => _salesPendingCount = count);
+          }
+        },
+      );
+      _orderActiveCountSub = SalesRepository().watchActiveOrdersCount().listen((
+        count,
+      ) {
+        if (mounted && count != _orderActiveCount) {
+          setState(() => _orderActiveCount = count);
         }
       });
       _setupGlobalSalesListener();
@@ -99,6 +117,8 @@ class _AppShellState extends State<AppShell> {
   void dispose() {
     _pendingCountSub?.cancel();
     _stockAlertCountSub?.cancel();
+    _salesPendingCountSub?.cancel();
+    _orderActiveCountSub?.cancel();
     super.dispose();
   }
 
@@ -363,6 +383,7 @@ class _AppShellState extends State<AppShell> {
                     route: '/sales',
                     colors: colors,
                     textStyles: textStyles,
+                    badgeCount: _salesPendingCount,
                   ),
                   _buildNavItem(
                     icon: Icons.view_kanban_outlined,
@@ -371,6 +392,7 @@ class _AppShellState extends State<AppShell> {
                     route: '/orders',
                     colors: colors,
                     textStyles: textStyles,
+                    badgeCount: _orderActiveCount,
                   ),
                   _buildNavItem(
                     icon: Icons.support_agent_outlined,
@@ -534,6 +556,7 @@ class _AppShellState extends State<AppShell> {
                       route: '/sales',
                       colors: colors,
                       textStyles: textStyles,
+                      badgeCount: _salesPendingCount,
                     ),
                     _buildDrawerItem(
                       icon: Icons.view_kanban_rounded,
@@ -541,6 +564,7 @@ class _AppShellState extends State<AppShell> {
                       route: '/orders',
                       colors: colors,
                       textStyles: textStyles,
+                      badgeCount: _orderActiveCount,
                     ),
                     _buildDrawerItem(
                       icon: Icons.support_agent_rounded,

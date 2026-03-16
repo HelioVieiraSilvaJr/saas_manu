@@ -725,11 +725,11 @@ class _SaleTableRowState extends State<_SaleTableRow> {
 
   DSBadgeType _orderStatusBadgeType(OrderStatus status) {
     switch (status) {
-      case OrderStatus.separating:
+      case OrderStatus.awaiting_processing:
         return DSBadgeType.warning;
-      case OrderStatus.packing:
+      case OrderStatus.preparing:
         return DSBadgeType.info;
-      case OrderStatus.ready:
+      case OrderStatus.ready_for_pickup:
         return DSBadgeType.primary;
       case OrderStatus.completed:
         return DSBadgeType.success;

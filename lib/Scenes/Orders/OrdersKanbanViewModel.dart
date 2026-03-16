@@ -19,19 +19,34 @@ class OrdersKanbanViewModel {
   });
 
   /// Pedidos filtrados por status.
+  /// Para "completed", limita aos últimos 7 dias.
   List<SaleModel> ordersByStatus(OrderStatus status) {
+    if (status == OrderStatus.completed) {
+      final sevenDaysAgo = DateTime.now().subtract(const Duration(days: 7));
+      return allOrders
+          .where(
+            (o) =>
+                o.orderStatus == status &&
+                (o.updatedAt ?? o.createdAt).isAfter(sevenDaysAgo),
+          )
+          .toList();
+    }
     return allOrders.where((o) => o.orderStatus == status).toList();
   }
 
-  /// Contagem por status.
+  /// Contagem por status (usa mesma lógica de filtragem).
   int countByStatus(OrderStatus status) => ordersByStatus(status).length;
 
   /// Total de pedidos ativos (não concluídos).
   int get activeOrdersCount =>
       allOrders.where((o) => o.orderStatus != OrderStatus.completed).length;
 
-  /// Total de pedidos concluídos.
+  /// Total de pedidos concluídos (últimos 7 dias, visíveis no Kanban).
   int get completedCount => countByStatus(OrderStatus.completed);
+
+  /// Total geral de concluídos (para referência).
+  int get allCompletedCount =>
+      allOrders.where((o) => o.orderStatus == OrderStatus.completed).length;
 
   OrdersKanbanViewModel copyWith({
     bool? isLoading,

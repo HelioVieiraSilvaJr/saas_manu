@@ -150,7 +150,7 @@ class SalesRepository {
     try {
       await _collection.doc(saleId).update({
         'status': SaleStatus.confirmed.name,
-        'order_status': OrderStatus.separating.name,
+        'order_status': OrderStatus.awaiting_processing.name,
         'payment_confirmed_at': Timestamp.fromDate(DateTime.now()),
         'updated_at': Timestamp.fromDate(DateTime.now()),
       });
@@ -291,6 +291,42 @@ class SalesRepository {
     return _collection
         .where('created_at', isGreaterThan: Timestamp.fromDate(fiveMinutesAgo))
         .where('source', isEqualTo: 'whatsapp_automation')
+        .orderBy('created_at', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => SaleModel.fromDocumentSnapshot(doc))
+              .toList(),
+        );
+  }
+
+  // MARK: - Streams para Badges e Real-Time
+
+  /// Stream de contagem de vendas pendentes (para badge no menu "Vendas").
+  Stream<int> watchPendingSalesCount() {
+    return _collection
+        .where('status', isEqualTo: SaleStatus.pending.name)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
+
+  /// Stream de contagem de pedidos ativos não concluídos (para badge no menu "Pedidos").
+  Stream<int> watchActiveOrdersCount() {
+    return _collection
+        .where('status', isEqualTo: SaleStatus.confirmed.name)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs.where((doc) {
+            final orderStatus = doc.data()['order_status'];
+            return orderStatus != null &&
+                orderStatus != OrderStatus.completed.name;
+          }).length,
+        );
+  }
+
+  /// Stream de todas as vendas em tempo real (para SalesListPage).
+  Stream<List<SaleModel>> watchAllSales() {
+    return _collection
         .orderBy('created_at', descending: true)
         .snapshots()
         .map(

@@ -9,7 +9,7 @@ import 'SalesRepository.dart';
 /// Presenter da listagem de vendas.
 ///
 /// Gerencia carregamento, busca, filtros, ordenação e exclusão.
-/// Usa cache do SalesRepository para evitar re-downloads.
+/// Usa stream real-time do Firestore para manter a lista sincronizada.
 /// Mutações usam optimistic updates (atualiza localmente primeiro).
 class SalesListPresenter {
   final SalesRepository _repository = SalesRepository();
@@ -20,23 +20,30 @@ class SalesListPresenter {
   VoidCallback? onUpdate;
 
   Timer? _debounceTimer;
+  StreamSubscription<List<SaleModel>>? _salesSubscription;
 
-  // MARK: - Carregamento
+  // MARK: - Real-Time Streaming
 
-  /// Carrega vendas. Usa cache se disponível.
-  Future<void> loadSales({bool forceRefresh = false}) async {
-    // Se cache está fresco e não é refresh forçado, usa dados cacheados
-    if (!forceRefresh && SalesRepository.salesCache.isFresh) {
-      final sales = SalesRepository.salesCache.data;
-      _updateViewModelWithSales(sales);
-      return;
-    }
-
+  /// Inicia escuta em tempo real de todas as vendas.
+  void startWatching() {
     _viewModel = _viewModel.copyWith(isLoading: true);
     onUpdate?.call();
 
-    final sales = await _repository.getAll(forceRefresh: forceRefresh);
-    _updateViewModelWithSales(sales);
+    _salesSubscription?.cancel();
+    _salesSubscription = _repository.watchAllSales().listen(
+      (sales) {
+        // Atualiza cache global
+        SalesRepository.salesCache.set(sales);
+        _updateViewModelWithSales(sales);
+      },
+      onError: (e) {
+        _viewModel = _viewModel.copyWith(
+          isLoading: false,
+          errorMessage: 'Erro ao carregar vendas',
+        );
+        onUpdate?.call();
+      },
+    );
   }
 
   /// Calcula métricas e atualiza o ViewModel com a lista de vendas.
@@ -244,7 +251,7 @@ class SalesListPresenter {
         saleId,
         (sale) => sale.copyWith(
           status: SaleStatus.confirmed,
-          orderStatus: OrderStatus.separating,
+          orderStatus: OrderStatus.awaiting_processing,
           paymentConfirmedAt: DateTime.now(),
         ),
       );
@@ -296,5 +303,6 @@ class SalesListPresenter {
 
   void dispose() {
     _debounceTimer?.cancel();
+    _salesSubscription?.cancel();
   }
 }

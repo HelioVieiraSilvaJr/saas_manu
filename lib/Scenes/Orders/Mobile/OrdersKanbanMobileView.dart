@@ -115,33 +115,77 @@ class _OrdersKanbanMobileViewState extends State<OrdersKanbanMobileView>
                   child: EmptyState(
                     icon: Icons.inbox_rounded,
                     title: 'Nenhum pedido',
-                    message: 'Nenhum pedido em "${status.shortLabel}".',
+                    message: status == OrderStatus.completed
+                        ? 'Nenhum pedido concluído nos últimos 7 dias.'
+                        : 'Nenhum pedido em "${status.shortLabel}".',
                   ),
                 );
               }
-              return RefreshIndicator(
-                onRefresh: widget.onRefresh,
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(DSSpacing.base),
-                  itemCount: orders.length,
-                  itemBuilder: (context, index) {
-                    final order = orders[index];
-                    return _MobileOrderCard(
-                      order: order,
-                      status: status,
-                      isMoving: vm.movingOrderId == order.uid,
-                      colors: colors,
-                      textStyles: textStyles,
-                      onMoveNext: status.next != null
-                          ? () => widget.presenter.moveToNext(order.uid)
-                          : null,
-                      onMovePrevious: status.previous != null
-                          ? () => widget.presenter.moveToPrevious(order.uid)
-                          : null,
-                      onTap: () => widget.onViewDetails(order.uid),
-                    );
-                  },
-                ),
+              return Column(
+                children: [
+                  Expanded(
+                    child: RefreshIndicator(
+                      onRefresh: widget.onRefresh,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(DSSpacing.base),
+                        itemCount: orders.length,
+                        itemBuilder: (context, index) {
+                          final order = orders[index];
+                          return _MobileOrderCard(
+                            order: order,
+                            status: status,
+                            isMoving: vm.movingOrderId == order.uid,
+                            colors: colors,
+                            textStyles: textStyles,
+                            onMoveNext: status.next != null
+                                ? () => widget.presenter.moveToNext(order.uid)
+                                : null,
+                            onMovePrevious: status.previous != null
+                                ? () =>
+                                      widget.presenter.moveToPrevious(order.uid)
+                                : null,
+                            onTap: () => widget.onViewDetails(order.uid),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  if (status == OrderStatus.completed)
+                    InkWell(
+                      onTap: () =>
+                          Navigator.of(context).pushReplacementNamed('/sales'),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: DSSpacing.md,
+                          horizontal: DSSpacing.base,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            top: BorderSide(color: colors.divider),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.history_rounded,
+                              size: 16,
+                              color: colors.primaryColor,
+                            ),
+                            const SizedBox(width: DSSpacing.xs),
+                            Text(
+                              'Ver histórico completo',
+                              style: textStyles.labelMedium.copyWith(
+                                color: colors.primaryColor,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
               );
             }).toList(),
           ),
@@ -276,7 +320,8 @@ class _MobileOrderCard extends StatelessWidget {
                               child: ElevatedButton(
                                 onPressed: onMoveNext,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: status == OrderStatus.ready
+                                  backgroundColor:
+                                      status == OrderStatus.ready_for_pickup
                                       ? colors.green
                                       : colors.primaryColor,
                                   minimumSize: const Size(0, 36),
@@ -299,11 +344,11 @@ class _MobileOrderCard extends StatelessWidget {
 
   String _nextLabel() {
     switch (status) {
-      case OrderStatus.separating:
-        return 'Embalar →';
-      case OrderStatus.packing:
+      case OrderStatus.awaiting_processing:
+        return 'Preparar →';
+      case OrderStatus.preparing:
         return 'Pronto →';
-      case OrderStatus.ready:
+      case OrderStatus.ready_for_pickup:
         return 'Concluir ✓';
       default:
         return 'Avançar →';

@@ -76,7 +76,7 @@ class OrdersKanbanWebView extends StatelessWidget {
                         'Quando uma venda tiver o pagamento confirmado, o pedido aparecerá aqui automaticamente.',
                   ),
                 )
-              : _buildKanbanBoard(vm, colors, textStyles),
+              : _buildKanbanBoard(context, vm, colors, textStyles),
         ),
       ],
     );
@@ -99,7 +99,7 @@ class OrdersKanbanWebView extends StatelessWidget {
         ),
         const SizedBox(width: DSSpacing.sm),
         _buildChip(
-          '${vm.completedCount} concluídos',
+          '${vm.completedCount} concluídos (7 dias)',
           colors.green,
           colors.greenLight,
           textStyles,
@@ -137,6 +137,7 @@ class OrdersKanbanWebView extends StatelessWidget {
   // ──────────────────── Kanban Board ────────────────────
 
   Widget _buildKanbanBoard(
+    BuildContext context,
     dynamic vm,
     DSColors colors,
     DSTextStyle textStyles,
@@ -160,6 +161,9 @@ class OrdersKanbanWebView extends StatelessWidget {
                 onMoveNext: (id) => presenter.moveToNext(id),
                 onMovePrevious: (id) => presenter.moveToPrevious(id),
                 onViewDetails: onViewDetails,
+                onViewHistory: status == OrderStatus.completed
+                    ? () => Navigator.of(context).pushReplacementNamed('/sales')
+                    : null,
               ),
             ),
           );
@@ -182,6 +186,7 @@ class _KanbanColumn extends StatelessWidget {
   final Future<bool> Function(String) onMoveNext;
   final Future<bool> Function(String) onMovePrevious;
   final void Function(String) onViewDetails;
+  final VoidCallback? onViewHistory;
 
   const _KanbanColumn({
     required this.status,
@@ -192,6 +197,7 @@ class _KanbanColumn extends StatelessWidget {
     required this.onMoveNext,
     required this.onMovePrevious,
     required this.onViewDetails,
+    this.onViewHistory,
   });
 
   @override
@@ -237,6 +243,39 @@ class _KanbanColumn extends StatelessWidget {
                     },
                   ),
           ),
+
+          // Link para histórico completo (apenas na coluna Concluídos)
+          if (onViewHistory != null) ...[
+            Divider(height: 1, color: colors.divider),
+            InkWell(
+              onTap: onViewHistory,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  vertical: DSSpacing.md,
+                  horizontal: DSSpacing.base,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.history_rounded,
+                      size: 16,
+                      color: colors.primaryColor,
+                    ),
+                    const SizedBox(width: DSSpacing.xs),
+                    Text(
+                      'Ver histórico completo',
+                      style: textStyles.labelMedium.copyWith(
+                        color: colors.primaryColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -245,13 +284,13 @@ class _KanbanColumn extends StatelessWidget {
   Widget _buildColumnHeader() {
     final Color headerColor;
     switch (status) {
-      case OrderStatus.separating:
+      case OrderStatus.awaiting_processing:
         headerColor = colors.orange;
         break;
-      case OrderStatus.packing:
+      case OrderStatus.preparing:
         headerColor = colors.blue;
         break;
-      case OrderStatus.ready:
+      case OrderStatus.ready_for_pickup:
         headerColor = colors.secundaryColor;
         break;
       case OrderStatus.completed:
@@ -273,9 +312,22 @@ class _KanbanColumn extends StatelessWidget {
           Text(status.emoji, style: const TextStyle(fontSize: 18)),
           const SizedBox(width: DSSpacing.sm),
           Expanded(
-            child: Text(
-              status.shortLabel,
-              style: textStyles.labelLarge.copyWith(color: headerColor),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  status.shortLabel,
+                  style: textStyles.labelLarge.copyWith(color: headerColor),
+                ),
+                if (status == OrderStatus.completed)
+                  Text(
+                    'últimos 7 dias',
+                    style: textStyles.bodySmall.copyWith(
+                      color: headerColor.withValues(alpha: 0.7),
+                      fontSize: 10,
+                    ),
+                  ),
+              ],
             ),
           ),
           Container(
@@ -520,11 +572,11 @@ class _OrderCardState extends State<_OrderCard> {
 
   String _nextButtonLabel(OrderStatus? status) {
     switch (status) {
-      case OrderStatus.separating:
-        return 'Embalar →';
-      case OrderStatus.packing:
+      case OrderStatus.awaiting_processing:
+        return 'Preparar →';
+      case OrderStatus.preparing:
         return 'Pronto →';
-      case OrderStatus.ready:
+      case OrderStatus.ready_for_pickup:
         return 'Concluir ✓';
       default:
         return 'Avançar →';
@@ -533,7 +585,7 @@ class _OrderCardState extends State<_OrderCard> {
 
   Color _nextButtonColor(OrderStatus? status, DSColors colors) {
     switch (status) {
-      case OrderStatus.ready:
+      case OrderStatus.ready_for_pickup:
         return colors.green;
       default:
         return colors.primaryColor;
@@ -542,7 +594,7 @@ class _OrderCardState extends State<_OrderCard> {
 
   Color _nextButtonBgColor(OrderStatus? status, DSColors colors) {
     switch (status) {
-      case OrderStatus.ready:
+      case OrderStatus.ready_for_pickup:
         return colors.greenLight;
       default:
         return colors.primarySurface;

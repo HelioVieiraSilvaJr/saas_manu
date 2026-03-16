@@ -2,20 +2,20 @@
 ///
 /// Só entra nessa esteira após pagamento confirmado (SaleStatus.confirmed).
 enum OrderStatus {
-  separating, // Separando produtos
-  packing, // Embalando
-  ready, // Pronto para envio/retirada
-  completed; // Concluído/Entregue
+  awaiting_processing, // Aguardando processamento
+  preparing, // Preparação/Embalagem
+  ready_for_pickup, // Disponível para retirada/envio
+  completed; // Concluído/Finalizado
 
   /// Label para exibição na UI.
   String get label {
     switch (this) {
-      case OrderStatus.separating:
-        return 'Separando';
-      case OrderStatus.packing:
-        return 'Embalando';
-      case OrderStatus.ready:
-        return 'Pronto';
+      case OrderStatus.awaiting_processing:
+        return 'Aguardando Processamento';
+      case OrderStatus.preparing:
+        return 'Preparação/Embalagem';
+      case OrderStatus.ready_for_pickup:
+        return 'Disponível para Retirada/Envio';
       case OrderStatus.completed:
         return 'Concluído';
     }
@@ -24,12 +24,12 @@ enum OrderStatus {
   /// Label curta para card.
   String get shortLabel {
     switch (this) {
-      case OrderStatus.separating:
-        return 'Separação';
-      case OrderStatus.packing:
-        return 'Embalagem';
-      case OrderStatus.ready:
-        return 'Envio/Retirada';
+      case OrderStatus.awaiting_processing:
+        return 'Aguardando';
+      case OrderStatus.preparing:
+        return 'Preparação';
+      case OrderStatus.ready_for_pickup:
+        return 'Retirada/Envio';
       case OrderStatus.completed:
         return 'Concluídos';
     }
@@ -38,11 +38,11 @@ enum OrderStatus {
   /// Ícone representativo.
   String get emoji {
     switch (this) {
-      case OrderStatus.separating:
+      case OrderStatus.awaiting_processing:
+        return '⏳';
+      case OrderStatus.preparing:
         return '📦';
-      case OrderStatus.packing:
-        return '🎁';
-      case OrderStatus.ready:
+      case OrderStatus.ready_for_pickup:
         return '🚚';
       case OrderStatus.completed:
         return '✅';
@@ -52,11 +52,11 @@ enum OrderStatus {
   /// Próximo status na esteira (null se for o último).
   OrderStatus? get next {
     switch (this) {
-      case OrderStatus.separating:
-        return OrderStatus.packing;
-      case OrderStatus.packing:
-        return OrderStatus.ready;
-      case OrderStatus.ready:
+      case OrderStatus.awaiting_processing:
+        return OrderStatus.preparing;
+      case OrderStatus.preparing:
+        return OrderStatus.ready_for_pickup;
+      case OrderStatus.ready_for_pickup:
         return OrderStatus.completed;
       case OrderStatus.completed:
         return null;
@@ -66,22 +66,32 @@ enum OrderStatus {
   /// Status anterior (null se for o primeiro).
   OrderStatus? get previous {
     switch (this) {
-      case OrderStatus.separating:
+      case OrderStatus.awaiting_processing:
         return null;
-      case OrderStatus.packing:
-        return OrderStatus.separating;
-      case OrderStatus.ready:
-        return OrderStatus.packing;
+      case OrderStatus.preparing:
+        return OrderStatus.awaiting_processing;
+      case OrderStatus.ready_for_pickup:
+        return OrderStatus.preparing;
       case OrderStatus.completed:
-        return OrderStatus.ready;
+        return OrderStatus.ready_for_pickup;
     }
   }
 
-  /// Converte string para OrderStatus (padrão: separating).
+  /// Converte string para OrderStatus.
+  /// Suporta valores legados (separating, packing, ready) para compatibilidade.
   static OrderStatus fromString(String value) {
+    // Mapeamento de valores legados
+    switch (value) {
+      case 'separating':
+        return OrderStatus.awaiting_processing;
+      case 'packing':
+        return OrderStatus.preparing;
+      case 'ready':
+        return OrderStatus.ready_for_pickup;
+    }
     return OrderStatus.values.firstWhere(
       (s) => s.name == value,
-      orElse: () => OrderStatus.separating,
+      orElse: () => OrderStatus.awaiting_processing,
     );
   }
 }
