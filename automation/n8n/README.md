@@ -48,3 +48,12 @@ Na pasta `production/`, os arquivos ficam organizados por responsabilidade:
 - Preferir nomes de arquivos estaveis e descritivos.
 - Promover workflow de `drafts/` para `staging/` e depois `production/` quando fizer sentido.
 - Registrar dependencias externas e colecoes impactadas.
+
+## Documentacao operacional
+
+- `docs/overview.md`: papel do `n8n` dentro da plataforma
+- `docs/tenants.md`: cuidados de multi-tenancy
+- `docs/conventions.md`: padroes para versionamento e importacao
+- `docs/production-architecture.md`: desenho funcional dos fluxos atuais de producao
+- `docs/workflow-catalog.md`: catalogo dos workflows e subworkflows
+- `docs/integration-points.md`: endpoints, servicos e colecoes impactadas
