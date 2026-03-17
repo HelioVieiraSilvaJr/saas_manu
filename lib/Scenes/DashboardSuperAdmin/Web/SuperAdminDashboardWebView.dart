@@ -189,7 +189,7 @@ class SuperAdminDashboardWebView extends StatelessWidget {
                 child: DSMetricCard(
                   title: 'Receita Mensal (MRR)',
                   value: vm.mrr.formatToBRL(),
-                  comparison: '${vm.basicCount} Basic + ${vm.fullCount} Full',
+                  comparison: '${vm.paidCount} Pagos + ${vm.trialCount} Trial',
                   trend: TrendType.up,
                   icon: Icons.attach_money_rounded,
                   color: colors.greenLight,
@@ -212,8 +212,10 @@ class SuperAdminDashboardWebView extends StatelessWidget {
                 flex: 2,
                 child: PlanDistributionChart(
                   trialCount: vm.trialCount,
-                  basicCount: vm.basicCount,
-                  fullCount: vm.fullCount,
+                  monthlyStandardCount: vm.monthlyStandardCount,
+                  monthlyProCount: vm.monthlyProCount,
+                  quarterlyStandardCount: vm.quarterlyStandardCount,
+                  quarterlyProCount: vm.quarterlyProCount,
                 ),
               ),
             ],

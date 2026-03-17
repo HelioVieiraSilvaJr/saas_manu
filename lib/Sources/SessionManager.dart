@@ -106,7 +106,11 @@ class SessionManager {
   }
 
   // MARK: - Switch Tenant
-
+  /// Atualiza os dados do tenant na sess\u00e3o (ap\u00f3s pagamento, etc.).
+  void updateTenant(TenantModel tenant) {
+    currentTenant = tenant;
+    AppLogger.info('Sess\u00e3o atualizada: tenant ${tenant.name}');
+  }
   /// Trocar de tenant (quando user pertence a múltiplos).
   Future<void> switchTenant(String tenantId) async {
     AppLogger.info('Trocando para tenant: $tenantId');

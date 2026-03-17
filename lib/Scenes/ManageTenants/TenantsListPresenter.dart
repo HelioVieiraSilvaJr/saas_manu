@@ -102,11 +102,25 @@ class TenantsListPresenter {
       case TenantPlanFilter.trial:
         result = result.where((t) => t.plan == 'trial').toList();
         break;
-      case TenantPlanFilter.basic:
-        result = result.where((t) => t.plan == 'basic').toList();
+      case TenantPlanFilter.monthly:
+        result = result
+            .where((t) => t.plan == 'monthly' && t.planTier == 'standard')
+            .toList();
         break;
-      case TenantPlanFilter.full:
-        result = result.where((t) => t.plan == 'full').toList();
+      case TenantPlanFilter.monthlyPro:
+        result = result
+            .where((t) => t.plan == 'monthly' && t.planTier == 'pro')
+            .toList();
+        break;
+      case TenantPlanFilter.quarterly:
+        result = result
+            .where((t) => t.plan == 'quarterly' && t.planTier == 'standard')
+            .toList();
+        break;
+      case TenantPlanFilter.quarterlyPro:
+        result = result
+            .where((t) => t.plan == 'quarterly' && t.planTier == 'pro')
+            .toList();
         break;
       case TenantPlanFilter.all:
         break;
@@ -134,6 +148,12 @@ class TenantsListPresenter {
               t.trialDaysRemaining >= 0 &&
               t.trialDaysRemaining <= 7;
         }).toList();
+        break;
+      case TenantSituationFilter.expiringSoon:
+        result = result.where((t) => t.isExpirationWarning).toList();
+        break;
+      case TenantSituationFilter.expired:
+        result = result.where((t) => t.isExpiredDynamic).toList();
         break;
       case TenantSituationFilter.createdToday:
         final startOfDay = DateTime(now.year, now.month, now.day);
@@ -185,9 +205,9 @@ class TenantsListPresenter {
     switch (plan) {
       case 'trial':
         return 0;
-      case 'basic':
+      case 'monthly':
         return 1;
-      case 'full':
+      case 'quarterly':
         return 2;
       default:
         return 0;

@@ -46,21 +46,38 @@ class TenantListItem extends StatelessWidget {
 
   List<DSBadge> _buildBadges() {
     return [
-      DSBadge(label: _planLabel, type: _planBadgeType),
+      DSBadge(label: tenant.planLabel, type: _planBadgeType),
       DSBadge(
         label: tenant.isActive ? 'Ativo' : 'Inativo',
         type: tenant.isActive ? DSBadgeType.success : DSBadgeType.error,
       ),
+      if (tenant.isExpiredDynamic)
+        const DSBadge(label: 'Expirado', type: DSBadgeType.error),
     ];
   }
 
   String? _buildMetadata() {
+    // Expirado
+    if (tenant.isExpiredDynamic && tenant.expirationDate != null) {
+      return 'Expirou em ${tenant.expirationDate!.formatShort()}';
+    }
+
+    // Trial com data
     if (tenant.isTrial && tenant.trialEndDate != null) {
       final days = tenant.trialDaysRemaining;
       if (days < 0) {
         return 'Trial expirado';
       }
       return 'Trial: $days dias restantes';
+    }
+
+    // Plano pago com expiração
+    if (tenant.expirationDate != null) {
+      final days = tenant.daysUntilExpiration;
+      if (days >= 0 && days <= 5) {
+        return 'Expira em $days dias (${tenant.expirationDate!.formatShort()})';
+      }
+      return 'Expira: ${tenant.expirationDate!.formatShort()}';
     }
 
     if (tenant.nextPaymentDate != null) {
@@ -79,43 +96,18 @@ class TenantListItem extends StatelessWidget {
     ];
   }
 
-  String get _planLabel {
-    switch (tenant.plan) {
-      case 'trial':
-        return 'Trial';
-      case 'basic':
-        return 'Basic';
-      case 'full':
-        return 'Full';
-      default:
-        return tenant.plan;
-    }
-  }
+  String get _planLabel => tenant.planLabel;
 
   DSBadgeType get _planBadgeType {
-    switch (tenant.plan) {
-      case 'trial':
-        return DSBadgeType.warning;
-      case 'basic':
-        return DSBadgeType.info;
-      case 'full':
-        return DSBadgeType.success;
-      default:
-        return DSBadgeType.info;
-    }
+    if (tenant.isTrial) return DSBadgeType.warning;
+    if (tenant.planTier == 'pro') return DSBadgeType.success;
+    return DSBadgeType.info;
   }
 
   Color get _planColor {
     final colors = DSColors();
-    switch (tenant.plan) {
-      case 'trial':
-        return colors.yellow;
-      case 'basic':
-        return colors.blue;
-      case 'full':
-        return colors.green;
-      default:
-        return colors.blue;
-    }
+    if (tenant.isTrial) return colors.yellow;
+    if (tenant.planTier == 'pro') return colors.green;
+    return colors.blue;
   }
 }

@@ -175,7 +175,7 @@ class SuperAdminDashboardMobileView extends StatelessWidget {
                   child: _miniMetricCard(
                     'MRR',
                     vm.mrr.formatToBRL(),
-                    '${vm.basicCount}B + ${vm.fullCount}F',
+                    '${vm.paidCount}P + ${vm.trialCount}T',
                     Icons.attach_money,
                     colors.green,
                     colors,
@@ -191,8 +191,10 @@ class SuperAdminDashboardMobileView extends StatelessWidget {
             const SizedBox(height: DSSpacing.base),
             PlanDistributionChart(
               trialCount: vm.trialCount,
-              basicCount: vm.basicCount,
-              fullCount: vm.fullCount,
+              monthlyStandardCount: vm.monthlyStandardCount,
+              monthlyProCount: vm.monthlyProCount,
+              quarterlyStandardCount: vm.quarterlyStandardCount,
+              quarterlyProCount: vm.quarterlyProCount,
             ),
             const SizedBox(height: DSSpacing.xl),
 

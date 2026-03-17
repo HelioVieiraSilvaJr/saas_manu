@@ -71,6 +71,7 @@ class TenantSettingsPresenter {
         webhookUrl: webhookUrl,
         webhookToken: webhookToken,
         currentPlan: t.plan,
+        currentPlanTier: t.planTier,
         trialEndDate: t.trialEndDate,
         nextPaymentDate: t.nextPaymentDate,
         trialDaysRemaining: t.trialDaysRemaining,

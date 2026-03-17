@@ -7,17 +7,26 @@ import '../../../Commons/Widgets/DesignSystem/DSTextStyle.dart';
 /// Gráfico de distribuição de tenants por plano (Pizza).
 class PlanDistributionChart extends StatelessWidget {
   final int trialCount;
-  final int basicCount;
-  final int fullCount;
+  final int monthlyStandardCount;
+  final int monthlyProCount;
+  final int quarterlyStandardCount;
+  final int quarterlyProCount;
 
   const PlanDistributionChart({
     super.key,
     required this.trialCount,
-    required this.basicCount,
-    required this.fullCount,
+    required this.monthlyStandardCount,
+    required this.monthlyProCount,
+    required this.quarterlyStandardCount,
+    required this.quarterlyProCount,
   });
 
-  int get _total => trialCount + basicCount + fullCount;
+  int get _total =>
+      trialCount +
+      monthlyStandardCount +
+      monthlyProCount +
+      quarterlyStandardCount +
+      quarterlyProCount;
 
   @override
   Widget build(BuildContext context) {
@@ -66,8 +75,8 @@ class PlanDistributionChart extends StatelessWidget {
                           ),
                         ),
                         PieChartSectionData(
-                          value: basicCount.toDouble(),
-                          title: '${_percentage(basicCount)}%',
+                          value: monthlyStandardCount.toDouble(),
+                          title: '${_percentage(monthlyStandardCount)}%',
                           color: colors.blue,
                           radius: 50,
                           titleStyle: textStyles.labelSmall.copyWith(
@@ -76,9 +85,29 @@ class PlanDistributionChart extends StatelessWidget {
                           ),
                         ),
                         PieChartSectionData(
-                          value: fullCount.toDouble(),
-                          title: '${_percentage(fullCount)}%',
+                          value: monthlyProCount.toDouble(),
+                          title: '${_percentage(monthlyProCount)}%',
+                          color: colors.primaryColor,
+                          radius: 50,
+                          titleStyle: textStyles.labelSmall.copyWith(
+                            color: colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        PieChartSectionData(
+                          value: quarterlyStandardCount.toDouble(),
+                          title: '${_percentage(quarterlyStandardCount)}%',
                           color: colors.green,
+                          radius: 50,
+                          titleStyle: textStyles.labelSmall.copyWith(
+                            color: colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        PieChartSectionData(
+                          value: quarterlyProCount.toDouble(),
+                          title: '${_percentage(quarterlyProCount)}%',
+                          color: colors.secundaryDark,
                           radius: 50,
                           titleStyle: textStyles.labelSmall.copyWith(
                             color: colors.white,
@@ -96,9 +125,33 @@ class PlanDistributionChart extends StatelessWidget {
                   children: [
                     _legendItem('Trial', trialCount, colors.orange, textStyles),
                     const SizedBox(height: DSSpacing.sm),
-                    _legendItem('Basic', basicCount, colors.blue, textStyles),
+                    _legendItem(
+                      'Mensal',
+                      monthlyStandardCount,
+                      colors.blue,
+                      textStyles,
+                    ),
                     const SizedBox(height: DSSpacing.sm),
-                    _legendItem('Full', fullCount, colors.green, textStyles),
+                    _legendItem(
+                      'Mensal Pro',
+                      monthlyProCount,
+                      colors.primaryColor,
+                      textStyles,
+                    ),
+                    const SizedBox(height: DSSpacing.sm),
+                    _legendItem(
+                      'Trimestral',
+                      quarterlyStandardCount,
+                      colors.green,
+                      textStyles,
+                    ),
+                    const SizedBox(height: DSSpacing.sm),
+                    _legendItem(
+                      'Trimestral Pro',
+                      quarterlyProCount,
+                      colors.secundaryDark,
+                      textStyles,
+                    ),
                   ],
                 ),
               ],

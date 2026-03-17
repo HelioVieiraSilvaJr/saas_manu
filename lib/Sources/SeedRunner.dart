@@ -44,10 +44,13 @@ class SeedRunner {
         'name': 'Plataforma Admin',
         'contact_email': email,
         'contact_phone': '',
-        'plan': 'full',
+        'plan': 'monthly',
+        'plan_tier': 'pro',
         'is_active': true,
+        'is_expired': false,
         'created_at': FieldValue.serverTimestamp(),
         'trial_end_date': Timestamp.fromDate(trialEnd),
+        'expiration_date': Timestamp.fromDate(trialEnd),
       });
 
       // 3. Criar membership como SuperAdmin

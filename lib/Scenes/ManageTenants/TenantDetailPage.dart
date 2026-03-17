@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../Commons/Models/TenantModel.dart';
 import '../../Commons/Models/MembershipModel.dart';
+import '../../Commons/Models/PaymentModel.dart';
 import '../../Commons/Enums/UserRole.dart';
 import '../../Commons/Utils/AppLogger.dart';
 import '../../Commons/Extensions/String+Extensions.dart';
@@ -33,6 +34,7 @@ class _TenantDetailPageState extends State<TenantDetailPage> {
   TenantModel? _tenant;
   Map<String, int> _stats = {};
   List<MembershipModel> _members = [];
+  List<PaymentModel> _payments = [];
   double _revenue = 0;
   bool _isLoading = true;
 
@@ -56,6 +58,7 @@ class _TenantDetailPageState extends State<TenantDetailPage> {
         _repository.getTenantStats(tenantId),
         _repository.getTenantMembers(tenantId),
         _repository.getTenantRevenue(tenantId),
+        _repository.getPayments(tenantId),
       ]);
 
       setState(() {
@@ -63,6 +66,7 @@ class _TenantDetailPageState extends State<TenantDetailPage> {
         _stats = results[1] as Map<String, int>;
         _members = results[2] as List<MembershipModel>;
         _revenue = results[3] as double;
+        _payments = results[4] as List<PaymentModel>;
         _isLoading = false;
       });
     } catch (e) {
@@ -108,6 +112,8 @@ class _TenantDetailPageState extends State<TenantDetailPage> {
           const SizedBox(height: DSSpacing.xl),
           _buildMembersSection(colors, textStyles),
           const SizedBox(height: DSSpacing.xl),
+          _buildPaymentsSection(colors, textStyles),
+          const SizedBox(height: DSSpacing.xl),
           _buildActionsSection(colors, textStyles),
           const SizedBox(height: DSSpacing.xxl),
         ],
@@ -148,6 +154,8 @@ class _TenantDetailPageState extends State<TenantDetailPage> {
             _buildStatsSection(colors, textStyles),
             const SizedBox(height: DSSpacing.lg),
             _buildMembersSection(colors, textStyles),
+            const SizedBox(height: DSSpacing.lg),
+            _buildPaymentsSection(colors, textStyles),
             const SizedBox(height: DSSpacing.lg),
             _buildActionsSection(colors, textStyles),
             const SizedBox(height: DSSpacing.xxl),
@@ -233,7 +241,7 @@ class _TenantDetailPageState extends State<TenantDetailPage> {
           ),
           _buildInfoRow(
             'Plano',
-            _planLabel,
+            _tenant!.planLabel,
             Icons.workspace_premium_outlined,
             colors,
             textStyles,
@@ -245,6 +253,16 @@ class _TenantDetailPageState extends State<TenantDetailPage> {
             colors,
             textStyles,
           ),
+          if (_tenant!.expirationDate != null)
+            _buildInfoRow(
+              'Expiração',
+              '${_tenant!.daysUntilExpiration >= 0 ? '${_tenant!.daysUntilExpiration} dias' : 'Expirado'} (${_tenant!.expirationDate!.formatShort()})',
+              _tenant!.isExpiredDynamic
+                  ? Icons.warning_amber_rounded
+                  : Icons.hourglass_top_rounded,
+              colors,
+              textStyles,
+            ),
           if (_tenant!.isTrial && _tenant!.trialEndDate != null)
             _buildInfoRow(
               'Trial expira em',
@@ -508,6 +526,7 @@ class _TenantDetailPageState extends State<TenantDetailPage> {
 
   void _changePlan() {
     String newPlan = _tenant!.plan;
+    String newTier = _tenant!.planTier;
 
     showDialog(
       context: context,
@@ -516,25 +535,59 @@ class _TenantDetailPageState extends State<TenantDetailPage> {
           title: const Text('Alterar Plano'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const Text(
+                'Período:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               RadioListTile<String>(
                 title: const Text('Trial'),
+                subtitle: const Text('30 dias grátis'),
                 value: 'trial',
                 groupValue: newPlan,
-                onChanged: (v) => setDialogState(() => newPlan = v!),
+                onChanged: (v) => setDialogState(() {
+                  newPlan = v!;
+                  newTier = 'standard';
+                }),
               ),
               RadioListTile<String>(
-                title: const Text('Basic'),
-                value: 'basic',
+                title: const Text('Mensal'),
+                subtitle: const Text('Renovação a cada 30 dias'),
+                value: 'monthly',
                 groupValue: newPlan,
                 onChanged: (v) => setDialogState(() => newPlan = v!),
               ),
               RadioListTile<String>(
-                title: const Text('Full'),
-                value: 'full',
+                title: const Text('Trimestral'),
+                subtitle: const Text('Renovação a cada 90 dias'),
+                value: 'quarterly',
                 groupValue: newPlan,
                 onChanged: (v) => setDialogState(() => newPlan = v!),
               ),
+              if (newPlan != 'trial') ...[
+                const SizedBox(height: 12),
+                const Text(
+                  'Nível:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                RadioListTile<String>(
+                  title: const Text('Standard'),
+                  subtitle: const Text('Até 1.000 clientes e 50 produtos'),
+                  value: 'standard',
+                  groupValue: newTier,
+                  onChanged: (v) => setDialogState(() => newTier = v!),
+                ),
+                RadioListTile<String>(
+                  title: const Text('Pro'),
+                  subtitle: const Text(
+                    'Clientes ilimitados e até 500 produtos',
+                  ),
+                  value: 'pro',
+                  groupValue: newTier,
+                  onChanged: (v) => setDialogState(() => newTier = v!),
+                ),
+              ],
             ],
           ),
           actions: [
@@ -545,17 +598,18 @@ class _TenantDetailPageState extends State<TenantDetailPage> {
             TextButton(
               onPressed: () async {
                 Navigator.pop(ctx);
-                if (newPlan != _tenant!.plan) {
+                if (newPlan != _tenant!.plan || newTier != _tenant!.planTier) {
                   final success = await _repository.changePlan(
                     _tenant!.uid,
                     newPlan,
+                    newTier: newTier,
                   );
                   if (success && mounted) {
                     DSAlertDialog.showSuccess(
                       context: context,
                       title: 'Plano alterado',
                       message:
-                          'O plano foi alterado para ${newPlan.toUpperCase()}.',
+                          'O plano foi alterado com sucesso.',
                     );
                     _loadTenantDetails(_tenant!.uid);
                   }
@@ -724,43 +778,96 @@ class _TenantDetailPageState extends State<TenantDetailPage> {
     );
   }
 
-  String get _planLabel {
-    switch (_tenant!.plan) {
-      case 'trial':
-        return 'Trial';
-      case 'basic':
-        return 'Basic';
-      case 'full':
-        return 'Full';
-      default:
-        return _tenant!.plan;
-    }
-  }
+  String get _planLabel => _tenant!.planLabel;
 
   DSBadgeType get _planBadgeType {
-    switch (_tenant!.plan) {
-      case 'trial':
-        return DSBadgeType.warning;
-      case 'basic':
-        return DSBadgeType.info;
-      case 'full':
-        return DSBadgeType.success;
-      default:
-        return DSBadgeType.info;
-    }
+    if (_tenant!.isTrial) return DSBadgeType.warning;
+    if (_tenant!.planTier == 'pro') return DSBadgeType.success;
+    return DSBadgeType.info;
   }
 
   Color get _planColor {
     final colors = DSColors();
-    switch (_tenant!.plan) {
-      case 'trial':
-        return colors.yellow;
-      case 'basic':
-        return colors.blue;
-      case 'full':
-        return colors.green;
-      default:
-        return colors.blue;
-    }
+    if (_tenant!.isTrial) return colors.yellow;
+    if (_tenant!.planTier == 'pro') return colors.green;
+    return colors.blue;
+  }
+
+  // MARK: - Payments Section
+
+  Widget _buildPaymentsSection(DSColors colors, DSTextStyle textStyles) {
+    return _buildCard(
+      colors: colors,
+      title: 'Histórico de Pagamentos (${_payments.length})',
+      icon: Icons.receipt_long_outlined,
+      textStyles: textStyles,
+      child: _payments.isEmpty
+          ? Padding(
+              padding: const EdgeInsets.all(DSSpacing.md),
+              child: Text(
+                'Nenhum pagamento registrado.',
+                style: textStyles.bodyMedium.copyWith(
+                  color: colors.textTertiary,
+                ),
+              ),
+            )
+          : Column(
+              children: _payments.map((p) {
+                final statusColor = p.isPaid ? colors.green : colors.yellow;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: DSSpacing.xs),
+                  child: Row(
+                    children: [
+                      Icon(
+                        p.isPaid
+                            ? Icons.check_circle_rounded
+                            : Icons.pending_rounded,
+                        size: 18,
+                        color: statusColor,
+                      ),
+                      const SizedBox(width: DSSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              p.planLabel,
+                              style: textStyles.bodyMedium.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              '${p.status.label} • ${p.amount.formatToBRL()}',
+                              style: textStyles.bodySmall.copyWith(
+                                color: colors.textTertiary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          if (p.paidAt != null)
+                            Text(
+                              'Pago: ${p.paidAt!.formatShort()}',
+                              style: textStyles.bodySmall.copyWith(
+                                color: colors.green,
+                              ),
+                            ),
+                          Text(
+                            'Expira: ${p.planExpirationDate.formatShort()}',
+                            style: textStyles.bodySmall.copyWith(
+                              color: colors.textTertiary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+    );
   }
 }

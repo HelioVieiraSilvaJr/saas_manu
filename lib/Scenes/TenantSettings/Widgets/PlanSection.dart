@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../Commons/Extensions/String+Extensions.dart';
-import '../../../Commons/Widgets/DesignSystem/DSAlertDialog.dart';
 import '../../../Commons/Widgets/DesignSystem/DSBadge.dart';
 import '../../../Commons/Widgets/DesignSystem/DSButton.dart';
 import '../../../Commons/Widgets/DesignSystem/DSColors.dart';
@@ -199,12 +198,12 @@ class PlanSection extends StatelessWidget {
         const SizedBox(height: DSSpacing.md),
         _buildPlanCard(
           context: context,
-          planId: 'basic',
-          name: 'Basic',
-          price: 'R\$ 50,00/mês',
+          planId: 'monthly',
+          name: 'Mensal Standard',
+          price: 'R\$ 79,90/mês',
           features: [
-            'Até 100 produtos',
-            'Até 500 clientes',
+            'Até 1.000 clientes',
+            'Até 50 produtos',
             'Suporte por email',
           ],
           colors: colors,
@@ -213,14 +212,44 @@ class PlanSection extends StatelessWidget {
         const SizedBox(height: DSSpacing.md),
         _buildPlanCard(
           context: context,
-          planId: 'full',
-          name: 'Full',
-          price: 'R\$ 150,00/mês',
+          planId: 'monthly_pro',
+          name: 'Mensal Pro',
+          price: 'R\$ 149,90/mês',
           features: [
-            'Produtos ilimitados',
             'Clientes ilimitados',
+            'Até 500 produtos',
+            'Suporte prioritário',
+          ],
+          colors: colors,
+          textStyles: textStyles,
+        ),
+        const SizedBox(height: DSSpacing.md),
+        _buildPlanCard(
+          context: context,
+          planId: 'quarterly',
+          name: 'Trimestral Standard',
+          price: 'R\$ 199,90/trimestre',
+          features: [
+            'Até 1.000 clientes',
+            'Até 50 produtos',
+            'Suporte por email',
+            'Economia de 16%',
+          ],
+          colors: colors,
+          textStyles: textStyles,
+        ),
+        const SizedBox(height: DSSpacing.md),
+        _buildPlanCard(
+          context: context,
+          planId: 'quarterly_pro',
+          name: 'Trimestral Pro',
+          price: 'R\$ 399,90/trimestre',
+          features: [
+            'Clientes ilimitados',
+            'Até 500 produtos',
             'Suporte prioritário',
             'Relatórios avançados',
+            'Economia de 11%',
           ],
           colors: colors,
           textStyles: textStyles,
@@ -238,7 +267,12 @@ class PlanSection extends StatelessWidget {
     required DSColors colors,
     required DSTextStyle textStyles,
   }) {
-    final isCurrent = viewModel.currentPlan == planId;
+    final currentCombo = viewModel.isTrial
+        ? 'trial'
+        : viewModel.currentPlanTier == 'pro'
+            ? '${viewModel.currentPlan}_pro'
+            : viewModel.currentPlan;
+    final isCurrent = currentCombo == planId;
 
     return Container(
       width: double.infinity,
@@ -323,21 +357,16 @@ class PlanSection extends StatelessWidget {
   }
 
   void _handleUpgrade(BuildContext context) {
-    DSAlertDialog.showInfo(
-      context: context,
-      title: 'Upgrade de Plano',
-      message:
-          'Entre em contato com suporte@plataforma.com para realizar upgrade ou downgrade de plano.',
-    );
+    Navigator.pushNamed(context, '/upgrade');
   }
 
   DSBadgeType get _currentPlanBadgeType {
     switch (viewModel.currentPlan) {
       case 'trial':
         return DSBadgeType.warning;
-      case 'basic':
+      case 'monthly':
         return DSBadgeType.info;
-      case 'full':
+      case 'quarterly':
         return DSBadgeType.success;
       default:
         return DSBadgeType.info;
@@ -348,9 +377,9 @@ class PlanSection extends StatelessWidget {
     switch (viewModel.currentPlan) {
       case 'trial':
         return colors.yellow;
-      case 'basic':
+      case 'monthly':
         return colors.blue;
-      case 'full':
+      case 'quarterly':
         return colors.green;
       default:
         return colors.blue;

@@ -2,6 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../Commons/Models/TenantModel.dart';
 import '../../Commons/Models/MembershipModel.dart';
+import '../../Commons/Models/PaymentModel.dart';
+import '../../Commons/Enums/PlanPeriod.dart';
+import '../../Commons/Enums/PlanTier.dart';
 import '../../Commons/Utils/AppLogger.dart';
 
 /// Repository CRUD de Tenants (SuperAdmin).
@@ -52,24 +55,30 @@ class TenantsRepository {
     required String email,
     required String phone,
     required String plan,
+    required String planTier,
     required bool isActive,
   }) async {
     try {
+      final now = DateTime.now();
+      final period = PlanPeriod.fromString(plan);
+      final expiration = now.add(Duration(days: period.durationDays));
+
       // 1. Criar tenant
-      final tenantData = {
+      final tenantData = <String, dynamic>{
         'name': name,
         'contact_email': email,
         'contact_phone': phone,
         'plan': plan,
+        'plan_tier': planTier,
         'is_active': isActive,
+        'is_expired': false,
+        'expiration_date': Timestamp.fromDate(expiration),
         'created_at': FieldValue.serverTimestamp(),
       };
 
-      // Se Trial: definir trial_end_date
+      // Se Trial: definir trial_end_date também
       if (plan == 'trial') {
-        tenantData['trial_end_date'] = Timestamp.fromDate(
-          DateTime.now().add(const Duration(days: 15)),
-        );
+        tenantData['trial_end_date'] = Timestamp.fromDate(expiration);
       }
 
       final tenantRef = await _collection.add(tenantData);
@@ -140,6 +149,7 @@ class TenantsRepository {
       await _deleteSubcollection('tenants/$tenantId/customers');
       await _deleteSubcollection('tenants/$tenantId/sales');
       await _deleteSubcollection('tenants/$tenantId/billing');
+      await _deleteSubcollection('tenants/$tenantId/payments');
 
       // 2. Deletar memberships
       final memberships = await _firestore
@@ -180,24 +190,33 @@ class TenantsRepository {
   // MARK: - Ações Especiais
 
   /// Altera o plano de um tenant.
-  Future<bool> changePlan(String tenantId, String newPlan) async {
+  Future<bool> changePlan(
+    String tenantId,
+    String newPlan, {
+    String newTier = 'standard',
+  }) async {
     try {
+      final now = DateTime.now();
+      final period = PlanPeriod.fromString(newPlan);
+      final expiration = now.add(Duration(days: period.durationDays));
+
       final data = <String, dynamic>{
         'plan': newPlan,
+        'plan_tier': newTier,
+        'expiration_date': Timestamp.fromDate(expiration),
+        'is_expired': false,
         'updated_at': FieldValue.serverTimestamp(),
       };
 
       // Se mudou para trial, definir trial_end_date
       if (newPlan == 'trial') {
-        data['trial_end_date'] = Timestamp.fromDate(
-          DateTime.now().add(const Duration(days: 15)),
-        );
+        data['trial_end_date'] = Timestamp.fromDate(expiration);
       } else {
         data['trial_end_date'] = null;
       }
 
       await _collection.doc(tenantId).update(data);
-      AppLogger.info('Plano alterado: $tenantId → $newPlan');
+      AppLogger.info('Plano alterado: $tenantId → $newPlan ($newTier)');
       return true;
     } catch (e) {
       AppLogger.error('Erro ao alterar plano', error: e);
@@ -212,11 +231,14 @@ class TenantsRepository {
       if (!doc.exists) return false;
 
       final tenant = TenantModel.fromDocumentSnapshot(doc);
-      final currentEnd = tenant.trialEndDate ?? DateTime.now();
+      final currentEnd =
+          tenant.expirationDate ?? tenant.trialEndDate ?? DateTime.now();
       final newEnd = currentEnd.add(Duration(days: days));
 
       await _collection.doc(tenantId).update({
         'trial_end_date': Timestamp.fromDate(newEnd),
+        'expiration_date': Timestamp.fromDate(newEnd),
+        'is_expired': false,
         'updated_at': FieldValue.serverTimestamp(),
       });
       AppLogger.info('Trial estendido: $tenantId +$days dias');
@@ -300,5 +322,47 @@ class TenantsRepository {
       AppLogger.error('Erro ao calcular receita do tenant', error: e);
       return 0;
     }
+  }
+
+  // MARK: - Payments
+
+  /// Busca histórico de pagamentos de um tenant.
+  Future<List<PaymentModel>> getPayments(String tenantId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('tenants/$tenantId/payments')
+          .orderBy('created_at', descending: true)
+          .get();
+      return snapshot.docs
+          .map((doc) => PaymentModel.fromDocumentSnapshot(doc))
+          .toList();
+    } catch (e) {
+      AppLogger.error('Erro ao buscar pagamentos', error: e);
+      return [];
+    }
+  }
+
+  /// Cria um registro de pagamento pendente (PIX gerado).
+  Future<String?> createPayment(String tenantId, PaymentModel payment) async {
+    try {
+      final ref = await _firestore
+          .collection('tenants/$tenantId/payments')
+          .add(payment.toMap());
+      AppLogger.info('Pagamento criado: ${ref.id}');
+      return ref.id;
+    } catch (e) {
+      AppLogger.error('Erro ao criar pagamento', error: e);
+      return null;
+    }
+  }
+
+  /// Escuta mudanças no documento do tenant (para detectar pagamento via webhook).
+  Stream<TenantModel?> listenTenant(String tenantId) {
+    return _collection.doc(tenantId).snapshots().map((doc) {
+      if (doc.exists) {
+        return TenantModel.fromDocumentSnapshot(doc);
+      }
+      return null;
+    });
   }
 }

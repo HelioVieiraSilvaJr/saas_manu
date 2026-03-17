@@ -4,8 +4,10 @@ import '../../Commons/Models/TenantModel.dart';
 enum TenantPlanFilter {
   all('Todos'),
   trial('Trial'),
-  basic('Basic'),
-  full('Full');
+  monthly('Mensal'),
+  monthlyPro('Mensal Pro'),
+  quarterly('Trimestral'),
+  quarterlyPro('Trimestral Pro');
 
   final String label;
   const TenantPlanFilter(this.label);
@@ -25,6 +27,8 @@ enum TenantStatusFilter {
 enum TenantSituationFilter {
   all('Todas'),
   trialExpiring('Trial Expirando'),
+  expiringSoon('Expirando em 5 dias'),
+  expired('Expirados'),
   createdToday('Criados Hoje'),
   createdLast7Days('Últimos 7 dias'),
   createdLast30Days('Últimos 30 dias');

@@ -59,11 +59,21 @@ class _AlertCard extends StatelessWidget {
     final Color iconColor;
     final IconData alertIcon;
 
-    if (alert.isWarning) {
+    if (alert.isCritical) {
+      bgColor = colors.redLight;
+      borderColor = colors.red.withValues(alpha: 0.3);
+      iconColor = colors.red;
+      alertIcon = Icons.error_rounded;
+    } else if (alert.isWarning) {
       bgColor = colors.yellowLight;
       borderColor = colors.orange.withValues(alpha: 0.3);
       iconColor = colors.orange;
       alertIcon = Icons.warning_amber_rounded;
+    } else if (alert.type == DashboardAlertType.trialActive) {
+      bgColor = colors.primarySurface;
+      borderColor = colors.primaryColor.withValues(alpha: 0.2);
+      iconColor = colors.primaryColor;
+      alertIcon = Icons.hourglass_top_rounded;
     } else {
       bgColor = colors.blueLight;
       borderColor = colors.blue.withValues(alpha: 0.3);
@@ -114,8 +124,8 @@ class _AlertCard extends StatelessWidget {
             ),
           ),
 
-          // Botão fechar
-          if (onDismiss != null)
+          // Botão fechar (não exibir para alertas críticos)
+          if (onDismiss != null && !alert.isCritical)
             GestureDetector(
               onTap: onDismiss,
               child: Padding(

@@ -3,6 +3,9 @@ import 'DashboardTenantRepository.dart';
 /// Tipo de alerta do Dashboard.
 enum DashboardAlertType {
   planExpiring,
+  planExpired,
+  serviceInterrupted,
+  trialActive,
   productsWithoutImage,
   emptyCatalog,
   noCustomers,
@@ -18,6 +21,7 @@ class DashboardAlert {
   final String actionLabel;
   final String route;
   final bool isWarning; // true = laranja, false = azul/info
+  final bool isCritical; // true = vermelho (expirado/interrompido)
 
   DashboardAlert({
     required this.type,
@@ -25,6 +29,7 @@ class DashboardAlert {
     required this.actionLabel,
     required this.route,
     this.isWarning = false,
+    this.isCritical = false,
   });
 
   /// Chave para PreferencesManager (dismiss).
@@ -33,7 +38,13 @@ class DashboardAlert {
   /// Prioridade do alerta (menor = mais importante).
   int get priority {
     switch (type) {
+      case DashboardAlertType.serviceInterrupted:
+        return -2;
+      case DashboardAlertType.planExpired:
+        return -1;
       case DashboardAlertType.planExpiring:
+        return 0;
+      case DashboardAlertType.trialActive:
         return 0;
       case DashboardAlertType.emptyCatalog:
         return 1;

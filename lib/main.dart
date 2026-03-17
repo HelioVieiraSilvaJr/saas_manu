@@ -27,6 +27,7 @@ import 'Scenes/ManageTenants/TenantDetailPage.dart';
 import 'Scenes/TenantSettings/TenantSettingsPage.dart';
 import 'Scenes/TeamManagement/TeamManagementPage.dart';
 import 'Scenes/TeamManagement/AddMemberPage.dart';
+import 'Scenes/UpgradePlan/UpgradePlanPage.dart';
 import 'Commons/Utils/DSPageRoute.dart';
 
 void main() async {
@@ -175,6 +176,7 @@ class SaasManApp extends StatelessWidget {
           '/admin/tenants/edit': (context) => const TenantFormPage(),
           '/admin/tenants/detail': (context) => const TenantDetailPage(),
           '/settings': (context) => const TenantSettingsPage(),
+          '/upgrade': (context) => const UpgradePlanPage(),
           '/team': (context) => const TeamManagementPage(),
           '/team/add': (context) => const AddMemberPage(),
         };

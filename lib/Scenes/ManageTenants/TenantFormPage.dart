@@ -244,34 +244,130 @@ class _TenantFormPageState extends State<TenantFormPage> {
 
   Widget _buildPlanSelector(DSColors colors, DSTextStyle textStyles) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildPlanRadio(
           value: 'trial',
           title: 'Trial',
-          description: '15 dias grátis para teste',
+          description: '30 dias grátis para teste',
           icon: Icons.hourglass_top_rounded,
           colors: colors,
           textStyles: textStyles,
         ),
         const SizedBox(height: DSSpacing.sm),
         _buildPlanRadio(
-          value: 'basic',
-          title: 'Basic',
-          description: 'Funcionalidades básicas do CRM',
-          icon: Icons.star_border_rounded,
+          value: 'monthly',
+          title: 'Mensal',
+          description: 'Renovação a cada 30 dias',
+          icon: Icons.calendar_month_rounded,
           colors: colors,
           textStyles: textStyles,
         ),
         const SizedBox(height: DSSpacing.sm),
         _buildPlanRadio(
-          value: 'full',
-          title: 'Full',
-          description: 'Todas as funcionalidades + WhatsApp Bot',
-          icon: Icons.star_rounded,
+          value: 'quarterly',
+          title: 'Trimestral',
+          description: 'Renovação a cada 90 dias',
+          icon: Icons.date_range_rounded,
           colors: colors,
           textStyles: textStyles,
         ),
+
+        // Tier selector (only for paid plans)
+        if (_presenter.selectedPlan != 'trial') ...[
+          const SizedBox(height: DSSpacing.lg),
+          Text(
+            'Nível do Plano',
+            style: textStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: DSSpacing.sm),
+          _buildTierRadio(
+            value: 'standard',
+            title: 'Standard',
+            description: 'Até 1.000 clientes e 50 produtos',
+            icon: Icons.star_border_rounded,
+            colors: colors,
+            textStyles: textStyles,
+          ),
+          const SizedBox(height: DSSpacing.sm),
+          _buildTierRadio(
+            value: 'pro',
+            title: 'Pro',
+            description: 'Clientes ilimitados e até 500 produtos',
+            icon: Icons.star_rounded,
+            colors: colors,
+            textStyles: textStyles,
+          ),
+        ],
       ],
+    );
+  }
+
+  Widget _buildTierRadio({
+    required String value,
+    required String title,
+    required String description,
+    required IconData icon,
+    required DSColors colors,
+    required DSTextStyle textStyles,
+  }) {
+    final isSelected = _presenter.selectedPlanTier == value;
+
+    return InkWell(
+      onTap: () => _presenter.setPlanTier(value),
+      borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
+      child: Container(
+        padding: const EdgeInsets.all(DSSpacing.md),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: isSelected ? colors.primaryColor : colors.inputBorder,
+            width: isSelected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
+          color: isSelected
+              ? colors.primaryColor.withValues(alpha: 0.05)
+              : colors.cardBackground,
+        ),
+        child: Row(
+          children: [
+            Radio<String>(
+              value: value,
+              groupValue: _presenter.selectedPlanTier,
+              onChanged: (v) {
+                if (v != null) _presenter.setPlanTier(v);
+              },
+              activeColor: colors.primaryColor,
+            ),
+            Icon(
+              icon,
+              color: isSelected ? colors.primaryColor : colors.textTertiary,
+            ),
+            const SizedBox(width: DSSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: textStyles.bodyMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: isSelected
+                          ? colors.primaryColor
+                          : colors.textPrimary,
+                    ),
+                  ),
+                  Text(
+                    description,
+                    style: textStyles.bodySmall.copyWith(
+                      color: colors.textTertiary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

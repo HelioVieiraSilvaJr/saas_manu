@@ -70,9 +70,16 @@ class SuperAdminDashboardViewModel {
   double get activePercentage =>
       totalTenants > 0 ? (activeTenants / totalTenants) * 100 : 0;
 
-  int get basicCount => planDistribution['basic'] ?? 0;
-  int get fullCount => planDistribution['full'] ?? 0;
   int get trialCount => planDistribution['trial'] ?? 0;
+  int get monthlyStandardCount => planDistribution['monthly_standard'] ?? 0;
+  int get monthlyProCount => planDistribution['monthly_pro'] ?? 0;
+  int get quarterlyStandardCount => planDistribution['quarterly_standard'] ?? 0;
+  int get quarterlyProCount => planDistribution['quarterly_pro'] ?? 0;
+  int get paidCount =>
+      monthlyStandardCount +
+      monthlyProCount +
+      quarterlyStandardCount +
+      quarterlyProCount;
 
   bool get hasAlerts => trialExpiringSoon.isNotEmpty || inactiveCount > 0;
 

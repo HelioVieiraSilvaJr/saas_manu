@@ -180,21 +180,65 @@ class DashboardTenantPresenter {
     final prefs = PreferencesManager.instance;
     final tenant = SessionManager.instance.currentTenant;
 
-    // 1. Plano expirando (trial ou plano com nextPaymentDate)
-    if (tenant != null) {
-      final daysRemaining = tenant.trialDaysRemaining;
-      if (tenant.isTrial && daysRemaining >= 0 && daysRemaining <= 7) {
-        final dismissed = await prefs.isAlertDismissed('dashboard_alert_planExpiring');
-        if (!dismissed) {
-          alerts.add(DashboardAlert(
+    // 1. Servi\u00e7o interrompido (ap\u00f3s grace period de 5 dias)
+    if (tenant != null && tenant.isServiceInterrupted) {
+      alerts.add(
+        DashboardAlert(
+          type: DashboardAlertType.serviceInterrupted,
+          title:
+              'Seu atendimento automatizado foi interrompido. Renove seu plano para reativar.',
+          actionLabel: 'Renovar Agora',
+          route: '/upgrade',
+          isCritical: true,
+        ),
+      );
+    }
+    // 2. Plano expirado (dentro do grace period de 5 dias)
+    else if (tenant != null && tenant.isInGracePeriod) {
+      final graceEnd = tenant.expirationDate!.add(const Duration(days: 5));
+      final graceDays = graceEnd.difference(DateTime.now()).inDays;
+      alerts.add(
+        DashboardAlert(
+          type: DashboardAlertType.planExpired,
+          title:
+              'Seu plano expirou! Seus atendimentos ser\u00e3o interrompidos em $graceDays dias.',
+          actionLabel: 'Renovar Agora',
+          route: '/upgrade',
+          isCritical: true,
+        ),
+      );
+    }
+    // 3. Plano expirando (\u2264 5 dias)
+    else if (tenant != null && tenant.isExpirationWarning) {
+      final days = tenant.daysUntilExpiration;
+      final dismissed = await prefs.isAlertDismissed(
+        'dashboard_alert_planExpiring',
+      );
+      if (!dismissed) {
+        alerts.add(
+          DashboardAlert(
             type: DashboardAlertType.planExpiring,
-            title: 'Seu plano ${tenant.plan.toUpperCase()} expira em $daysRemaining dias.',
+            title:
+                'Seu plano ${tenant.planLabel} expira em $days dia${days != 1 ? "s" : ""}.',
             actionLabel: 'Renovar Agora',
-            route: '/settings',
+            route: '/upgrade',
             isWarning: true,
-          ));
-        }
+          ),
+        );
       }
+    }
+    // 4. Trial ativo (sutil) — exibir que est\u00e1 em trial com link para upgrade
+    else if (tenant != null && tenant.isTrial && !tenant.isTrialExpired) {
+      final days = tenant.trialDaysRemaining;
+      alerts.add(
+        DashboardAlert(
+          type: DashboardAlertType.trialActive,
+          title:
+              'Voc\u00ea est\u00e1 no plano Trial \u2022 $days dias restantes',
+          actionLabel: 'Fazer Upgrade',
+          route: '/upgrade',
+        ),
+      );
     }
 
     // 2. Catálogo vazio

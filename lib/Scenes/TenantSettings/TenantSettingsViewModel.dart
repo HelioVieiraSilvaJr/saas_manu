@@ -24,6 +24,7 @@ class TenantSettingsViewModel {
 
   // Plano
   final String currentPlan;
+  final String currentPlanTier;
   final DateTime? trialEndDate;
   final DateTime? nextPaymentDate;
   final int trialDaysRemaining;
@@ -46,6 +47,7 @@ class TenantSettingsViewModel {
     this.webhookUrl = '',
     this.webhookToken = '',
     this.currentPlan = 'trial',
+    this.currentPlanTier = 'standard',
     this.trialEndDate,
     this.nextPaymentDate,
     this.trialDaysRemaining = 0,
@@ -69,6 +71,7 @@ class TenantSettingsViewModel {
     String? webhookUrl,
     String? webhookToken,
     String? currentPlan,
+    String? currentPlanTier,
     DateTime? trialEndDate,
     DateTime? nextPaymentDate,
     int? trialDaysRemaining,
@@ -92,6 +95,7 @@ class TenantSettingsViewModel {
       webhookUrl: webhookUrl ?? this.webhookUrl,
       webhookToken: webhookToken ?? this.webhookToken,
       currentPlan: currentPlan ?? this.currentPlan,
+      currentPlanTier: currentPlanTier ?? this.currentPlanTier,
       trialEndDate: trialEndDate ?? this.trialEndDate,
       nextPaymentDate: nextPaymentDate ?? this.nextPaymentDate,
       trialDaysRemaining: trialDaysRemaining ?? this.trialDaysRemaining,
@@ -104,16 +108,10 @@ class TenantSettingsViewModel {
   bool get isTrial => currentPlan == 'trial';
 
   String get planLabel {
-    switch (currentPlan) {
-      case 'trial':
-        return 'Trial';
-      case 'basic':
-        return 'Basic';
-      case 'full':
-        return 'Full';
-      default:
-        return currentPlan;
-    }
+    if (isTrial) return 'Trial';
+    final period = currentPlan == 'quarterly' ? 'Trimestral' : 'Mensal';
+    final tier = currentPlanTier == 'pro' ? ' Pro' : '';
+    return '$period$tier';
   }
 
   bool get hasEvolutionConfig =>

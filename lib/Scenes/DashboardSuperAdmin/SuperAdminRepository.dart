@@ -130,40 +130,54 @@ class SuperAdminRepository {
 
   // MARK: - Distribuição por Plano
 
-  /// Conta tenants por plano.
+  /// Conta tenants por plano (agrupado por período + tier).
   Future<Map<String, int>> getPlanDistribution() async {
     try {
       final tenants = await getAllTenants();
-      final distribution = <String, int>{'trial': 0, 'basic': 0, 'full': 0};
+      final distribution = <String, int>{
+        'trial': 0,
+        'monthly_standard': 0,
+        'monthly_pro': 0,
+        'quarterly_standard': 0,
+        'quarterly_pro': 0,
+      };
       for (final tenant in tenants) {
-        distribution[tenant.plan] = (distribution[tenant.plan] ?? 0) + 1;
+        if (tenant.isTrial) {
+          distribution['trial'] = (distribution['trial'] ?? 0) + 1;
+        } else {
+          final key = '${tenant.plan}_${tenant.planTier}';
+          distribution[key] = (distribution[key] ?? 0) + 1;
+        }
       }
       return distribution;
     } catch (e) {
       AppLogger.error('Erro ao buscar distribuição de planos', error: e);
-      return {'trial': 0, 'basic': 0, 'full': 0};
+      return {
+        'trial': 0,
+        'monthly_standard': 0,
+        'monthly_pro': 0,
+        'quarterly_standard': 0,
+        'quarterly_pro': 0,
+      };
     }
   }
 
   // MARK: - MRR
 
   /// Calcula MRR (Monthly Recurring Revenue).
-  /// Basic = R$50, Full = R$150, Trial = R$0
+  /// Usa preços reais de PlanTier por PlanPeriod, normalizados para mensal.
   Future<double> calculateMRR() async {
     try {
       final tenants = await getAllTenants();
       double mrr = 0;
       for (final tenant in tenants) {
-        if (!tenant.isActive) continue;
-        switch (tenant.plan) {
-          case 'basic':
-            mrr += 50;
-            break;
-          case 'full':
-            mrr += 150;
-            break;
-          default:
-            break;
+        if (!tenant.isActive || tenant.isTrial) continue;
+        // Normalizar para valor mensal
+        final price = tenant.planPrice;
+        if (tenant.plan == 'quarterly') {
+          mrr += price / 3; // Trimestral dividido por 3
+        } else {
+          mrr += price; // Mensal direto
         }
       }
       return mrr;

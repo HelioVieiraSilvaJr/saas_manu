@@ -14,6 +14,7 @@ class TenantFormPresenter {
 
   // State
   String selectedPlan = 'trial';
+  String selectedPlanTier = 'standard';
   bool isActive = true;
   bool isLoading = false;
   bool isSaving = false;
@@ -46,6 +47,7 @@ class TenantFormPresenter {
         emailController.text = tenant.contactEmail;
         phoneController.text = tenant.contactPhone;
         selectedPlan = tenant.plan;
+        selectedPlanTier = tenant.planTier;
         isActive = tenant.isActive;
       } else {
         errorMessage = 'Tenant não encontrado.';
@@ -63,6 +65,13 @@ class TenantFormPresenter {
 
   void setPlan(String plan) {
     selectedPlan = plan;
+    // Trial não tem tier
+    if (plan == 'trial') selectedPlanTier = 'standard';
+    _notify();
+  }
+
+  void setPlanTier(String tier) {
+    selectedPlanTier = tier;
     _notify();
   }
 
@@ -140,6 +149,7 @@ class TenantFormPresenter {
       email: emailController.text.trim(),
       phone: phoneController.text.trim(),
       plan: selectedPlan,
+      planTier: selectedPlanTier,
       isActive: isActive,
     );
 
@@ -164,10 +174,14 @@ class TenantFormPresenter {
       contactEmail: emailController.text.trim(),
       contactPhone: phoneController.text.trim(),
       plan: selectedPlan,
+      planTier: selectedPlanTier,
       isActive: isActive,
+      isExpired: tenant.isExpired,
       createdAt: tenant.createdAt,
+      expirationDate: tenant.expirationDate,
       trialEndDate: tenant.trialEndDate,
       nextPaymentDate: tenant.nextPaymentDate,
+      lastPaymentId: tenant.lastPaymentId,
       evolutionApiUrl: tenant.evolutionApiUrl,
       evolutionApiKey: tenant.evolutionApiKey,
       evolutionInstanceName: tenant.evolutionInstanceName,
