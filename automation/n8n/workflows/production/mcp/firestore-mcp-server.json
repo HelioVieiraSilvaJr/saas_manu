@@ -1,0 +1,515 @@
+{
+  "name": "MCP Firestore",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "mcp-firestore"
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+      "typeVersion": 2,
+      "position": [
+        272,
+        368
+      ],
+      "id": "e5e43028-c58c-47e8-a6a1-1075b9f96c2a",
+      "name": "MCP Server Trigger",
+      "webhookId": "d56388f0-3cac-4dc3-a5ea-e78064b25060"
+    },
+    {
+      "parameters": {
+        "name": "Atualizar_Cliente",
+        "description": "Atualiza dados de um cliente existente. Requer o document_id (UUID) do cliente, obtido previamente via Buscar_Cliente_Por_Telefone. Envie TODOS os campos, mantendo os valores atuais para campos que não mudaram e o novo valor para o campo que está sendo atualizado.",
+        "workflowId": {
+          "__rl": true,
+          "value": "QZuTflMvrNdNMmiB",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/QZuTflMvrNdNMmiB",
+          "cachedResultName": "Sub - Atualizar Cliente"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "tenant_id": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('tenant_id', ``, 'string') }}",
+            "document_id": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('document_id', ``, 'string') }}",
+            "address": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('address', ``, 'string') }}",
+            "email": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('email', ``, 'string') }}",
+            "phone": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('phone', ``, 'string') }}",
+            "name": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('name', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "tenant_id",
+              "displayName": "tenant_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "document_id",
+              "displayName": "document_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "address",
+              "displayName": "address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        240,
+        672
+      ],
+      "id": "60b04750-c5af-4bc7-a972-ef76ee5cf087",
+      "name": "Tool - Atualizar Cliente"
+    },
+    {
+      "parameters": {
+        "name": "Buscar_Produtos",
+        "description": "Busca produtos no catálogo pelo termo informado. Retorna lista de produtos com nome, preço, cor, tamanho, descrição. Se found=false, nenhum produto encontrado.",
+        "workflowId": {
+          "__rl": true,
+          "value": "SIXIOZ0NM0w1Kp1s",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/SIXIOZ0NM0w1Kp1s",
+          "cachedResultName": "Sub - Buscar Produtos"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "tenant_id": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('tenant_id', ``, 'string') }}",
+            "search_term": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('search_term', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "tenant_id",
+              "displayName": "tenant_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "search_term",
+              "displayName": "search_term",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        592,
+        672
+      ],
+      "id": "fc91684a-3c21-43ec-aa01-0d4622191e35",
+      "name": "Tool - Buscar Produtos"
+    },
+    {
+      "parameters": {
+        "name": "Carrinho_Operar",
+        "description": "Opera o carrinho de compras. Ações: add, remove, update_qty, clear. Usa SKU para identificar itens. Para add: envie sku, product_name, price, quantity. Para remove/update_qty: envie sku e quantity. Para clear: apenas tenant_id, phone, customer_name, customer_id e action.",
+        "workflowId": {
+          "__rl": true,
+          "value": "W9oVFsD5vGMJrnS9",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/W9oVFsD5vGMJrnS9",
+          "cachedResultName": "Sub - Carrinho Operar"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "tenant_id": "={{ $fromAI('tenant_id', 'ID do tenant', 'string') }}",
+            "phone": "={{ $fromAI('phone', 'Telefone do cliente', 'string') }}",
+            "action": "={{ $fromAI('action', 'Ação: add, remove, update_qty ou clear', 'string') }}",
+            "customer_name": "={{ $fromAI('customer_name', 'Nome do cliente', 'string') }}",
+            "customer_id": "={{ $fromAI('customer_id', 'ID do cliente', 'string') }}",
+            "sku": "={{ $fromAI('sku', 'SKU do produto. Obrigatorio para add, remove e update_qty. Envie string vazia para clear.', 'string') }}",
+            "product_name": "={{ $fromAI('product_name', 'Nome do produto. Obrigatorio para add. Envie string vazia para outras acoes.', 'string') }}",
+            "price": "={{ $fromAI('price', 'Preco do produto. Obrigatorio para add. Envie string vazia para outras acoes.', 'string') }}",
+            "quantity": "={{ $fromAI('quantity', 'Quantidade. Obrigatorio para add e update_qty. Envie string vazia para outras acoes.', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "tenant_id",
+              "displayName": "tenant_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "action",
+              "displayName": "action",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "customer_name",
+              "displayName": "customer_name",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "customer_id",
+              "displayName": "customer_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "sku",
+              "displayName": "sku",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "product_name",
+              "displayName": "product_name",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "price",
+              "displayName": "price",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "quantity",
+              "displayName": "quantity",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        896,
+        688
+      ],
+      "id": "ac395aa1-edb1-4e8b-87a7-a14520e8d4be",
+      "name": "Carrinho_Operar"
+    },
+    {
+      "parameters": {
+        "name": "Carrinho_View",
+        "description": "Consultar carrinho/sacola de compras. Retorna itens, total e quantidade. Somente leitura.",
+        "workflowId": {
+          "__rl": true,
+          "value": "gxZhfi6ne4nkSITs",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/gxZhfi6ne4nkSITs",
+          "cachedResultName": "Sub - Carrinho View"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "tenant_id": "={{ $fromAI('tenant_id', 'ID do tenant', 'string') }}",
+            "phone": "={{ $fromAI('phone', 'Telefone do cliente', 'string') }}",
+            "customer_name": "={{ $fromAI('customer_name', 'Nome do cliente', 'string') }}",
+            "customer_id": "={{ $fromAI('customer_id', 'ID do cliente', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "tenant_id",
+              "displayName": "tenant_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "customer_name",
+              "displayName": "customer_name",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "customer_id",
+              "displayName": "customer_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        688
+      ],
+      "id": "72bbbfa1-2f0d-42e0-9fa6-1701ebfa36e5",
+      "name": "Carrinho_View"
+    },
+    {
+      "parameters": {
+        "name": "Escalar_Humano",
+        "description": "Escala o atendimento para um atendente humano. Use quando o cliente pedir para falar com uma pessoa ou quando voce perceber que nao esta conseguindo atender a necessidade do cliente. Informe o motivo: user_requested (cliente pediu) ou ai_unable (IA nao conseguiu resolver). Inclua um resumo breve do que foi conversado ate o momento.",
+        "workflowId": {
+          "__rl": true,
+          "value": "ESCALAR_HUMANO_ID",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/ESCALAR_HUMANO_ID",
+          "cachedResultName": "Sub - Escalar Humano"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "tenant_id": "={{ $fromAI('tenant_id', 'ID do tenant', 'string') }}",
+            "phone": "={{ $fromAI('phone', 'Telefone do cliente', 'string') }}",
+            "customer_name": "={{ $fromAI('customer_name', 'Nome do cliente', 'string') }}",
+            "customer_id": "={{ $fromAI('customer_id', 'document_id do cliente', 'string') }}",
+            "reason": "={{ $fromAI('reason', 'Motivo da escalacao: user_requested ou ai_unable', 'string') }}",
+            "summary": "={{ $fromAI('summary', 'Resumo breve do atendimento ate o momento', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "tenant_id",
+              "displayName": "tenant_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "customer_name",
+              "displayName": "customer_name",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "customer_id",
+              "displayName": "customer_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "reason",
+              "displayName": "reason",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        688
+      ],
+      "id": "e5c6d7e8-0001-4000-8000-000000000001",
+      "name": "Escalar_Humano"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Tool - Atualizar Cliente": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool - Buscar Produtos": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Carrinho_Operar": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Carrinho_View": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escalar_Humano": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "9159e672-ff7e-4878-9a6b-87237d792e53",
+  "meta": {
+    "instanceId": "8f610a00096a913663098d07d4589b06a2b6a8fa62c633cf329d6f8ac12d3afd"
+  },
+  "id": "Zg8e0FW3Mq6awJx5",
+  "tags": []
+}

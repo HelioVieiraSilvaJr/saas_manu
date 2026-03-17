@@ -1,0 +1,261 @@
+{
+  "name": "Sub - Carrinho Operar",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $json.tenant_id }}:runQuery",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleFirebaseCloudFirestoreOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"structuredQuery\": {\n    \"from\": [{ \"collectionId\": \"carts\" }],\n    \"where\": {\n      \"fieldFilter\": {\n        \"field\": { \"fieldPath\": \"phone\" },\n        \"op\": \"EQUAL\",\n        \"value\": { \"stringValue\": \"{{ $json.phone }}\" }\n      }\n    },\n    \"limit\": 1\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -976,
+        -32
+      ],
+      "id": "6ba0639d-05eb-4027-b446-eabee6787cba",
+      "name": "Buscar Carrinho Existente",
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "QxD9cYkBZKwyeLQL",
+          "name": "Saas Manu - Firestore OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('Workflow Trigger').first().json;\nconst action = input.action;\nconst tenantId = input.tenant_id;\nconst phone = input.phone;\nconst customerName = input.customer_name || '';\nconst customerId = input.customer_id || '';\n\nconst raw = $input.first().json;\nlet cartId = null;\nlet cart = { items: [], total: 0, status: 'open' };\n\nif (raw.document) {\n  cartId = raw.document.name.split('/').pop();\n  const fields = raw.document.fields || {};\n  cart.status = fields.status?.stringValue || 'open';\n  cart.items = [];\n\n  if (fields.items?.arrayValue?.values) {\n    for (const v of fields.items.arrayValue.values) {\n      if (v.mapValue?.fields) {\n        const f = v.mapValue.fields;\n        cart.items.push({\n          sku: f.sku?.stringValue || '',\n          product_name: f.product_name?.stringValue || '',\n          price: Number(f.price?.doubleValue ?? f.price?.integerValue ?? 0),\n          quantity: Number(f.quantity?.integerValue ?? f.quantity?.doubleValue ?? 1),\n        });\n      }\n    }\n  }\n}\n\nfunction calcTotal(items) {\n  return Math.round(items.reduce((sum, i) => sum + (i.price * i.quantity), 0) * 100) / 100;\n}\n\nfunction makeOutput(actionToPersist, msg, items) {\n  const finalItems = items || cart.items;\n  const base = {\n    success: true,\n    items: finalItems,\n    total: calcTotal(finalItems),\n    item_count: finalItems.length,\n    message: msg,\n  };\n\n  if (actionToPersist) {\n    base._action = actionToPersist;\n    base._cartId = cartId;\n    base._tenantId = tenantId;\n    base._phone = phone;\n    base._customerName = customerName;\n    base._customerId = customerId;\n  }\n  return [{ json: base }];\n}\n\nif (action === 'view') {\n  if (cart.items.length === 0) {\n    return [{ json: { success: true, empty: true, message: 'Carrinho vazio.', items: [], total: 0, item_count: 0 } }];\n  }\n  cart.total = calcTotal(cart.items);\n  return [{ json: { success: true, empty: false, items: cart.items, total: cart.total, item_count: cart.items.length } }];\n}\n\nif (action === 'clear') {\n  if (!cartId) return [{ json: { success: true, message: 'Carrinho já estava vazio.', items: [], total: 0, item_count: 0 } }];\n  return [{ json: { _action: 'delete', _cartId: cartId, _tenantId: tenantId, success: true, message: 'Carrinho limpo.', items: [], total: 0, item_count: 0 } }];\n}\n\nif (action === 'add') {\n  const sku = String(input.sku || '').trim();\n  const qty = Number(input.quantity || 1);\n\n  const newItem = {\n    sku,\n    product_name: String(input.product_name || '').trim(),\n    price: Number(input.price || 0),\n    quantity: qty,\n  };\n\n  const existIdx = cart.items.findIndex(i => i.sku === sku);\n  if (existIdx >= 0) {\n    // SKU é a verdade: somar quantidade e manter nome/preço já existentes\n    cart.items[existIdx].quantity += newItem.quantity;\n  } else {\n    cart.items.push(newItem);\n  }\n\n  return makeOutput(cartId ? 'update' : 'create', `${newItem.product_name} adicionado ao carrinho.`, cart.items);\n}\n\nif (action === 'remove') {\n  const sku = String(input.sku || '').trim();\n  const before = cart.items.length;\n  cart.items = cart.items.filter(i => i.sku !== sku);\n\n  if (cart.items.length === before) return [{ json: { success: false, message: 'Item não encontrado no carrinho.' } }];\n\n  if (cart.items.length === 0 && cartId) {\n    return [{ json: { _action: 'delete', _cartId: cartId, _tenantId: tenantId, success: true, items: [], total: 0, item_count: 0, message: 'Item removido. Carrinho ficou vazio.' } }];\n  }\n  return makeOutput('update', 'Item removido.', cart.items);\n}\n\nif (action === 'update_qty') {\n  const sku = String(input.sku || '').trim();\n  const newQty = Number(input.quantity || 1);\n\n  const item = cart.items.find(i => i.sku === sku);\n  if (!item) return [{ json: { success: false, message: 'Item não encontrado no carrinho.' } }];\n\n  if (newQty <= 0) {\n    cart.items = cart.items.filter(i => i.sku !== sku);\n  } else {\n    item.quantity = newQty;\n  }\n  return makeOutput('update', 'Quantidade atualizada.', cart.items);\n}\n\nreturn [{ json: { success: false, message: 'Ação desconhecida: ' + action } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        -32
+      ],
+      "id": "86666dc4-e406-4cae-a108-8458f8a3cfa7",
+      "name": "Lógica do Carrinho"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-action",
+              "leftValue": "={{ $json._action }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -480,
+        -32
+      ],
+      "id": "0e73e182-6289-48a2-ae25-15eeedbb9090",
+      "name": "Precisa Salvar?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst action = data._action;\nconst tenantId = data._tenantId;\nconst cartId = data._cartId;\nconst baseUrl = `https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/${tenantId}`;\n\nif (action === 'delete' && cartId) {\n  return [{ json: { method: 'DELETE', url: `${baseUrl}/carts/${cartId}`, body: null } }];\n}\n\nconst itemsArray = (data.items || []).map(i => ({\n  mapValue: {\n    fields: {\n      sku: { stringValue: i.sku || '' },\n      product_name: { stringValue: i.product_name || '' },\n      price: { doubleValue: i.price },\n      quantity: { integerValue: String(i.quantity) },\n    }\n  }\n}));\n\nconst body = {\n  fields: {\n    phone: { stringValue: data._phone || '' },\n    customer_name: { stringValue: data._customerName || '' },\n    customer_id: { stringValue: data._customerId || '' },\n    items: { arrayValue: { values: itemsArray } },\n    total: { doubleValue: data.total || 0 },\n    status: { stringValue: 'open' },\n    updated_at: { stringValue: new Date().toISOString() }\n  }\n};\n\nif (action === 'create') {\n  body.fields.created_at = { stringValue: new Date().toISOString() };\n  return [{ json: { method: 'POST', url: `${baseUrl}/carts`, body } }];\n}\n\nif (action === 'update' && cartId) {\n  const mask = 'updateMask.fieldPaths=items&updateMask.fieldPaths=total&updateMask.fieldPaths=status&updateMask.fieldPaths=updated_at';\n  return [{ json: { method: 'PATCH', url: `${baseUrl}/carts/${cartId}?${mask}`, body } }];\n}\n\nreturn [{ json: { method: 'NONE' } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        -128
+      ],
+      "id": "1e527da5-68fd-494c-9397-9acb6dd1569c",
+      "name": "Preparar Requisição"
+    },
+    {
+      "parameters": {
+        "method": "={{ $json.method }}",
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleFirebaseCloudFirestoreOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        32,
+        -128
+      ],
+      "id": "64991478-f25b-43b3-9ca5-6d460ef71783",
+      "name": "Salvar no Firestore",
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "QxD9cYkBZKwyeLQL",
+          "name": "Saas Manu - Firestore OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $('Lógica do Carrinho').first().json;\nconst { _action, _cartId, _tenantId, _phone, _customerName, _customerId, ...clean } = prev;\nreturn [{ json: clean }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        288,
+        -32
+      ],
+      "id": "c8e1c6cf-4ee4-4e92-922e-9037e2efe7f6",
+      "name": "Limpar Output"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "tenant_id"
+            },
+            {
+              "name": "phone"
+            },
+            {
+              "name": "action"
+            },
+            {
+              "name": "customer_name"
+            },
+            {
+              "name": "customer_id"
+            },
+            {
+              "name": "sku"
+            },
+            {
+              "name": "product_name"
+            },
+            {
+              "name": "price"
+            },
+            {
+              "name": "quantity"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1232,
+        -32
+      ],
+      "id": "2efd6fd7-9016-442e-ae14-5dafb5af7cc0",
+      "name": "Workflow Trigger"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Buscar Carrinho Existente": {
+      "main": [
+        [
+          {
+            "node": "Lógica do Carrinho",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lógica do Carrinho": {
+      "main": [
+        [
+          {
+            "node": "Precisa Salvar?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Precisa Salvar?": {
+      "main": [
+        [
+          {
+            "node": "Preparar Requisição",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Limpar Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Requisição": {
+      "main": [
+        [
+          {
+            "node": "Salvar no Firestore",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salvar no Firestore": {
+      "main": [
+        [
+          {
+            "node": "Limpar Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Buscar Carrinho Existente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "d4ff1d2b-cf54-42ef-bb1a-6aa2bb8df4c8",
+  "meta": {
+    "instanceId": "8f610a00096a913663098d07d4589b06a2b6a8fa62c633cf329d6f8ac12d3afd"
+  },
+  "id": "W9oVFsD5vGMJrnS9",
+  "tags": []
+}

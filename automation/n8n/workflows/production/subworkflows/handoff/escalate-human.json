@@ -1,0 +1,153 @@
+{
+  "name": "Sub - Escalar Humano",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "tenant_id"
+            },
+            {
+              "name": "phone"
+            },
+            {
+              "name": "customer_name"
+            },
+            {
+              "name": "customer_id"
+            },
+            {
+              "name": "reason"
+            },
+            {
+              "name": "summary"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1200,
+        0
+      ],
+      "id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "name": "Workflow Trigger"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $json.tenant_id }}/customers/{{ $json.customer_id }}?updateMask.fieldPaths=agent_off&updateMask.fieldPaths=time_agent_off",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleFirebaseCloudFirestoreOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"fields\": {\n    \"agent_off\": { \"booleanValue\": true },\n    \"time_agent_off\": { \"stringValue\": \"{{ new Date().toISOString() }}\" }\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -880,
+        -80
+      ],
+      "id": "a1b2c3d4-0002-4000-8000-000000000002",
+      "name": "Desativar Agente no Cliente",
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "QxD9cYkBZKwyeLQL",
+          "name": "Saas Manu - Firestore OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $('Workflow Trigger').first().json.tenant_id }}/escalations",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleFirebaseCloudFirestoreOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"fields\": {\n    \"customer_name\": { \"stringValue\": \"{{ $('Workflow Trigger').first().json.customer_name }}\" },\n    \"customer_phone\": { \"stringValue\": \"{{ $('Workflow Trigger').first().json.phone }}\" },\n    \"customer_id\": { \"stringValue\": \"{{ $('Workflow Trigger').first().json.customer_id }}\" },\n    \"reason\": { \"stringValue\": \"{{ $('Workflow Trigger').first().json.reason }}\" },\n    \"summary\": { \"stringValue\": \"{{ $('Workflow Trigger').first().json.summary }}\" },\n    \"status\": { \"stringValue\": \"pending\" },\n    \"created_at\": { \"stringValue\": \"{{ new Date().toISOString() }}\" },\n    \"resolved_at\": { \"nullValue\": null }\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -880,
+        120
+      ],
+      "id": "a1b2c3d4-0003-4000-8000-000000000003",
+      "name": "Criar Escalação",
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "QxD9cYkBZKwyeLQL",
+          "name": "Saas Manu - Firestore OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const trigger = $('Workflow Trigger').first().json;\nconst escalationResult = $input.first().json;\n\nconst escalationId = escalationResult.name ? escalationResult.name.split('/').pop() : null;\n\nreturn [{\n  json: {\n    success: true,\n    message: 'Atendimento escalado para humano com sucesso.',\n    escalation_id: escalationId,\n    customer_name: trigger.customer_name,\n    reason: trigger.reason\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        0
+      ],
+      "id": "a1b2c3d4-0004-4000-8000-000000000004",
+      "name": "Resultado"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Desativar Agente no Cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Desativar Agente no Cliente": {
+      "main": [
+        [
+          {
+            "node": "Criar Escalação",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar Escalação": {
+      "main": [
+        [
+          {
+            "node": "Resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "00000000-0000-0000-0000-000000000001",
+  "meta": {
+    "instanceId": "8f610a00096a913663098d07d4589b06a2b6a8fa62c633cf329d6f8ac12d3afd"
+  },
+  "id": "ESCALAR_HUMANO_ID",
+  "tags": []
+}

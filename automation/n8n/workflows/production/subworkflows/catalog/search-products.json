@@ -1,0 +1,104 @@
+{
+  "name": "Sub - Buscar Produtos",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "tenant_id"
+            },
+            {
+              "name": "search_term"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -240,
+        0
+      ],
+      "id": "772d62b2-f909-4807-9a9b-9ec0972ad52f",
+      "name": "Workflow Trigger"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $json.tenant_id }}:runQuery",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleFirebaseCloudFirestoreOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"structuredQuery\": {\n    \"from\": [\n      {\n        \"collectionId\": \"products\"\n      }\n    ],\n    \"where\": {\n      \"fieldFilter\": {\n        \"field\": {\n          \"fieldPath\": \"is_active\"\n        },\n        \"op\": \"EQUAL\",\n        \"value\": {\n          \"booleanValue\": true\n        }\n      }\n    },\n    \"limit\": 1000\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -16,
+        0
+      ],
+      "id": "942eed4c-1506-49d3-9f77-2db6b543d13b",
+      "name": "Firestore - Get Products",
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "QxD9cYkBZKwyeLQL",
+          "name": "Saas Manu - Firestore OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Busca fuzzy + retorna TODOS os resultados relevantes (com e sem estoque)\n// para que o agente possa raciocinar sobre alternativas\n\nconst items = $input.all();\nconst searchTerm = $('Workflow Trigger').first().json.search_term || '';\nconst norm = (s) => (s || '').toString().toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\nconst searchWords = norm(searchTerm).split(/\\s+/).filter(w => w.length > 1);\n\n// Palavras que são tamanhos (não usar no match de nome/descrição)\nconst sizeWords = new Set(['pp','p','m','g','gg','xg','xxg','xs','s','l','xl','xxl']);\nconst isNumericSize = (w) => /^\\d{1,3}$/.test(w);\n\nfunction parseValue(val) {\n  if (!val) return null;\n  if (val.stringValue !== undefined) return val.stringValue;\n  if (val.integerValue !== undefined) return Number(val.integerValue);\n  if (val.doubleValue !== undefined) return Number(val.doubleValue);\n  if (val.booleanValue !== undefined) return val.booleanValue;\n  if (val.timestampValue !== undefined) return val.timestampValue;\n  if (val.nullValue !== undefined) return null;\n  if (val.arrayValue) return (val.arrayValue.values || []).map(v => parseValue(v));\n  if (val.mapValue) {\n    const obj = {};\n    for (const [k, v] of Object.entries(val.mapValue.fields || {})) obj[k] = parseValue(v);\n    return obj;\n  }\n  return JSON.stringify(val);\n}\n\n// Parse produtos\nconst products = [];\nfor (const item of items) {\n  const doc = item.json.document;\n  if (!doc) continue;\n  \n  const docId = doc.name?.split('/').pop() || ''; // <-- SKU = document_id\n  const product = { sku: docId };\n  \n  for (const [key, val] of Object.entries(doc.fields || {})) {\n    product[key] = parseValue(val);\n  }\n  \n  if (product.is_active === false) continue;\n  products.push(product);\n}\n\nif (products.length === 0) {\n  return [{ json: { found: false, message: 'Nenhum produto encontrado.' } }];\n}\n\n// Sem termo = retorna resumo do catálogo\nif (searchWords.length === 0) {\n  const available = products.filter(p => (p.stock || 0) > 0);\n  return available.slice(0, 15).map(p => ({\n    json: { found: true, name: p.name, color: p.color || '', size: p.size || '', price: p.price, stock: p.stock, description: p.description || '', category: p.category || '' }\n  }));\n}\n\n// Separa termos: produto vs cor vs tamanho\nconst productWords = [];\nlet searchedSize = null;\nconst colorWords = [];\n\nconst knownColors = ['preto','branco','azul','vermelho','verde','amarelo','rosa','roxo','laranja','marrom','cinza','bege','dourado','prata','nude','caramelo','vinho','bordo','coral','lilas','turquesa','creme','grafite','off-white','offwhite'];\n\nfor (const word of searchWords) {\n  if (sizeWords.has(word) || isNumericSize(word)) {\n    searchedSize = word;\n  } else if (knownColors.includes(word)) {\n    colorWords.push(word);\n  } else {\n    productWords.push(word);\n  }\n}\n\n// Match de nome/descrição/categoria/tags (sem cor e tamanho)\nfunction searchable(p) {\n  const tagsStr = Array.isArray(p.tags) ? p.tags.join(' ') : (p.tags || '');\n  return norm([p.name || '', p.description || '', p.category || '', tagsStr].join(' '));\n}\n\nconst scored = products.map(p => {\n  const text = searchable(p);\n  const nameNorm = norm(p.name);\n  let score = 0;\n\n  // Match por palavras do produto\n  for (const word of productWords) {\n    if (text.includes(word)) score += 10;\n    for (const w of text.split(/\\s+/)) {\n      if (w.startsWith(word) || word.startsWith(w)) score += 3;\n    }\n  }\n  if (productWords.length > 0 && nameNorm.includes(productWords.join(' '))) score += 25;\n  if (norm(p.category) === productWords.join(' ')) score += 15;\n  if (Array.isArray(p.tags) && p.tags.some(t => productWords.some(pw => norm(t).includes(pw)))) score += 10;\n\n  // Match de cor\n  let colorMatch = colorWords.length === 0 ? null : false;\n  if (colorWords.length > 0 && p.color) {\n    if (colorWords.some(c => norm(p.color).includes(c))) {\n      colorMatch = true;\n      score += 15;\n    }\n  }\n\n  // Match de tamanho\n  let sizeMatch = searchedSize === null ? null : false;\n  if (searchedSize && p.size !== undefined && p.size !== null) {\n    if (norm(String(p.size)) === searchedSize) {\n      sizeMatch = true;\n      score += 15;\n    }\n  }\n\n  return {\n    sku: p.sku,\n    name: p.name,\n    color: p.color || '',\n    size: p.size !== undefined ? p.size : '',\n    price: p.price,\n    stock: p.stock || 0,\n    description: p.description || '',\n    category: p.category || '',\n    _score: score,\n    _colorMatch: colorMatch,\n    _sizeMatch: sizeMatch,\n    _inStock: (p.stock || 0) > 0\n  };\n});\n\n// Filtra: score > 0 (produto relevante)\nconst relevant = scored.filter(p => p._score > 0).sort((a, b) => b._score - a._score);\n\nif (relevant.length === 0) {\n  return [{ json: { found: false, message: 'Nenhum produto encontrado para: ' + searchTerm } }];\n}\n\n// Separa em grupos para o agente raciocinar\nconst exact = relevant.filter(p => \n  p._inStock && \n  (p._colorMatch === null || p._colorMatch === true) && \n  (p._sizeMatch === null || p._sizeMatch === true)\n);\n\nconst sameProductDiffColor = relevant.filter(p => \n  p._inStock && \n  p._colorMatch === false && \n  (p._sizeMatch === null || p._sizeMatch === true)\n);\n\nconst sameProductDiffSize = relevant.filter(p => \n  p._inStock && \n  (p._colorMatch === null || p._colorMatch === true) && \n  p._sizeMatch === false\n);\n\nconst outOfStock = relevant.filter(p => \n  !p._inStock && \n  (p._colorMatch === null || p._colorMatch === true) && \n  (p._sizeMatch === null || p._sizeMatch === true)\n);\n\n// Monta resultado estruturado para o agente\nconst result = { found: true };\n\nif (exact.length > 0) {\n  result.exact_matches = exact.slice(0, 5).map(({ _score, _colorMatch, _sizeMatch, _inStock, ...p }) => p);\n}\nif (sameProductDiffColor.length > 0) {\n  result.alternative_colors = sameProductDiffColor.slice(0, 5).map(({ _score, _colorMatch, _sizeMatch, _inStock, ...p }) => p);\n}\nif (sameProductDiffSize.length > 0) {\n  result.alternative_sizes = sameProductDiffSize.slice(0, 5).map(({ _score, _colorMatch, _sizeMatch, _inStock, ...p }) => p);\n}\nif (outOfStock.length > 0) {\n  result.out_of_stock = outOfStock.slice(0, 3).map(({ _score, _colorMatch, _sizeMatch, _inStock, ...p }) => p);\n}\n\nif (!result.exact_matches && !result.alternative_colors && !result.alternative_sizes) {\n  result.found = false;\n  result.message = 'Produto não encontrado com essas especificações.';\n  if (outOfStock.length > 0) result.message += ' Estava no catálogo mas zerou o estoque.';\n}\n\nreturn [{ json: result }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "id": "a8b53d9f-6e39-4ca0-9f77-d292f3381933",
+      "name": "Filtrar por Relevância"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Firestore - Get Products",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Firestore - Get Products": {
+      "main": [
+        [
+          {
+            "node": "Filtrar por Relevância",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "e49c7e23-4abb-4e4a-bc62-edf9dfb16332",
+  "meta": {
+    "instanceId": "8f610a00096a913663098d07d4589b06a2b6a8fa62c633cf329d6f8ac12d3afd"
+  },
+  "id": "SIXIOZ0NM0w1Kp1s",
+  "tags": []
+}

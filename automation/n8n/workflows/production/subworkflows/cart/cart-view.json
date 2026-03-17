@@ -1,0 +1,246 @@
+{
+  "name": "Sub - Carrinho View",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "tenant_id"
+            },
+            {
+              "name": "phone"
+            },
+            {
+              "name": "customer_name"
+            },
+            {
+              "name": "customer_id"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1232,
+        -32
+      ],
+      "id": "34a91a3a-bc35-462a-87c9-5e69f92d52da",
+      "name": "Workflow Trigger"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $json.tenant_id }}:runQuery",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleFirebaseCloudFirestoreOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"structuredQuery\": {\n    \"from\": [{ \"collectionId\": \"carts\" }],\n    \"where\": {\n      \"fieldFilter\": {\n        \"field\": { \"fieldPath\": \"phone\" },\n        \"op\": \"EQUAL\",\n        \"value\": { \"stringValue\": \"{{ $json.phone }}\" }\n      }\n    },\n    \"limit\": 1\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -976,
+        -32
+      ],
+      "id": "fa34b9fa-2ae9-431e-8e5b-5abab1ae77c9",
+      "name": "Buscar Carrinho Existente",
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "QxD9cYkBZKwyeLQL",
+          "name": "Saas Manu - Firestore OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('Workflow Trigger').first().json;\nconst action = 'view';\nconst tenantId = input.tenant_id;\nconst phone = input.phone;\nconst customerName = input.customer_name || '';\nconst customerId = input.customer_id || '';\n\nconst raw = $input.first().json;\nlet cartId = null;\nlet cart = { items: [], total: 0, status: 'open' };\n\nif (raw.document) {\n  cartId = raw.document.name.split('/').pop();\n  const fields = raw.document.fields || {};\n  cart.status = fields.status?.stringValue || 'open';\n  cart.items = [];\n\n  if (fields.items?.arrayValue?.values) {\n    for (const v of fields.items.arrayValue.values) {\n      if (v.mapValue?.fields) {\n        const f = v.mapValue.fields;\n        cart.items.push({\n          sku: f.sku?.stringValue || '',\n          product_name: f.product_name?.stringValue || '',\n          price: Number(f.price?.doubleValue ?? f.price?.integerValue ?? 0),\n          quantity: Number(f.quantity?.integerValue ?? f.quantity?.doubleValue ?? 1),\n        });\n      }\n    }\n  }\n}\n\nfunction calcTotal(items) {\n  return Math.round(items.reduce((sum, i) => sum + (i.price * i.quantity), 0) * 100) / 100;\n}\n\nfunction makeOutput(actionToPersist, msg, items) {\n  const finalItems = items || cart.items;\n  const base = {\n    success: true,\n    items: finalItems,\n    total: calcTotal(finalItems),\n    item_count: finalItems.length,\n    message: msg,\n  };\n\n  if (actionToPersist) {\n    base._action = actionToPersist;\n    base._cartId = cartId;\n    base._tenantId = tenantId;\n    base._phone = phone;\n    base._customerName = customerName;\n    base._customerId = customerId;\n  }\n  return [{ json: base }];\n}\n\nif (action === 'view') {\n  if (cart.items.length === 0) {\n    return [{ json: { success: true, empty: true, message: 'Carrinho vazio.', items: [], total: 0, item_count: 0 } }];\n  }\n  cart.total = calcTotal(cart.items);\n  return [{ json: { success: true, empty: false, items: cart.items, total: cart.total, item_count: cart.items.length } }];\n}\n\nreturn [{ json: { success: false, message: 'Ação desconhecida: ' + action } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        -32
+      ],
+      "id": "30fbf592-855a-4fb0-97fa-6e5980f6142f",
+      "name": "Lógica do Carrinho"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-action",
+              "leftValue": "={{ $json._action }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -480,
+        -32
+      ],
+      "id": "bb781657-29ab-43b0-a461-632116bd11f3",
+      "name": "Precisa Salvar?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst action = 'view';\nconst tenantId = data._tenantId;\nconst cartId = data._cartId;\nconst baseUrl = `https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/${tenantId}`;\n\nif (action === 'delete' && cartId) {\n  return [{ json: { method: 'DELETE', url: `${baseUrl}/carts/${cartId}`, body: null } }];\n}\n\nconst itemsArray = (data.items || []).map(i => ({\n  mapValue: {\n    fields: {\n      sku: { stringValue: i.sku || '' },\n      product_name: { stringValue: i.product_name || '' },\n      price: { doubleValue: i.price },\n      quantity: { integerValue: String(i.quantity) },\n    }\n  }\n}));\n\nconst body = {\n  fields: {\n    phone: { stringValue: data._phone || '' },\n    customer_name: { stringValue: data._customerName || '' },\n    customer_id: { stringValue: data._customerId || '' },\n    items: { arrayValue: { values: itemsArray } },\n    total: { doubleValue: data.total || 0 },\n    status: { stringValue: 'open' },\n    updated_at: { stringValue: new Date().toISOString() }\n  }\n};\n\nif (action === 'create') {\n  body.fields.created_at = { stringValue: new Date().toISOString() };\n  return [{ json: { method: 'POST', url: `${baseUrl}/carts`, body } }];\n}\n\nif (action === 'update' && cartId) {\n  const mask = 'updateMask.fieldPaths=items&updateMask.fieldPaths=total&updateMask.fieldPaths=status&updateMask.fieldPaths=updated_at';\n  return [{ json: { method: 'PATCH', url: `${baseUrl}/carts/${cartId}?${mask}`, body } }];\n}\n\nreturn [{ json: { method: 'NONE' } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        -128
+      ],
+      "id": "c578ba35-eb8a-4f92-a1eb-659914a7592a",
+      "name": "Preparar Requisição"
+    },
+    {
+      "parameters": {
+        "method": "={{ $json.method }}",
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleFirebaseCloudFirestoreOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        32,
+        -128
+      ],
+      "id": "c82c3a9e-e385-45cb-8d0f-bbae12ed852f",
+      "name": "Salvar no Firestore",
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "QxD9cYkBZKwyeLQL",
+          "name": "Saas Manu - Firestore OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prev = $('Lógica do Carrinho').first().json;\nconst { _action, _cartId, _tenantId, _phone, _customerName, _customerId, ...clean } = prev;\nreturn [{ json: clean }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        288,
+        -32
+      ],
+      "id": "1ac8efce-eea2-4e07-86e9-8842d548eac2",
+      "name": "Limpar Output"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Buscar Carrinho Existente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Carrinho Existente": {
+      "main": [
+        [
+          {
+            "node": "Lógica do Carrinho",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lógica do Carrinho": {
+      "main": [
+        [
+          {
+            "node": "Precisa Salvar?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Precisa Salvar?": {
+      "main": [
+        [
+          {
+            "node": "Preparar Requisição",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Limpar Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Requisição": {
+      "main": [
+        [
+          {
+            "node": "Salvar no Firestore",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salvar no Firestore": {
+      "main": [
+        [
+          {
+            "node": "Limpar Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "c11b0f95-5295-4487-83b0-0c48eacda05a",
+  "meta": {
+    "instanceId": "8f610a00096a913663098d07d4589b06a2b6a8fa62c633cf329d6f8ac12d3afd"
+  },
+  "id": "gxZhfi6ne4nkSITs",
+  "tags": []
+}

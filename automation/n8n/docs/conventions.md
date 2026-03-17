@@ -20,6 +20,22 @@ Se houver versao relevante no arquivo exportado, use sufixo explicito:
 - `workflows/staging/`: fluxos prontos para validacao
 - `workflows/production/`: espelho do que esta ativo em producao
 
+## Organizacao interna
+
+Dentro de cada ambiente, prefira separar por papel tecnico:
+
+- `entrypoints/`: fluxos principais que recebem eventos externos
+- `mcp/`: servidores MCP, catalogos de tools e camadas de exposicao para agentes
+- `subworkflows/`: componentes reutilizaveis chamados por outros workflows
+
+Dentro de `subworkflows/`, agrupe por dominio quando houver volume:
+
+- `customer/`
+- `catalog/`
+- `cart/`
+- `channel/`
+- `handoff/`
+
 ## Seguranca
 
 - Remover credenciais antes de exportar
@@ -44,3 +60,11 @@ Quando um workflow depender de estrutura especifica do app ou banco, deixar expl
 - endpoints consumidos
 - contrato esperado de payload
 - regra de versionamento
+
+## Importacao e restauracao
+
+Quando um conjunto de workflows depender de IDs internos do `n8n`:
+
+- documentar a ordem de importacao
+- registrar os IDs atuais dos subworkflows em um `README.md` do ambiente
+- destacar qualquer placeholder que precise ser trocado apos import

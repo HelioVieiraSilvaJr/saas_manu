@@ -1,0 +1,63 @@
+# Production Workflows
+
+Esta pasta representa a arquitetura atual dos workflows de producao do projeto.
+
+## Estrutura
+
+```text
+production/
+├── entrypoints/
+│   └── whatsapp-sales-agent.json
+├── mcp/
+│   └── firestore-mcp-server.json
+└── subworkflows/
+    ├── cart/
+    │   ├── cart-operate.json
+    │   └── cart-view.json
+    ├── catalog/
+    │   └── search-products.json
+    ├── channel/
+    │   └── update-whatsapp-status.json
+    ├── customer/
+    │   └── update-customer.json
+    └── handoff/
+        └── escalate-human.json
+```
+
+## Mapa rapido
+
+- `entrypoints/whatsapp-sales-agent.json`: workflow principal de atendimento e vendas via WhatsApp
+- `mcp/firestore-mcp-server.json`: servidor MCP exposto em `mcp-firestore` para ferramentas do agente
+- `subworkflows/customer/update-customer.json`: atualizacao de cadastro do cliente
+- `subworkflows/catalog/search-products.json`: consulta de produtos no Firestore
+- `subworkflows/cart/cart-operate.json`: operacoes de carrinho
+- `subworkflows/cart/cart-view.json`: leitura e resumo do carrinho
+- `subworkflows/channel/update-whatsapp-status.json`: atualizacao de status no canal
+- `subworkflows/handoff/escalate-human.json`: escalonamento para atendimento humano
+
+## IDs atuais
+
+- `MCP Firestore`: `Zg8e0FW3Mq6awJx5`
+- `Sub - Atualizar Cliente`: `QZuTflMvrNdNMmiB`
+- `Sub - Buscar Produtos`: `SIXIOZ0NM0w1Kp1s`
+- `Sub - Carrinho Operar`: `W9oVFsD5vGMJrnS9`
+- `Sub - Carrinho View`: `gxZhfi6ne4nkSITs`
+- `Sub - Escalar Humano`: `ESCALAR_HUMANO_ID`
+
+## Endpoints identificados
+
+- webhook principal: `whatsapp-incoming`
+- servidor MCP: `mcp-firestore`
+
+## Ordem recomendada de importacao
+
+1. Importar os arquivos de `subworkflows/`.
+2. Confirmar ou atualizar os IDs dos subworkflows no `n8n`.
+3. Importar `mcp/firestore-mcp-server.json` e validar referencias de `toolWorkflow`.
+4. Importar `entrypoints/whatsapp-sales-agent.json`.
+5. Testar webhook, MCP e credenciais antes de publicar.
+
+## Observacoes
+
+- O arquivo `entrypoints/whatsapp-sales-agent.json` veio sem `name` e sem `id` no export original; o `name` foi preenchido no repositorio para facilitar manutencao.
+- O workflow `Sub - Escalar Humano` ainda usa o identificador `ESCALAR_HUMANO_ID`; isso parece placeholder e deve ser validado no ambiente do `n8n`.

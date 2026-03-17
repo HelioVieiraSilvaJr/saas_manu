@@ -1,0 +1,116 @@
+{
+  "name": "Sub - Atualizar Cliente",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "tenant_id"
+            },
+            {
+              "name": "document_id"
+            },
+            {
+              "name": "name"
+            },
+            {
+              "name": "phone"
+            },
+            {
+              "name": "email"
+            },
+            {
+              "name": "address"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -80,
+        -80
+      ],
+      "id": "42e737bb-964d-4c27-971e-f54c4414cd38",
+      "name": "Workflow Trigger"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $json.tenant_id }}/customers/{{ $json.document_id }}?updateMask.fieldPaths=name&updateMask.fieldPaths=phone&updateMask.fieldPaths=email&updateMask.fieldPaths=address&updateMask.fieldPaths=updated_at",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleFirebaseCloudFirestoreOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"fields\": {\n    \"name\": { \"stringValue\": \"{{ $json.name }}\" },\n    \"phone\": { \"stringValue\": \"{{ $json.phone }}\" },\n    \"email\": { \"stringValue\": \"{{ $json.email }}\" },\n    \"address\": { \"stringValue\": \"{{ $json.address }}\" },\n    \"updated_at\": { \"stringValue\": \"{{ $now.toISO() }}\" }\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        208,
+        -80
+      ],
+      "id": "4883712c-6d8e-4f4b-ab02-751e250d578d",
+      "name": "Firestore - PATCH Update",
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "QxD9cYkBZKwyeLQL",
+          "name": "Saas Manu - Firestore OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst doc = item.json;\n\nif (doc.fields) {\n  const fields = doc.fields;\n  const result = { success: true, document_id: doc.name ? doc.name.split('/').pop() : '' };\n  for (const [key, val] of Object.entries(fields)) {\n    if (val.stringValue !== undefined) result[key] = val.stringValue;\n    else if (val.integerValue !== undefined) result[key] = val.integerValue;\n    else if (val.timestampValue !== undefined) result[key] = val.timestampValue;\n    else result[key] = JSON.stringify(val);\n  }\n  return [{ json: result }];\n}\n\nreturn [{ json: { success: false, error: 'Update failed' } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        -80
+      ],
+      "id": "adfd2faf-3907-4806-be71-90f4152fbeb3",
+      "name": "Processar Resultado"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Firestore - PATCH Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Firestore - PATCH Update": {
+      "main": [
+        [
+          {
+            "node": "Processar Resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "6ae937e3-cc02-4202-825e-69171638a3d5",
+  "meta": {
+    "instanceId": "8f610a00096a913663098d07d4589b06a2b6a8fa62c633cf329d6f8ac12d3afd"
+  },
+  "id": "QZuTflMvrNdNMmiB",
+  "tags": []
+}

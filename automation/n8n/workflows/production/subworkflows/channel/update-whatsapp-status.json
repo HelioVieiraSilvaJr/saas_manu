@@ -1,0 +1,77 @@
+{
+  "name": "Sub - Atualizar Status WhatsApp",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "e56e25c6-d00e-40aa-83b6-4985aea910f1",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        480
+      ],
+      "id": "25e54aa6-ac9a-49c6-9017-4b4b21237639",
+      "name": " Webhook Digitando...",
+      "webhookId": "e56e25c6-d00e-40aa-83b6-4985aea910f1"
+    },
+    {
+      "parameters": {
+        "resource": "chat-api",
+        "operation": "send-presence",
+        "instanceName": "={{ $json.body.instancia }}",
+        "remoteJid": "={{ $json.body.telefone }}",
+        "presence": "={{ $json.body.status }}",
+        "delay": 20000
+      },
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        240,
+        480
+      ],
+      "id": "df6b40cb-0e0b-433d-b167-633ffb7f558b",
+      "name": "Atualizar status",
+      "credentials": {
+        "evolutionApi": {
+          "id": "M6bGmFNfvOgZac2f",
+          "name": "Loja-Exemplo-1"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    " Webhook Digitando...": {
+      "main": [
+        [
+          {
+            "node": "Atualizar status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d747e13e-5c67-46b0-ad1f-14ecd882e86c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8f610a00096a913663098d07d4589b06a2b6a8fa62c633cf329d6f8ac12d3afd"
+  },
+  "id": "dq34Nu1lmyMdp1rb",
+  "tags": [
+    {
+      "updatedAt": "2025-10-21T21:54:32.207Z",
+      "createdAt": "2025-10-21T21:54:32.207Z",
+      "id": "Kq1l6BpASOuWM23q",
+      "name": "RUNAS"
+    }
+  ]
+}

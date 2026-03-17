@@ -19,11 +19,20 @@ automation/n8n/
 │   ├── drafts/       # Fluxos em elaboracao
 │   ├── staging/      # Fluxos validados para homologacao
 │   └── production/   # Fluxos que refletem o ambiente produtivo
+│       ├── entrypoints/
+│       ├── mcp/
+│       └── subworkflows/
 └── docs/
     ├── overview.md
     ├── tenants.md
     └── conventions.md
 ```
+
+Na pasta `production/`, os arquivos ficam organizados por responsabilidade:
+
+- `entrypoints/`: workflows principais expostos por webhook ou gatilho externo
+- `mcp/`: servidores MCP e definicoes de ferramentas para o agente
+- `subworkflows/`: blocos reutilizaveis por dominio de negocio
 
 ## Fluxo recomendado
 
