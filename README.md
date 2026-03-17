@@ -1,16 +1,21 @@
 # saas_manu
 
-A new Flutter project.
+Plataforma CRM multi-tenant em Flutter/Firebase, preparada para operar junto de automacoes no `n8n` e agentes de IA que atendem clientes dos tenants.
 
-## Getting Started
+## Documentacao principal
 
-This project is a starting point for a Flutter application.
+- `ARCHITECTURE.md`: arquitetura, multi-tenancy e padroes do projeto
+- `FUNCTIONAL_SPECS.md`: especificacao funcional da plataforma
+- `FIREBASE_CONFIG.md`: configuracao e apoio para Firebase
+- `automation/n8n/README.md`: organizacao dos workflows do `n8n`
 
-A few resources to get you started if this is your first Flutter project:
+## Estrutura de automacao
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+Os workflows do `n8n` ficam versionados em `automation/n8n/` para manter:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- visao geral entre CRM, dados e automacoes
+- historico de mudancas junto do produto
+- documentacao do comportamento do agente de IA
+- separacao entre rascunhos, homologacao e producao
+
+Antes de versionar um workflow, remova credenciais, tokens e qualquer segredo embutido.
