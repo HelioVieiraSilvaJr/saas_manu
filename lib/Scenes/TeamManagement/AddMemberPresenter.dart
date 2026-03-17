@@ -79,6 +79,8 @@ class AddMemberPresenter {
       isAdding = false;
       _notify();
 
+      if (!context.mounted) return;
+
       if (success) {
         await DSAlertDialog.showSuccess(
           context: context,
@@ -104,6 +106,9 @@ class AddMemberPresenter {
       AppLogger.error('Erro ao adicionar membro', error: e);
       isAdding = false;
       _notify();
+
+      if (!context.mounted) return;
+
       await DSAlertDialog.showError(
         context: context,
         title: 'Erro ao Adicionar',

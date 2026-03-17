@@ -160,16 +160,19 @@ class TeamManagementRepository {
     required String addedBy,
   }) async {
     try {
-      await _firestore.collection('memberships').doc('${tenantId}_$userId').set({
-        'user_id': userId,
-        'tenant_id': tenantId,
-        'role': role.name,
-        'is_active': true,
-        'user_name': userName,
-        'user_email': userEmail,
-        'added_by': addedBy,
-        'created_at': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      await _firestore
+          .collection('memberships')
+          .doc('${tenantId}_$userId')
+          .set({
+            'user_id': userId,
+            'tenant_id': tenantId,
+            'role': role.name,
+            'is_active': true,
+            'user_name': userName,
+            'user_email': userEmail,
+            'added_by': addedBy,
+            'created_at': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
       return true;
     } catch (e) {
       AppLogger.error('Erro ao criar membership', error: e);
