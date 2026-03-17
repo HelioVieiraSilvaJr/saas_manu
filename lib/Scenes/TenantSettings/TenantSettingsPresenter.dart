@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../Commons/Utils/AppLogger.dart';
 import '../../Sources/SessionManager.dart';
+import '../../Sources/BackendApi.dart';
 import 'TenantSettingsRepository.dart';
 import 'TenantSettingsViewModel.dart';
 
@@ -56,7 +57,10 @@ class TenantSettingsPresenter {
       // Webhook URL
       final webhookToken = t.webhookToken ?? '';
       final webhookUrl = webhookToken.isNotEmpty
-          ? 'https://us-central1-PROJECT_ID.cloudfunctions.net/receiveN8nSale?tenantId=${t.uid}&token=$webhookToken'
+          ? BackendApi.instance.n8nSaleWebhookUrl(
+              tenantId: t.uid,
+              token: webhookToken,
+            )
           : '';
 
       viewModel = viewModel.copyWith(
@@ -202,11 +206,12 @@ class TenantSettingsPresenter {
   }
 
   Future<void> testWhatsAppConnection() async {
+    final tenantId = SessionManager.instance.currentTenant?.uid;
     final url = evolutionUrlController.text.trim();
     final key = apiKeyController.text.trim();
     final instance = instanceNameController.text.trim();
 
-    if (url.isEmpty || key.isEmpty || instance.isEmpty) {
+    if (tenantId == null || url.isEmpty || key.isEmpty || instance.isEmpty) {
       viewModel = viewModel.copyWith(
         errorMessage: 'Preencha todos os campos antes de testar.',
       );
@@ -218,6 +223,7 @@ class TenantSettingsPresenter {
     _notify();
 
     final result = await _repository.testWhatsAppConnection(
+      tenantId: tenantId,
       evolutionApiUrl: url,
       apiKey: key,
       instanceName: instance,
@@ -241,8 +247,10 @@ class TenantSettingsPresenter {
     final token = await _repository.generateWebhookToken(tenantId);
     if (token == null) return '';
 
-    final url =
-        'https://us-central1-PROJECT_ID.cloudfunctions.net/receiveN8nSale?tenantId=$tenantId&token=$token';
+    final url = BackendApi.instance.n8nSaleWebhookUrl(
+      tenantId: tenantId,
+      token: token,
+    );
 
     viewModel = viewModel.copyWith(webhookUrl: url, webhookToken: token);
     _notify();

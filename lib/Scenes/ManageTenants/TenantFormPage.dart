@@ -58,12 +58,18 @@ class _TenantFormPageState extends State<TenantFormPage> {
   Future<void> _onSave() async {
     final success = await _presenter.save(_formKey);
     if (success && mounted) {
+      final temporaryPassword = _presenter.lastCreatedTemporaryPassword;
+      final creationMessage = _presenter.lastCreatedAdminWasNewUser
+          ? temporaryPassword != null && temporaryPassword.isNotEmpty
+                ? 'Tenant criado com sucesso. Senha temporária do admin: $temporaryPassword'
+                : 'Tenant criado com sucesso. O admin inicial foi provisionado no backend.'
+          : 'Tenant criado com sucesso. O admin inicial já existia na plataforma.';
       DSAlertDialog.showSuccess(
         context: context,
         title: _presenter.isEditing ? 'Tenant atualizado' : 'Tenant criado',
         message: _presenter.isEditing
             ? 'As alterações foram salvas com sucesso.'
-            : 'Tenant criado com sucesso. Senha padrão: 1234567',
+            : creationMessage,
       );
       Navigator.pop(context, true);
     }

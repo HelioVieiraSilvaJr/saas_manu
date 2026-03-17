@@ -1,18 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../Commons/Models/TenantModel.dart';
 import '../../Commons/Models/MembershipModel.dart';
 import '../../Commons/Models/PaymentModel.dart';
 import '../../Commons/Enums/PlanPeriod.dart';
-import '../../Commons/Enums/PlanTier.dart';
 import '../../Commons/Utils/AppLogger.dart';
+import '../../Sources/BackendApi.dart';
 
 /// Repository CRUD de Tenants (SuperAdmin).
 ///
 /// Acessa coleção global `tenants/`.
 class TenantsRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   CollectionReference<Map<String, dynamic>> get _collection =>
       _firestore.collection('tenants');
@@ -50,7 +48,7 @@ class TenantsRepository {
 
   /// Cria um novo tenant completo (tenant + user + membership).
   /// Retorna o ID do tenant criado.
-  Future<String?> createTenantWithUser({
+  Future<Map<String, dynamic>?> createTenantWithUser({
     required String name,
     required String email,
     required String phone,
@@ -59,68 +57,23 @@ class TenantsRepository {
     required bool isActive,
   }) async {
     try {
-      final now = DateTime.now();
-      final period = PlanPeriod.fromString(plan);
-      final expiration = now.add(Duration(days: period.durationDays));
-
-      // 1. Criar tenant
-      final tenantData = <String, dynamic>{
-        'name': name,
-        'contact_email': email,
-        'contact_phone': phone,
-        'plan': plan,
-        'plan_tier': planTier,
-        'is_active': isActive,
-        'is_expired': false,
-        'expiration_date': Timestamp.fromDate(expiration),
-        'created_at': FieldValue.serverTimestamp(),
-      };
-
-      // Se Trial: definir trial_end_date também
-      if (plan == 'trial') {
-        tenantData['trial_end_date'] = Timestamp.fromDate(expiration);
-      }
-
-      final tenantRef = await _collection.add(tenantData);
-      AppLogger.info('Tenant criado: ${tenantRef.id}');
-
-      // 2. Criar usuário (TenantAdmin) — senha padrão: 1234567
-      try {
-        final userCredential = await _auth.createUserWithEmailAndPassword(
-          email: email,
-          password: '1234567',
-        );
-
-        final userId = userCredential.user!.uid;
-
-        // 3. Criar documento em users/
-        await _firestore.collection('users').doc(userId).set({
-          'email': email,
+      final response = await BackendApi.instance.postAuthenticated(
+        functionName: 'createTenantWithAdmin',
+        body: {
           'name': name,
-          'created_at': FieldValue.serverTimestamp(),
-        });
+          'email': email,
+          'phone': phone,
+          'plan': plan,
+          'planTier': planTier,
+          'isActive': isActive,
+        },
+      );
 
-        // 4. Criar membership (tenantAdmin)
-        await _firestore.collection('memberships').add({
-          'user_id': userId,
-          'tenant_id': tenantRef.id,
-          'role': 'tenantAdmin',
-          'is_active': true,
-          'user_name': name,
-          'user_email': email,
-          'created_at': FieldValue.serverTimestamp(),
-        });
-
-        AppLogger.info('User + Membership criados para tenant ${tenantRef.id}');
-      } catch (authError) {
-        AppLogger.error(
-          'Erro ao criar usuário (tenant já criado)',
-          error: authError,
-        );
-        // Tenant criado, mas user falhou — informar
+      final tenantId = response['tenantId'] as String?;
+      if (tenantId != null) {
+        AppLogger.info('Tenant criado via backend: $tenantId');
       }
-
-      return tenantRef.id;
+      return response;
     } catch (e) {
       AppLogger.error('Erro ao criar tenant', error: e);
       return null;

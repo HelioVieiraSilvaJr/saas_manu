@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../Commons/Enums/UserRole.dart';
 import '../../Commons/Models/MembershipModel.dart';
 import '../../Commons/Utils/AppLogger.dart';
+import '../../Sources/BackendApi.dart';
 
 /// Repository para Gerenciar Equipe — Módulo 9.
 class TeamManagementRepository {
@@ -90,14 +91,46 @@ class TeamManagementRepository {
 
   // MARK: - Criar novo usuário via Firebase Auth
 
+  Future<Map<String, dynamic>?> provisionMember({
+    required String email,
+    required String name,
+    required String tenantId,
+    required UserRole role,
+  }) async {
+    try {
+      final response = await BackendApi.instance.postAuthenticated(
+        functionName: 'provisionTenantMember',
+        body: {
+          'email': email,
+          'name': name,
+          'tenantId': tenantId,
+          'role': role.name,
+        },
+      );
+
+      return response;
+    } catch (e) {
+      AppLogger.error('Erro ao provisionar membro', error: e);
+      return null;
+    }
+  }
+
   Future<String?> createUser({
     required String email,
     required String name,
+    String? password,
   }) async {
     try {
+      if (password == null || password.isEmpty) {
+        AppLogger.warning(
+          'createUser sem senha explicita foi bloqueado; use provisionMember no backend.',
+        );
+        return null;
+      }
+
       final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
-        password: '1234567',
+        password: password,
       );
 
       final uid = cred.user!.uid;
@@ -127,7 +160,7 @@ class TeamManagementRepository {
     required String addedBy,
   }) async {
     try {
-      await _firestore.collection('memberships').add({
+      await _firestore.collection('memberships').doc('${tenantId}_$userId').set({
         'user_id': userId,
         'tenant_id': tenantId,
         'role': role.name,
@@ -136,7 +169,7 @@ class TeamManagementRepository {
         'user_email': userEmail,
         'added_by': addedBy,
         'created_at': FieldValue.serverTimestamp(),
-      });
+      }, SetOptions(merge: true));
       return true;
     } catch (e) {
       AppLogger.error('Erro ao criar membership', error: e);

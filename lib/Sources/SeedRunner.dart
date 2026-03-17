@@ -8,6 +8,8 @@ import '../Commons/Utils/AppLogger.dart';
 class SeedRunner {
   final _firestore = FirebaseFirestore.instance;
 
+  String _membershipDocId(String tenantId, String userId) => '${tenantId}_$userId';
+
   /// Verifica se o seed já foi executado (existe pelo menos 1 tenant).
   Future<bool> isSeeded() async {
     final snapshot = await _firestore.collection('tenants').limit(1).get();
@@ -30,6 +32,7 @@ class SeedRunner {
       await _firestore.collection('users').doc(firebaseUid).set({
         'email': email,
         'name': name,
+        'platform_role': 'superAdmin',
         'created_at': FieldValue.serverTimestamp(),
       });
 
@@ -55,7 +58,10 @@ class SeedRunner {
 
       // 3. Criar membership como SuperAdmin
       AppLogger.info('Criando membership SuperAdmin');
-      await _firestore.collection('memberships').add({
+      await _firestore
+          .collection('memberships')
+          .doc(_membershipDocId(tenantId, firebaseUid))
+          .set({
         'user_id': firebaseUid,
         'tenant_id': tenantId,
         'role': 'superAdmin',
@@ -84,7 +90,10 @@ class SeedRunner {
       });
 
       // 5. Criar membership do SuperAdmin para o tenant de exemplo também
-      await _firestore.collection('memberships').add({
+      await _firestore
+          .collection('memberships')
+          .doc(_membershipDocId(sampleTenantId, firebaseUid))
+          .set({
         'user_id': firebaseUid,
         'tenant_id': sampleTenantId,
         'role': 'tenantAdmin',

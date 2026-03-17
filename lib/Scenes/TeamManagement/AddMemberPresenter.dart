@@ -61,70 +61,20 @@ class AddMemberPresenter {
     final email = emailController.text.trim().toLowerCase();
     final name = nameController.text.trim();
     final tenantId = SessionManager.instance.currentTenant!.uid;
-    final addedBy = SessionManager.instance.currentUser!.uid;
 
     isAdding = true;
     _notify();
 
     try {
-      // 1. Verificar se usuário já existe na plataforma
-      final existingUser = await _repository.findUserByEmail(email);
-
-      String userId;
-      bool isNewUser = false;
-
-      if (existingUser == null) {
-        // CASO 1: Usuário não existe — criar novo
-        isNewUser = true;
-        final createdUid = await _repository.createUser(
-          email: email,
-          name: name,
-        );
-
-        if (createdUid == null) {
-          isAdding = false;
-          _notify();
-          await DSAlertDialog.showError(
-            context: context,
-            title: 'Erro ao Criar Usuário',
-            message:
-                'Não foi possível criar o usuário. Verifique se o e-mail já está em uso.',
-          );
-          return;
-        }
-
-        userId = createdUid;
-      } else {
-        // CASO 2: Usuário já existe
-        userId = existingUser['uid'] as String;
-
-        // Verificar se já é membro ativo deste tenant
-        final existingMembership = await _repository.findMembership(
-          userId,
-          tenantId,
-        );
-        if (existingMembership != null) {
-          isAdding = false;
-          _notify();
-          await DSAlertDialog.showWarning(
-            context: context,
-            title: 'Usuário Já é Membro',
-            message:
-                '${existingUser['name'] ?? email} já faz parte desta equipe.',
-          );
-          return;
-        }
-      }
-
-      // 2. Criar membership
-      final success = await _repository.createMembership(
-        userId: userId,
+      final provision = await _repository.provisionMember(
+        email: email,
+        name: name,
         tenantId: tenantId,
         role: selectedRole,
-        userName: name,
-        userEmail: email,
-        addedBy: addedBy,
       );
+      final success = provision?['ok'] == true;
+      final isNewUser = provision?['isNewUser'] == true;
+      final temporaryPassword = provision?['temporaryPassword'] as String?;
 
       isAdding = false;
       _notify();
@@ -134,7 +84,9 @@ class AddMemberPresenter {
           context: context,
           title: 'Membro Adicionado!',
           message: isNewUser
-              ? 'Usuário criado com senha padrão (1234567).'
+              ? temporaryPassword != null && temporaryPassword.isNotEmpty
+                    ? 'Usuário criado com senha temporária: $temporaryPassword'
+                    : 'Usuário criado com sucesso e provisionado no backend.'
               : '$name foi adicionado à equipe.',
         );
 

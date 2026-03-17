@@ -1,9 +1,60 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Desenvolvimento: qualquer usuário autenticado pode ler e escrever
-    match /{allPaths=**} {
-      allow read, write: if request.auth != null;
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function currentUserPath() {
+      return /databases/(default)/documents/users/$(request.auth.uid);
+    }
+
+    function currentUserDoc() {
+      return firestore.get(currentUserPath());
+    }
+
+    function membershipDocId(tenantId) {
+      return tenantId + "_" + request.auth.uid;
+    }
+
+    function membershipPath(tenantId) {
+      return /databases/(default)/documents/memberships/$(membershipDocId(tenantId));
+    }
+
+    function membershipDoc(tenantId) {
+      return firestore.get(membershipPath(tenantId));
+    }
+
+    function hasMembership(tenantId) {
+      return isAuthenticated() && firestore.exists(membershipPath(tenantId));
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() &&
+        firestore.exists(currentUserPath()) &&
+        currentUserDoc().data.platform_role == 'superAdmin';
+    }
+
+    function isActiveTenantMember(tenantId) {
+      return isSuperAdmin() ||
+        (hasMembership(tenantId) && membershipDoc(tenantId).data.is_active == true);
+    }
+
+    function canManageTenant(tenantId) {
+      return isSuperAdmin() ||
+        (
+          isActiveTenantMember(tenantId) &&
+          (
+            membershipDoc(tenantId).data.role == 'tenantAdmin' ||
+            membershipDoc(tenantId).data.role == 'superAdmin'
+          )
+        );
+    }
+
+    match /tenants/{tenantId}/{allPaths=**} {
+      allow read: if isActiveTenantMember(tenantId);
+      allow write: if canManageTenant(tenantId);
     }
   }
 }

@@ -19,6 +19,8 @@ class TenantFormPresenter {
   bool isLoading = false;
   bool isSaving = false;
   String? errorMessage;
+  String? lastCreatedTemporaryPassword;
+  bool lastCreatedAdminWasNewUser = false;
 
   /// Tenant em edição (null = criação).
   TenantModel? editingTenant;
@@ -144,7 +146,7 @@ class TenantFormPresenter {
   }
 
   Future<bool> _create() async {
-    final tenantId = await _repository.createTenantWithUser(
+    final result = await _repository.createTenantWithUser(
       name: nameController.text.trim(),
       email: emailController.text.trim(),
       phone: phoneController.text.trim(),
@@ -152,6 +154,9 @@ class TenantFormPresenter {
       planTier: selectedPlanTier,
       isActive: isActive,
     );
+    final tenantId = result?['tenantId'] as String?;
+    lastCreatedTemporaryPassword = result?['temporaryPassword'] as String?;
+    lastCreatedAdminWasNewUser = result?['isNewUser'] == true;
 
     isSaving = false;
     _notify();

@@ -32,6 +32,9 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+functions/.env
+functions/.env.*
+!functions/.env.example
 
 # Symbolication related
 app.*.symbols

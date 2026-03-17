@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../Commons/Widgets/DesignSystem/DSColors.dart';
@@ -46,7 +47,7 @@ class _SplashPageState extends State<SplashPage> {
         final seedRunner = SeedRunner();
         final alreadySeeded = await seedRunner.isSeeded();
 
-        if (!alreadySeeded) {
+        if (kDebugMode && !alreadySeeded) {
           AppLogger.info('Firestore vazio — executando seed inicial...');
           if (mounted) {
             setState(() => _statusMessage = 'Configurando dados iniciais...');

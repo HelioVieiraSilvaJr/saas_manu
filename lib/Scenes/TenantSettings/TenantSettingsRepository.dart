@@ -1,8 +1,7 @@
-import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:http/http.dart' as http;
 import '../../Commons/Models/TenantModel.dart';
 import '../../Commons/Utils/AppLogger.dart';
+import '../../Sources/BackendApi.dart';
 import '../../Sources/SessionManager.dart';
 
 /// Repository para configurações do Tenant — Módulo 8.
@@ -65,32 +64,23 @@ class TenantSettingsRepository {
   /// Testa conexão com a Evolution API.
   /// Retorna mapa com {success, message, state?}.
   Future<Map<String, dynamic>> testWhatsAppConnection({
+    required String tenantId,
     required String evolutionApiUrl,
     required String apiKey,
     required String instanceName,
   }) async {
     try {
-      final url = '$evolutionApiUrl/instance/$instanceName/status';
-
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {'apikey': apiKey},
+      final response = await BackendApi.instance.postAuthenticated(
+        functionName: 'testEvolutionConnection',
+        body: {
+          'tenantId': tenantId,
+          'evolutionApiUrl': evolutionApiUrl,
+          'apiKey': apiKey,
+          'instanceName': instanceName,
+        },
       );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final state = data['instance']?['state'] ?? 'unknown';
-        return {
-          'success': true,
-          'message': 'WhatsApp conectado: $state',
-          'state': state,
-        };
-      } else {
-        return {
-          'success': false,
-          'message': 'Erro HTTP ${response.statusCode}',
-        };
-      }
+      return response;
     } catch (e) {
       AppLogger.error('Erro ao testar conexão WhatsApp', error: e);
       return {

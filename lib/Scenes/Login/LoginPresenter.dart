@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../Commons/Utils/AppLogger.dart';
 import '../../Sources/SessionManager.dart';
@@ -158,6 +159,10 @@ class LoginPresenter {
 
   /// Executa seed se Firestore estiver vazio (primeira execução).
   Future<void> _runSeedIfNeeded(User firebaseUser) async {
+    if (!kDebugMode) {
+      return;
+    }
+
     final seedRunner = SeedRunner();
     final alreadySeeded = await seedRunner.isSeeded();
     if (!alreadySeeded) {

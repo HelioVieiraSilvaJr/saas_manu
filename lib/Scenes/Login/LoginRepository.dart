@@ -68,9 +68,14 @@ class LoginRepository {
   Future<UserModel> createUser({
     required String email,
     required String name,
-    String password = '1234567',
+    String? password,
   }) async {
     AppLogger.info('Criando novo usuário: $email');
+    if (password == null || password.isEmpty) {
+      throw Exception(
+        'Senha obrigatória para createUser. Para convites de tenant, use o backend.',
+      );
+    }
 
     // 1. Criar no Firebase Auth
     final credential = await _auth.createUserWithEmailAndPassword(
@@ -130,7 +135,10 @@ class LoginRepository {
     AppLogger.info(
       'Criando membership: ${membership.userId} → ${membership.tenantId}',
     );
-    await _firestore.collection('memberships').add(membership.toMap());
+    await _firestore
+        .collection('memberships')
+        .doc('${membership.tenantId}_${membership.userId}')
+        .set(membership.toMap(), SetOptions(merge: true));
   }
 
   // MARK: - Sign Out

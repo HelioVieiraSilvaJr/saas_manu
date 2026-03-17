@@ -5,13 +5,13 @@ import 'package:flutter/services.dart';
 import '../../Commons/Enums/PlanPeriod.dart';
 import '../../Commons/Enums/PlanTier.dart';
 import '../../Commons/Models/TenantModel.dart';
-import '../../Commons/Models/PaymentModel.dart';
 import '../../Commons/Widgets/DesignSystem/DSColors.dart';
 import '../../Commons/Widgets/DesignSystem/DSTextStyle.dart';
 import '../../Commons/Widgets/DesignSystem/DSSpacing.dart';
 import '../../Commons/Widgets/DesignSystem/DSButton.dart';
 import '../../Sources/SessionManager.dart';
 import '../../Sources/Coordinators/AppShell.dart';
+import '../../Sources/BackendApi.dart';
 import '../ManageTenants/TenantsRepository.dart';
 
 /// Tela de upgrade de plano com pagamento via PIX.
@@ -90,58 +90,36 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
     });
 
     try {
-      // 1. Criar registro de pagamento pendente no Firestore
-      final now = DateTime.now();
-      final expiration = now.add(Duration(days: _selectedDays));
-
-      final payment = PaymentModel(
-        uid: '',
-        plan: _selectedPeriod,
-        planTier: _selectedTier,
-        amount: _selectedPrice,
-        status: PaymentStatus.pending,
-        createdAt: now,
-        planExpirationDate: expiration,
+      final checkout = await BackendApi.instance.postAuthenticated(
+        functionName: 'createPixCheckout',
+        body: {
+          'tenantId': _tenant!.uid,
+          'plan': _selectedPeriod,
+          'planTier': _selectedTier,
+          'amount': _selectedPrice,
+          'expirationDays': _selectedDays,
+        },
       );
 
-      final paymentId = await _repository.createPayment(_tenant!.uid, payment);
+      setState(() {
+        _paymentId = checkout['paymentId'] as String?;
+        _pixCode = checkout['pixCode'] as String?;
+        _qrCodeBase64 = checkout['qrCodeBase64'] as String?;
+        _isGeneratingPix = false;
+      });
 
-      if (paymentId == null) {
+      if (_paymentId == null || _pixCode == null || _pixCode!.isEmpty) {
         setState(() {
-          _errorMessage = 'Erro ao criar registro de pagamento.';
-          _isGeneratingPix = false;
+          _errorMessage =
+              'Checkout criado, mas o provedor de pagamento ainda não foi configurado no backend.';
         });
         return;
       }
 
-      _paymentId = paymentId;
-
-      // 2. TODO: Chamar API intermediária (n8n) para gerar PIX via EFI
-      // O endpoint receberá:
-      // - tenant_id, tenant_name, tenant_email
-      // - payment_id
-      // - plan, plan_tier, amount
-      // E retornará:
-      // - pix_code (copia-e-cola)
-      // - qr_code_base64
-      // - transaction_id (EFI)
-      //
-      // Por enquanto, simulação para desenvolvimento:
-      await Future.delayed(const Duration(seconds: 1));
-
-      // Simulação — substituir pela chamada real à API
-      setState(() {
-        _pixCode =
-            '00020126580014br.gov.bcb.pix0136${_tenant!.uid.substring(0, 8)}-pix-${paymentId.substring(0, 6)}5204000053039865802BR5925SAAS MANU LTDA6009SAO PAULO62070503***63041234';
-        _qrCodeBase64 = null; // Virá da API real
-        _isGeneratingPix = false;
-      });
-
-      // 3. Iniciar listener no documento do tenant para detectar pagamento
       _startPaymentListener();
     } catch (e) {
       setState(() {
-        _errorMessage = 'Erro ao gerar PIX. Tente novamente.';
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
         _isGeneratingPix = false;
       });
     }

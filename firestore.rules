@@ -2,79 +2,131 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ─── Helper Functions ───────────────────────────────────
-
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // ─── Users ──────────────────────────────────────────────
-    // Cada usuário só pode ler/escrever seu próprio doc.
+    function currentUserPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    function currentUserDoc() {
+      return get(currentUserPath());
+    }
+
+    function membershipDocId(tenantId) {
+      return tenantId + "_" + request.auth.uid;
+    }
+
+    function membershipPath(tenantId) {
+      return /databases/$(database)/documents/memberships/$(membershipDocId(tenantId));
+    }
+
+    function membershipDoc(tenantId) {
+      return get(membershipPath(tenantId));
+    }
+
+    function hasMembership(tenantId) {
+      return isAuthenticated() && exists(membershipPath(tenantId));
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() &&
+        exists(currentUserPath()) &&
+        currentUserDoc().data.platform_role == 'superAdmin';
+    }
+
+    function isActiveTenantMember(tenantId) {
+      return isSuperAdmin() ||
+        (hasMembership(tenantId) && membershipDoc(tenantId).data.is_active == true);
+    }
+
+    function canManageTenant(tenantId) {
+      return isSuperAdmin() ||
+        (
+          isActiveTenantMember(tenantId) &&
+          (
+            membershipDoc(tenantId).data.role == 'tenantAdmin' ||
+            membershipDoc(tenantId).data.role == 'superAdmin'
+          )
+        );
+    }
+
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && request.auth.uid == userId;
+      allow read: if isAuthenticated() &&
+        (request.auth.uid == userId || isSuperAdmin());
+      allow write: if false;
     }
 
-    // ─── Tenants ────────────────────────────────────────────
-    // Qualquer autenticado pode ler (necessário para listar tenants no switch).
-    // Apenas autenticado pode escrever (SuperAdmin/TenantAdmin valida no app).
     match /tenants/{tenantId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isActiveTenantMember(tenantId);
+      allow create: if false;
+      allow update: if canManageTenant(tenantId);
+      allow delete: if isSuperAdmin();
 
-      // ─── Customers (subcoleção) ─────────────────────────
       match /customers/{customerId} {
-        allow read: if isAuthenticated();
-        allow write: if isAuthenticated();
+        allow read: if isActiveTenantMember(tenantId);
+        allow create, update, delete: if canManageTenant(tenantId);
       }
 
-      // ─── Products (subcoleção) ──────────────────────────
       match /products/{productId} {
-        allow read: if isAuthenticated();
-        allow write: if isAuthenticated();
+        allow read: if isActiveTenantMember(tenantId);
+        allow create, update, delete: if canManageTenant(tenantId);
       }
 
-      // ─── Sales (subcoleção) ─────────────────────────────
       match /sales/{saleId} {
-        allow read: if isAuthenticated();
-        allow create: if isAuthenticated();
-        allow update, delete: if isAuthenticated();
+        allow read: if isActiveTenantMember(tenantId);
+        allow create, update: if isActiveTenantMember(tenantId);
+        allow delete: if canManageTenant(tenantId);
       }
 
-      // ─── Escalations (subcoleção) ───────────────────────
       match /escalations/{escalationId} {
-        allow read: if isAuthenticated();
-        allow write: if isAuthenticated();
+        allow read: if isActiveTenantMember(tenantId);
+        allow create, update: if isActiveTenantMember(tenantId);
+        allow delete: if canManageTenant(tenantId);
       }
 
-      // ─── Stock Alerts (subcoleção) ─────────────────────
       match /stockAlerts/{alertId} {
-        allow read: if isAuthenticated();
-        allow write: if isAuthenticated();
+        allow read: if isActiveTenantMember(tenantId);
+        allow create, update: if isActiveTenantMember(tenantId);
+        allow delete: if canManageTenant(tenantId);
       }
 
-      // ─── Payments (subcoleção) ──────────────────────────
       match /payments/{paymentId} {
-        allow read: if isAuthenticated();
-        allow create: if isAuthenticated();
-        allow update: if isAuthenticated();
+        allow read: if canManageTenant(tenantId);
+        allow write: if false;
+      }
+
+      match /billing/{billingId} {
+        allow read: if canManageTenant(tenantId);
+        allow write: if false;
+      }
+
+      match /conversations/{conversationId} {
+        allow read: if isActiveTenantMember(tenantId);
+        allow create, update: if isActiveTenantMember(tenantId);
+        allow delete: if canManageTenant(tenantId);
       }
     }
 
-    // ─── Memberships ────────────────────────────────────────
-    // Usuário pode ler seus próprios memberships.
-    // Escrita restrita a autenticados (admin cria/remove via app).
     match /memberships/{membershipId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read: if isAuthenticated() && (
+        resource.data.user_id == request.auth.uid ||
+        canManageTenant(resource.data.tenant_id) ||
+        isSuperAdmin()
+      );
+      allow create: if isAuthenticated() && (
+        isSuperAdmin() ||
+        canManageTenant(request.resource.data.tenant_id)
+      );
+      allow update, delete: if isAuthenticated() && (
+        isSuperAdmin() ||
+        canManageTenant(resource.data.tenant_id)
+      );
     }
 
-    // ─── Platform Analytics ─────────────────────────────────
-    // Leitura para qualquer autenticado (dashboard).
-    // Escrita restrita a autenticados (app-level verifica SuperAdmin).
     match /platform_analytics/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow read, write: if isSuperAdmin();
     }
   }
 }

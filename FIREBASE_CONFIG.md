@@ -1,185 +1,57 @@
 # Configuração do Firebase - SaaS Manu
 
-## ✅ Configuração Concluída
+Este projeto usa Firebase como base transacional da plataforma e agora conta com uma camada server-side em `functions/` para operacoes criticas.
 
-A configuração do Firebase foi finalizada com sucesso! O projeto está conectado ao Firebase e pronto para usar os serviços.
+## Projeto atual
 
-## 📦 Dependências Instaladas
+- Projeto Firebase: `saas-manu-project`
+- Plataformas configuradas: Android, iOS, macOS, Web e Windows
+- Configuracoes do app: `lib/firebase_options.dart`
+- Configuracao do deploy: `firebase.json`
 
-As seguintes dependências do Firebase foram adicionadas ao `pubspec.yaml`:
+## Componentes em uso
 
-- **firebase_core** (^3.8.1): SDK principal do Firebase (obrigatório)
-- **firebase_auth** (^5.3.4): Autenticação de usuários
-- **cloud_firestore** (^5.5.2): Banco de dados NoSQL em tempo real
-- **firebase_storage** (^12.3.7): Armazenamento de arquivos
+- Firebase Auth
+- Cloud Firestore
+- Firebase Storage
+- Cloud Functions for Firebase
 
-## 🔧 Configuração Realizada
+## Arquivos-chave
 
-### 1. Projeto Firebase
-- **Nome do Projeto**: saas-manu-project
-- **Plataformas Configuradas**: Android, iOS, macOS, Web, Windows
+- `firestore.rules`
+- `storage.rules`
+- `firestore.indexes.json`
+- `functions/index.js`
+- `functions/.env.example`
 
-### 2. Arquivos Gerados
+## Fluxo recomendado de publicacao
 
-#### Multiplataforma
-- `lib/firebase_options.dart` - Configurações do Firebase para todas as plataformas
+1. Instalar dependencias em `functions/`.
+2. Configurar variaveis de ambiente das functions.
+3. Fazer deploy das functions.
+4. Executar `syncMembershipAccessIndex` uma unica vez no ambiente real.
+5. Publicar `firestore.rules` e `storage.rules`.
+6. Validar os fluxos de tenant, equipe, WhatsApp, `n8n` e billing.
 
-#### Android
-- `android/app/google-services.json` - Configuração do Firebase para Android
-- Plugin Google Services adicionado ao `build.gradle.kts`
+## Observacoes importantes
 
-#### iOS/macOS
-- `ios/Runner/GoogleService-Info.plist` - Configuração do Firebase para iOS
-- `macos/Runner/GoogleService-Info.plist` - Configuração do Firebase para macOS
+- As regras atuais ja estao endurecidas para um modelo multi-tenant mais seguro.
+- As regras assumem IDs deterministas em `memberships` no formato `{tenant_id}_{user_id}`.
+- O teste da Evolution API deve ser feito via function backend para evitar CORS no app web.
+- O billing esta preparado no backend, mas depende da configuracao do provedor escolhido.
 
-### 3. Inicialização no Código
-O Firebase foi inicializado no `lib/main.dart`:
-```dart
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  runApp(const MyApp());
-}
-```
-
-## 🚀 Próximos Passos
-
-### 1. Configurar Autenticação
-```dart
-import 'package:firebase_auth/firebase_auth.dart';
-
-// Criar usuário
-final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-  email: 'usuario@exemplo.com',
-  password: 'senha123',
-);
-
-// Login
-await FirebaseAuth.instance.signInWithEmailAndPassword(
-  email: 'usuario@exemplo.com',
-  password: 'senha123',
-);
-
-// Logout
-await FirebaseAuth.instance.signOut();
-
-// Observar estado de autenticação
-FirebaseAuth.instance.authStateChanges().listen((User? user) {
-  if (user == null) {
-    print('Usuário não autenticado');
-  } else {
-    print('Usuário autenticado: ${user.uid}');
-  }
-});
-```
-
-### 2. Usar Cloud Firestore
-```dart
-import 'package:cloud_firestore/cloud_firestore.dart';
-
-// Adicionar documento
-await FirebaseFirestore.instance.collection('usuarios').add({
-  'nome': 'João Silva',
-  'email': 'joao@exemplo.com',
-  'criadoEm': FieldValue.serverTimestamp(),
-});
-
-// Ler documentos
-final snapshot = await FirebaseFirestore.instance.collection('usuarios').get();
-for (var doc in snapshot.docs) {
-  print('${doc.id} => ${doc.data()}');
-}
-
-// Stream de dados em tempo real
-FirebaseFirestore.instance.collection('usuarios').snapshots().listen((snapshot) {
-  for (var change in snapshot.docChanges) {
-    print('${change.type}: ${change.doc.data()}');
-  }
-});
-```
-
-### 3. Usar Firebase Storage
-```dart
-import 'package:firebase_storage/firebase_storage.dart';
-import 'dart:io';
-
-// Upload de arquivo
-final file = File('caminho/para/arquivo.jpg');
-final ref = FirebaseStorage.instance.ref().child('imagens/perfil.jpg');
-await ref.putFile(file);
-
-// Obter URL de download
-final url = await ref.getDownloadURL();
-print('URL do arquivo: $url');
-```
-
-## 🔐 Configuração de Segurança
-
-Não esqueça de configurar as regras de segurança no Firebase Console:
-
-### Firestore Rules (Desenvolvimento)
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.auth != null;
-    }
-  }
-}
-```
-
-### Storage Rules (Desenvolvimento)
-```javascript
-rules_version = '2';
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /{allPaths=**} {
-      allow read, write: if request.auth != null;
-    }
-  }
-}
-```
-
-⚠️ **Importante**: As regras acima são para desenvolvimento. Para produção, configure regras mais restritivas.
-
-## 📱 Testando a Configuração
-
-Para testar se o Firebase está funcionando:
+## Comandos uteis
 
 ```bash
-# Executar no Android
-flutter run -d android
-
-# Executar no iOS
-flutter run -d ios
-
-# Executar no Web
-flutter run -d chrome
+flutter test
+flutter analyze
+cd functions && npm install
+firebase deploy --only functions
+firebase deploy --only firestore:rules,storage
 ```
 
-## 🔗 Links Úteis
+## Referencias internas
 
-- [Firebase Console](https://console.firebase.google.com/)
-- [Documentação Flutter + Firebase](https://firebase.google.com/docs/flutter/setup)
-- [FlutterFire](https://firebase.flutter.dev/)
-- Projeto Firebase: [saas-manu-project](https://console.firebase.google.com/project/saas-manu-project)
-
-## 🛠️ Comandos Úteis
-
-```bash
-# Atualizar configuração do Firebase
-flutterfire configure
-
-# Atualizar dependências
-flutter pub upgrade
-
-# Limpar build
-flutter clean && flutter pub get
-```
-
----
-
-**Configuração realizada em**: 8 de março de 2026
+- `functions/README.md`
+- `docs/launch-readiness-v1.md`
+- `docs/payment-providers-saas-brasil.md`
