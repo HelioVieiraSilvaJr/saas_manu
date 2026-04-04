@@ -34,7 +34,7 @@ class DSDropdown<T> extends StatelessWidget {
         Text(label, style: textStyles.textFieldLabel),
         const SizedBox(height: 6),
         DropdownButtonFormField<T>(
-          value: value,
+          initialValue: value,
           items: items,
           onChanged: onChanged,
           validator: validator,

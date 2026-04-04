@@ -44,6 +44,41 @@ class DailySalesDTO {
   DailySalesDTO({required this.date, required this.totalValue});
 }
 
+/// Snapshot consolidado do dashboard para reduzir releituras da mesma coleção.
+class DashboardTenantSnapshot {
+  final double salesToday;
+  final double salesYesterday;
+  final double salesThisMonth;
+  final double salesLastMonthSamePeriod;
+  final int salesCountThisMonth;
+  final int salesCountLastMonth;
+  final int totalCustomers;
+  final int newCustomersThisMonth;
+  final List<DailySalesDTO> salesLast7Days;
+  final List<RecentSaleDTO> recentSales;
+  final int totalProducts;
+  final int productsWithoutImage;
+  final int pendingEscalationsCount;
+  final int pendingStockAlertsCount;
+
+  const DashboardTenantSnapshot({
+    required this.salesToday,
+    required this.salesYesterday,
+    required this.salesThisMonth,
+    required this.salesLastMonthSamePeriod,
+    required this.salesCountThisMonth,
+    required this.salesCountLastMonth,
+    required this.totalCustomers,
+    required this.newCustomersThisMonth,
+    required this.salesLast7Days,
+    required this.recentSales,
+    required this.totalProducts,
+    required this.productsWithoutImage,
+    required this.pendingEscalationsCount,
+    required this.pendingStockAlertsCount,
+  });
+}
+
 /// Repositório de dados para o Dashboard Tenant.
 ///
 /// Consulta Firestore para métricas, gráficos e alertas.
@@ -52,19 +87,19 @@ class DashboardTenantRepository {
 
   String get _tenantId => SessionManager.instance.currentTenant!.uid;
 
-  CollectionReference get _salesCollection =>
+  CollectionReference<Map<String, dynamic>> get _salesCollection =>
       _firestore.collection('tenants').doc(_tenantId).collection('sales');
 
-  CollectionReference get _customersCollection =>
+  CollectionReference<Map<String, dynamic>> get _customersCollection =>
       _firestore.collection('tenants').doc(_tenantId).collection('customers');
 
-  CollectionReference get _productsCollection =>
+  CollectionReference<Map<String, dynamic>> get _productsCollection =>
       _firestore.collection('tenants').doc(_tenantId).collection('products');
 
-  CollectionReference get _escalationsCollection =>
+  CollectionReference<Map<String, dynamic>> get _escalationsCollection =>
       _firestore.collection('tenants').doc(_tenantId).collection('escalations');
 
-  CollectionReference get _stockAlertsCollection =>
+  CollectionReference<Map<String, dynamic>> get _stockAlertsCollection =>
       _firestore.collection('tenants').doc(_tenantId).collection('stockAlerts');
 
   static double saleTotalFromMap(Map<String, dynamic> data) {
@@ -94,6 +129,159 @@ class DashboardTenantRepository {
     return 0;
   }
 
+  static DateTime previousMonthComparableDate(DateTime now) {
+    final lastDayPreviousMonth = DateTime(now.year, now.month, 0);
+    final comparableDay = now.day.clamp(1, lastDayPreviousMonth.day);
+    return DateTime(
+      lastDayPreviousMonth.year,
+      lastDayPreviousMonth.month,
+      comparableDay,
+    );
+  }
+
+  /// Carrega os dados do dashboard com o menor número possível de reads.
+  Future<DashboardTenantSnapshot> loadDashboardSnapshot() async {
+    try {
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day);
+      final startOfYesterday = startOfDay.subtract(const Duration(days: 1));
+      final startOfMonth = DateTime(now.year, now.month, 1);
+      final sameDayLastMonth = previousMonthComparableDate(now);
+      final startOfLastMonth = DateTime(
+        sameDayLastMonth.year,
+        sameDayLastMonth.month,
+        1,
+      );
+      final sevenDaysAgo = startOfDay.subtract(const Duration(days: 6));
+
+      final dailyTotals = <String, double>{};
+      for (int i = 0; i < 7; i++) {
+        final date = sevenDaysAgo.add(Duration(days: i));
+        dailyTotals['${date.year}-${date.month}-${date.day}'] = 0;
+      }
+
+      final results = await Future.wait([
+        _salesCollection
+            .where(
+              'created_at',
+              isGreaterThanOrEqualTo: Timestamp.fromDate(startOfLastMonth),
+            )
+            .where('status', isNotEqualTo: 'cancelled')
+            .orderBy('created_at', descending: true)
+            .get(),
+        _salesCollection.orderBy('created_at', descending: true).limit(5).get(),
+        _customersCollection.count().get(),
+        _customersCollection
+            .where(
+              'created_at',
+              isGreaterThanOrEqualTo: Timestamp.fromDate(startOfMonth),
+            )
+            .count()
+            .get(),
+        _productsCollection.count().get(),
+        _productsCollection.where('image_url', isNull: true).count().get(),
+        _productsCollection.where('image_url', isEqualTo: '').count().get(),
+        _escalationsCollection
+            .where('status', isEqualTo: EscalationStatus.pending.name)
+            .count()
+            .get(),
+        _stockAlertsCollection
+            .where('status', isEqualTo: StockAlertStatus.pending.name)
+            .count()
+            .get(),
+      ]);
+
+      final salesWindowSnapshot =
+          results[0] as QuerySnapshot<Map<String, dynamic>>;
+      final recentSalesSnapshot =
+          results[1] as QuerySnapshot<Map<String, dynamic>>;
+      final totalCustomers = (results[2] as AggregateQuerySnapshot).count ?? 0;
+      final newCustomersThisMonth =
+          (results[3] as AggregateQuerySnapshot).count ?? 0;
+      final totalProducts = (results[4] as AggregateQuerySnapshot).count ?? 0;
+      final productsWithoutImage =
+          ((results[5] as AggregateQuerySnapshot).count ?? 0) +
+          ((results[6] as AggregateQuerySnapshot).count ?? 0);
+      final pendingEscalationsCount =
+          (results[7] as AggregateQuerySnapshot).count ?? 0;
+      final pendingStockAlertsCount =
+          (results[8] as AggregateQuerySnapshot).count ?? 0;
+
+      double salesToday = 0;
+      double salesYesterday = 0;
+      double salesThisMonth = 0;
+      double salesLastMonthSamePeriod = 0;
+      int salesCountThisMonth = 0;
+      int salesCountLastMonth = 0;
+
+      for (final doc in salesWindowSnapshot.docs) {
+        final data = doc.data();
+        final createdAt = (data['created_at'] as Timestamp?)?.toDate();
+        if (createdAt == null) continue;
+
+        final total = saleTotalFromMap(data);
+
+        if (!createdAt.isBefore(startOfMonth)) {
+          salesThisMonth += total;
+          salesCountThisMonth++;
+        }
+
+        if (!createdAt.isBefore(startOfDay)) {
+          salesToday += total;
+        } else if (!createdAt.isBefore(startOfYesterday)) {
+          salesYesterday += total;
+        }
+
+        if (!createdAt.isBefore(startOfLastMonth) &&
+            !createdAt.isAfter(sameDayLastMonth)) {
+          salesLastMonthSamePeriod += total;
+          salesCountLastMonth++;
+        }
+
+        if (!createdAt.isBefore(sevenDaysAgo)) {
+          final key = '${createdAt.year}-${createdAt.month}-${createdAt.day}';
+          if (dailyTotals.containsKey(key)) {
+            dailyTotals[key] = dailyTotals[key]! + total;
+          }
+        }
+      }
+
+      final salesLast7Days = List.generate(7, (index) {
+        final date = sevenDaysAgo.add(Duration(days: index));
+        final key = '${date.year}-${date.month}-${date.day}';
+        return DailySalesDTO(date: date, totalValue: dailyTotals[key] ?? 0);
+      });
+
+      final recentSales = recentSalesSnapshot.docs.map((doc) {
+        return RecentSaleDTO.fromMap(doc.id, doc.data());
+      }).toList();
+
+      return DashboardTenantSnapshot(
+        salesToday: salesToday,
+        salesYesterday: salesYesterday,
+        salesThisMonth: salesThisMonth,
+        salesLastMonthSamePeriod: salesLastMonthSamePeriod,
+        salesCountThisMonth: salesCountThisMonth,
+        salesCountLastMonth: salesCountLastMonth,
+        totalCustomers: totalCustomers,
+        newCustomersThisMonth: newCustomersThisMonth,
+        salesLast7Days: salesLast7Days,
+        recentSales: recentSales,
+        totalProducts: totalProducts,
+        productsWithoutImage: productsWithoutImage,
+        pendingEscalationsCount: pendingEscalationsCount,
+        pendingStockAlertsCount: pendingStockAlertsCount,
+      );
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'Erro ao carregar snapshot do dashboard tenant',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      rethrow;
+    }
+  }
+
   // MARK: - Vendas Hoje
 
   /// Retorna o total em R$ das vendas do dia atual.
@@ -112,7 +300,7 @@ class DashboardTenantRepository {
 
       double total = 0;
       for (final doc in snapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         total += saleTotalFromMap(data);
       }
 
@@ -142,7 +330,7 @@ class DashboardTenantRepository {
 
       double total = 0;
       for (final doc in snapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         total += saleTotalFromMap(data);
       }
 
@@ -171,7 +359,7 @@ class DashboardTenantRepository {
 
       double total = 0;
       for (final doc in snapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         total += saleTotalFromMap(data);
       }
 
@@ -186,8 +374,12 @@ class DashboardTenantRepository {
   Future<({double total, int count})> getSalesLastMonthSamePeriod() async {
     try {
       final now = DateTime.now();
-      final startOfLastMonth = DateTime(now.year, now.month - 1, 1);
-      final sameDayLastMonth = DateTime(now.year, now.month - 1, now.day);
+      final sameDayLastMonth = previousMonthComparableDate(now);
+      final startOfLastMonth = DateTime(
+        sameDayLastMonth.year,
+        sameDayLastMonth.month,
+        1,
+      );
 
       final snapshot = await _salesCollection
           .where(
@@ -203,7 +395,7 @@ class DashboardTenantRepository {
 
       double total = 0;
       for (final doc in snapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         total += saleTotalFromMap(data);
       }
 
@@ -274,7 +466,7 @@ class DashboardTenantRepository {
       }
 
       for (final doc in snapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         final createdAt = (data['created_at'] as Timestamp).toDate();
         final key = '${createdAt.year}-${createdAt.month}-${createdAt.day}';
         if (dailyTotals.containsKey(key)) {
@@ -317,7 +509,7 @@ class DashboardTenantRepository {
           .get();
 
       return snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         return RecentSaleDTO.fromMap(doc.id, data);
       }).toList();
     } catch (e) {

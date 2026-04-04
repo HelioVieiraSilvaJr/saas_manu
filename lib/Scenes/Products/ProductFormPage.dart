@@ -941,7 +941,7 @@ class _ProductFormPageState extends State<ProductFormPage> {
           Switch(
             value: _isActive,
             onChanged: (value) => setState(() => _isActive = value),
-            activeColor: colors.green,
+            activeThumbColor: colors.green,
           ),
         ],
       ),

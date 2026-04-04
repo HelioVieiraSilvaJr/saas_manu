@@ -78,6 +78,78 @@ class PlatformAnalyticsService {
     final startOfDay = DateTime(now.year, now.month, now.day);
     final startOfMonth = DateTime(now.year, now.month, 1);
 
+    final tenantResults = await Future.wait(
+      tenants.map((tenant) async {
+        final salesCol = _firestore
+            .collection('tenants')
+            .doc(tenant.uid)
+            .collection('sales');
+
+        final customersCol = _firestore
+            .collection('tenants')
+            .doc(tenant.uid)
+            .collection('customers');
+
+        try {
+          final results = await Future.wait([
+            salesCol
+                .where(
+                  'created_at',
+                  isGreaterThanOrEqualTo: Timestamp.fromDate(startOfMonth),
+                )
+                .where('status', isNotEqualTo: 'cancelled')
+                .get(),
+            customersCol.count().get(),
+            customersCol
+                .where(
+                  'created_at',
+                  isGreaterThanOrEqualTo: Timestamp.fromDate(startOfMonth),
+                )
+                .count()
+                .get(),
+          ]);
+
+          final monthSnapshot =
+              results[0] as QuerySnapshot<Map<String, dynamic>>;
+          final customersCount = results[1] as AggregateQuerySnapshot;
+          final newCustomersCount = results[2] as AggregateQuerySnapshot;
+
+          double tenantSalesToday = 0;
+          double tenantSalesMonth = 0;
+          int tenantSalesCountToday = 0;
+
+          for (final doc in monthSnapshot.docs) {
+            final data = doc.data();
+            final total =
+                ((data['total'] ?? data['total_value']) as num?)?.toDouble() ??
+                0;
+            tenantSalesMonth += total;
+
+            final createdAt = (data['created_at'] as Timestamp?)?.toDate();
+            if (createdAt != null && !createdAt.isBefore(startOfDay)) {
+              tenantSalesToday += total;
+              tenantSalesCountToday++;
+            }
+          }
+
+          return (
+            tenant: tenant,
+            salesToday: tenantSalesToday,
+            salesMonth: tenantSalesMonth,
+            salesCountToday: tenantSalesCountToday,
+            salesCountMonth: monthSnapshot.docs.length,
+            totalCustomers: customersCount.count ?? 0,
+            newCustomersMonth: newCustomersCount.count ?? 0,
+          );
+        } catch (e) {
+          AppLogger.warning(
+            'Erro ao agregar dados do tenant ${tenant.name}: $e',
+          );
+          return null;
+        }
+      }),
+    );
+
     double totalSalesToday = 0;
     double totalSalesMonth = 0;
     int salesCountToday = 0;
@@ -86,83 +158,35 @@ class PlatformAnalyticsService {
     int newCustomersMonth = 0;
     final topTenantsList = <TopTenantDTO>[];
 
-    // Agregar dados de cada tenant
-    for (final tenant in tenants) {
-      final salesCol = _firestore
-          .collection('tenants')
-          .doc(tenant.uid)
-          .collection('sales');
+    for (final result
+        in tenantResults
+            .whereType<
+              ({
+                TenantModel tenant,
+                double salesToday,
+                double salesMonth,
+                int salesCountToday,
+                int salesCountMonth,
+                int totalCustomers,
+                int newCustomersMonth,
+              })
+            >()) {
+      totalSalesToday += result.salesToday;
+      totalSalesMonth += result.salesMonth;
+      salesCountToday += result.salesCountToday;
+      salesCountMonth += result.salesCountMonth;
+      totalCustomers += result.totalCustomers;
+      newCustomersMonth += result.newCustomersMonth;
 
-      final customersCol = _firestore
-          .collection('tenants')
-          .doc(tenant.uid)
-          .collection('customers');
-
-      try {
-        // Vendas do dia (não canceladas)
-        final todaySnapshot = await salesCol
-            .where(
-              'created_at',
-              isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
-            )
-            .where('status', isNotEqualTo: 'cancelled')
-            .get();
-
-        double tenantSalesToday = 0;
-        for (final doc in todaySnapshot.docs) {
-          final data = doc.data();
-          tenantSalesToday += (data['total'] ?? data['total_value'] ?? 0)
-              .toDouble();
-        }
-        totalSalesToday += tenantSalesToday;
-        salesCountToday += todaySnapshot.docs.length;
-
-        // Vendas do mês (não canceladas)
-        final monthSnapshot = await salesCol
-            .where(
-              'created_at',
-              isGreaterThanOrEqualTo: Timestamp.fromDate(startOfMonth),
-            )
-            .where('status', isNotEqualTo: 'cancelled')
-            .get();
-
-        double tenantSalesMonth = 0;
-        for (final doc in monthSnapshot.docs) {
-          final data = doc.data();
-          tenantSalesMonth += (data['total'] ?? data['total_value'] ?? 0)
-              .toDouble();
-        }
-        totalSalesMonth += tenantSalesMonth;
-        salesCountMonth += monthSnapshot.docs.length;
-
-        // Total de clientes
-        final customersCount = await customersCol.count().get();
-        final tenantCustomers = customersCount.count ?? 0;
-        totalCustomers += tenantCustomers;
-
-        // Novos clientes do mês
-        final newCustomersCount = await customersCol
-            .where(
-              'created_at',
-              isGreaterThanOrEqualTo: Timestamp.fromDate(startOfMonth),
-            )
-            .count()
-            .get();
-        newCustomersMonth += newCustomersCount.count ?? 0;
-
-        // Dados para ranking de tenants
-        if (tenantSalesMonth > 0) {
-          topTenantsList.add(
-            TopTenantDTO(
-              tenantId: tenant.uid,
-              tenantName: tenant.name,
-              salesMonth: tenantSalesMonth,
-              salesCount: monthSnapshot.docs.length,
-            ),
-          );
-        }
-      } catch (e) {
-        AppLogger.warning('Erro ao agregar dados do tenant ${tenant.name}: $e');
+      if (result.salesMonth > 0) {
+        topTenantsList.add(
+          TopTenantDTO(
+            tenantId: result.tenant.uid,
+            tenantName: result.tenant.name,
+            salesMonth: result.salesMonth,
+            salesCount: result.salesCountMonth,
+          ),
+        );
       }
     }
 

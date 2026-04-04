@@ -27,63 +27,36 @@ class DashboardTenantPresenter {
     _update(_viewModel.copyWith(isLoading: true));
 
     try {
-      // Executar queries em paralelo para performance
-      final results = await Future.wait([
-        _repository.getSalesToday(),
-        _repository.getSalesYesterday(),
-        _repository.getSalesThisMonth(),
-        _repository.getSalesLastMonthSamePeriod(),
-        _repository.getTotalCustomers(),
-        _repository.getNewCustomersThisMonth(),
-        _repository.getSalesLast7Days(),
-        _repository.getRecentSales(),
-        _repository.getTotalProducts(),
-        _repository.getProductsWithoutImage(),
-        _repository.getPendingEscalationsCount(),
-        _repository.getPendingStockAlertsCount(),
-      ]);
-
-      final salesToday = results[0] as double;
-      final salesYesterday = results[1] as double;
-      final salesThisMonth = results[2] as ({double total, int count});
-      final salesLastMonth = results[3] as ({double total, int count});
-      final totalCustomers = results[4] as int;
-      final newCustomersThisMonth = results[5] as int;
-      final salesLast7Days = results[6] as List<DailySalesDTO>;
-      final recentSales = results[7] as List<RecentSaleDTO>;
-      final totalProducts = results[8] as int;
-      final productsWithoutImage = results[9] as int;
-      final pendingEscalationsCount = results[10] as int;
-      final pendingStockAlertsCount = results[11] as int;
+      final snapshot = await _repository.loadDashboardSnapshot();
 
       // Gerar alertas
       final alerts = await _generateAlerts(
-        totalProducts: totalProducts,
-        productsWithoutImage: productsWithoutImage,
-        totalCustomers: totalCustomers,
-        salesCountThisMonth: salesThisMonth.count,
-        pendingEscalationsCount: pendingEscalationsCount,
-        pendingStockAlertsCount: pendingStockAlertsCount,
+        totalProducts: snapshot.totalProducts,
+        productsWithoutImage: snapshot.productsWithoutImage,
+        totalCustomers: snapshot.totalCustomers,
+        salesCountThisMonth: snapshot.salesCountThisMonth,
+        pendingEscalationsCount: snapshot.pendingEscalationsCount,
+        pendingStockAlertsCount: snapshot.pendingStockAlertsCount,
       );
 
       _update(
         _viewModel.copyWith(
           isLoading: false,
-          salesToday: salesToday,
-          salesYesterday: salesYesterday,
-          salesThisMonth: salesThisMonth.total,
-          salesLastMonthSamePeriod: salesLastMonth.total,
-          salesCountThisMonth: salesThisMonth.count,
-          salesCountLastMonth: salesLastMonth.count,
-          totalCustomers: totalCustomers,
-          newCustomersThisMonth: newCustomersThisMonth,
-          salesLast7Days: salesLast7Days,
-          recentSales: recentSales,
-          totalProducts: totalProducts,
-          productsWithoutImage: productsWithoutImage,
+          salesToday: snapshot.salesToday,
+          salesYesterday: snapshot.salesYesterday,
+          salesThisMonth: snapshot.salesThisMonth,
+          salesLastMonthSamePeriod: snapshot.salesLastMonthSamePeriod,
+          salesCountThisMonth: snapshot.salesCountThisMonth,
+          salesCountLastMonth: snapshot.salesCountLastMonth,
+          totalCustomers: snapshot.totalCustomers,
+          newCustomersThisMonth: snapshot.newCustomersThisMonth,
+          salesLast7Days: snapshot.salesLast7Days,
+          recentSales: snapshot.recentSales,
+          totalProducts: snapshot.totalProducts,
+          productsWithoutImage: snapshot.productsWithoutImage,
           alerts: alerts,
-          pendingEscalationsCount: pendingEscalationsCount,
-          pendingStockAlertsCount: pendingStockAlertsCount,
+          pendingEscalationsCount: snapshot.pendingEscalationsCount,
+          pendingStockAlertsCount: snapshot.pendingStockAlertsCount,
         ),
       );
 
@@ -243,54 +216,71 @@ class DashboardTenantPresenter {
 
     // 2. Catálogo vazio
     if (totalProducts == 0) {
-      final dismissed = await prefs.isAlertDismissed('dashboard_alert_emptyCatalog');
+      final dismissed = await prefs.isAlertDismissed(
+        'dashboard_alert_emptyCatalog',
+      );
       if (!dismissed) {
-        alerts.add(DashboardAlert(
-          type: DashboardAlertType.emptyCatalog,
-          title: 'Seu catálogo está vazio! Cadastre produtos para começar.',
-          actionLabel: 'Cadastrar Primeiro Produto',
-          route: '/products/new',
-          isWarning: true,
-        ));
+        alerts.add(
+          DashboardAlert(
+            type: DashboardAlertType.emptyCatalog,
+            title: 'Seu catálogo está vazio! Cadastre produtos para começar.',
+            actionLabel: 'Cadastrar Primeiro Produto',
+            route: '/products/new',
+            isWarning: true,
+          ),
+        );
       }
     }
 
     // 3. Nenhum cliente
     if (totalCustomers == 0) {
-      final dismissed = await prefs.isAlertDismissed('dashboard_alert_noCustomers');
+      final dismissed = await prefs.isAlertDismissed(
+        'dashboard_alert_noCustomers',
+      );
       if (!dismissed) {
-        alerts.add(DashboardAlert(
-          type: DashboardAlertType.noCustomers,
-          title: 'Você ainda não tem clientes cadastrados.',
-          actionLabel: 'Cadastrar Primeiro Cliente',
-          route: '/customers/new',
-        ));
+        alerts.add(
+          DashboardAlert(
+            type: DashboardAlertType.noCustomers,
+            title: 'Você ainda não tem clientes cadastrados.',
+            actionLabel: 'Cadastrar Primeiro Cliente',
+            route: '/customers/new',
+          ),
+        );
       }
     }
 
     // 4. Produtos sem imagem (só se tem produtos)
     if (productsWithoutImage > 0 && totalProducts > 0) {
-      final dismissed = await prefs.isAlertDismissed('dashboard_alert_productsWithoutImage');
+      final dismissed = await prefs.isAlertDismissed(
+        'dashboard_alert_productsWithoutImage',
+      );
       if (!dismissed) {
-        alerts.add(DashboardAlert(
-          type: DashboardAlertType.productsWithoutImage,
-          title: 'Você tem $productsWithoutImage produto${productsWithoutImage > 1 ? "s" : ""} sem foto cadastrada.',
-          actionLabel: 'Ver Produtos',
-          route: '/products',
-        ));
+        alerts.add(
+          DashboardAlert(
+            type: DashboardAlertType.productsWithoutImage,
+            title:
+                'Você tem $productsWithoutImage produto${productsWithoutImage > 1 ? "s" : ""} sem foto cadastrada.',
+            actionLabel: 'Ver Produtos',
+            route: '/products',
+          ),
+        );
       }
     }
 
     // 5. Sem vendas no mês
     if (salesCountThisMonth == 0) {
-      final dismissed = await prefs.isAlertDismissed('dashboard_alert_noSalesThisMonth');
+      final dismissed = await prefs.isAlertDismissed(
+        'dashboard_alert_noSalesThisMonth',
+      );
       if (!dismissed) {
-        alerts.add(DashboardAlert(
-          type: DashboardAlertType.noSalesThisMonth,
-          title: 'Você ainda não registrou vendas este mês.',
-          actionLabel: 'Fazer Primeira Venda',
-          route: '/sales/new',
-        ));
+        alerts.add(
+          DashboardAlert(
+            type: DashboardAlertType.noSalesThisMonth,
+            title: 'Você ainda não registrou vendas este mês.',
+            actionLabel: 'Fazer Primeira Venda',
+            route: '/sales/new',
+          ),
+        );
       }
     }
 

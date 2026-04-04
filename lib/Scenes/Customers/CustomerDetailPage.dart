@@ -268,7 +268,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
                   height: 28,
                   child: Switch.adaptive(
                     value: !customer.agentOff,
-                    activeColor: colors.green,
+                    activeThumbColor: colors.green,
                     onChanged: (value) => _handleToggleAgent(!value),
                   ),
                 ),

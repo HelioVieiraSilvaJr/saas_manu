@@ -526,7 +526,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
           ),
           Switch.adaptive(
             value: !customer.agentOff,
-            activeColor: colors.green,
+            activeThumbColor: colors.green,
             onChanged: (value) {
               setState(() {
                 _viewModel = _viewModel.copyWith(

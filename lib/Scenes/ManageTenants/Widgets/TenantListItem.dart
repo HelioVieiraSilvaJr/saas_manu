@@ -96,8 +96,6 @@ class TenantListItem extends StatelessWidget {
     ];
   }
 
-  String get _planLabel => tenant.planLabel;
-
   DSBadgeType get _planBadgeType {
     if (tenant.isTrial) return DSBadgeType.warning;
     if (tenant.planTier == 'pro') return DSBadgeType.success;

@@ -92,23 +92,31 @@ class TeamManagementPresenter {
                       style: TextStyle(fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 8),
-                    RadioListTile<UserRole>(
-                      title: Text(UserRole.tenantAdmin.label),
-                      subtitle: Text(UserRole.tenantAdmin.description),
-                      value: UserRole.tenantAdmin,
-                      groupValue: selectedRole,
-                      onChanged: (v) {
-                        setDialogState(() => selectedRole = v!);
+                    DropdownButtonFormField<UserRole>(
+                      initialValue: selectedRole,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                      ),
+                      items: [
+                        DropdownMenuItem(
+                          value: UserRole.tenantAdmin,
+                          child: Text(UserRole.tenantAdmin.label),
+                        ),
+                        DropdownMenuItem(
+                          value: UserRole.user,
+                          child: Text(UserRole.user.label),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setDialogState(() => selectedRole = value);
+                        }
                       },
                     ),
-                    RadioListTile<UserRole>(
-                      title: Text(UserRole.user.label),
-                      subtitle: Text(UserRole.user.description),
-                      value: UserRole.user,
-                      groupValue: selectedRole,
-                      onChanged: (v) {
-                        setDialogState(() => selectedRole = v!);
-                      },
+                    const SizedBox(height: 6),
+                    Text(
+                      selectedRole.description,
+                      style: TextStyle(color: colors.textSecondary),
                     ),
                     const SizedBox(height: 8),
 
@@ -152,7 +160,7 @@ class TeamManagementPresenter {
       },
     );
 
-    if (confirmed != true) return;
+    if (confirmed != true || !context.mounted) return;
 
     // Validações
 
@@ -171,6 +179,7 @@ class TeamManagementPresenter {
     if (member.role == UserRole.tenantAdmin && selectedRole == UserRole.user) {
       final tenantId = SessionManager.instance.currentTenant!.uid;
       final adminCount = await _repository.countActiveAdmins(tenantId);
+      if (!context.mounted) return;
       if (adminCount <= 1) {
         await DSAlertDialog.showWarning(
           context: context,
@@ -188,6 +197,7 @@ class TeamManagementPresenter {
       isActive: isActive,
       removedBy: !isActive ? SessionManager.instance.currentUser!.uid : null,
     );
+    if (!context.mounted) return;
 
     if (success) {
       await DSAlertDialog.showSuccess(
@@ -226,6 +236,7 @@ class TeamManagementPresenter {
     if (member.role == UserRole.tenantAdmin) {
       final tenantId = SessionManager.instance.currentTenant!.uid;
       final adminCount = await _repository.countActiveAdmins(tenantId);
+      if (!context.mounted) return;
       if (adminCount <= 1) {
         await DSAlertDialog.showWarning(
           context: context,
@@ -249,12 +260,13 @@ class TeamManagementPresenter {
       ),
     );
 
-    if (confirmed != true) return;
+    if (confirmed != true || !context.mounted) return;
 
     final success = await _repository.removeMember(
       membershipId: member.uid,
       removedBy: SessionManager.instance.currentUser!.uid,
     );
+    if (!context.mounted) return;
 
     if (success) {
       await DSAlertDialog.showSuccess(

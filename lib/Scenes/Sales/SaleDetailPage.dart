@@ -280,7 +280,7 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
           const SizedBox(width: DSSpacing.base),
           Expanded(
             child: DropdownButtonFormField<SaleStatus>(
-              value: sale.status,
+              initialValue: sale.status,
               decoration: InputDecoration(
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(DSSpacing.radiusSm),

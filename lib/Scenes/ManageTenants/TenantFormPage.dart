@@ -183,7 +183,7 @@ class _TenantFormPageState extends State<TenantFormPage> {
               Switch(
                 value: _presenter.isActive,
                 onChanged: (v) => _presenter.setActive(v),
-                activeColor: colors.primaryColor,
+                activeThumbColor: colors.primaryColor,
               ),
               Text(
                 _presenter.isActive ? 'Ativo' : 'Inativo',
