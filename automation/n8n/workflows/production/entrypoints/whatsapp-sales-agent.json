@@ -985,25 +985,37 @@
     },
     {
       "parameters": {
-        "resource": "chat-api",
-        "operation": "get-media-base64",
-        "instanceName": "={{ $('Info').item.json['evolution-api_instancia'] }}",
-        "messageId": "={{ $('Info').item.json.body.data.key.id }}"
+        "method": "POST",
+        "url": "={{ ($('Info').first().json.body?.server_url || 'https://chatwoot.htech-servidor.space') + '/chat/getBase64FromMediaMessage/' + $('Info').first().json['evolution-api_instancia'] }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $('Info').first().json['EvolutionAPI-Key'] }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ message: $('Info').first().json.body.data, convertToMp4: false }) }}",
+        "options": {}
       },
-      "type": "n8n-nodes-evolution-api.evolutionApi",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         -1536,
         2096
       ],
       "id": "72e462f0-3b0c-4124-9aed-e8179feb755a",
       "name": "Obter m dia em base64",
-      "credentials": {
-        "evolutionApi": {
-          "id": "M6bGmFNfvOgZac2f",
-          "name": "Loja-Exemplo-1"
-        }
-      }
+      "alwaysOutputData": true,
+      "onError": "stopWorkflow"
     },
     {
       "parameters": {

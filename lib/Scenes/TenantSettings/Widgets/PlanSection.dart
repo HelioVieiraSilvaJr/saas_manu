@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import '../../../Commons/Extensions/String+Extensions.dart';
+import '../../../Commons/Models/PlanCatalogModel.dart';
 import '../../../Commons/Widgets/DesignSystem/DSBadge.dart';
 import '../../../Commons/Widgets/DesignSystem/DSButton.dart';
 import '../../../Commons/Widgets/DesignSystem/DSColors.dart';
 import '../../../Commons/Widgets/DesignSystem/DSSpacing.dart';
 import '../../../Commons/Widgets/DesignSystem/DSTextStyle.dart';
+import '../../SuperAdminPlans/PlanCatalogRepository.dart';
 import '../TenantSettingsViewModel.dart';
 
 /// Widget da seção "Plano & Assinatura" — Módulo 8.
 class PlanSection extends StatelessWidget {
   final TenantSettingsViewModel viewModel;
+  final _planRepository = PlanCatalogRepository();
 
-  const PlanSection({super.key, required this.viewModel});
+  PlanSection({super.key, required this.viewModel});
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +56,17 @@ class PlanSection extends StatelessWidget {
             style: textStyles.bodyLarge.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: DSSpacing.md),
-          _buildPlanCards(context, colors, textStyles),
+          StreamBuilder<List<PlanCatalogModel>>(
+            stream: _planRepository.watchAll(),
+            builder: (context, snapshot) {
+              final plans =
+                  (snapshot.data ?? PlanCatalogModel.defaults)
+                      .where((plan) => plan.isActive)
+                      .toList()
+                    ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+              return _buildPlanCards(context, colors, textStyles, plans);
+            },
+          ),
         ],
       ),
     );
@@ -179,100 +192,38 @@ class PlanSection extends StatelessWidget {
     BuildContext context,
     DSColors colors,
     DSTextStyle textStyles,
+    List<PlanCatalogModel> plans,
   ) {
     return Column(
-      children: [
-        _buildPlanCard(
-          context: context,
-          planId: 'trial',
-          name: 'Trial',
-          price: 'Gratuito — 15 dias',
-          features: [
-            'Todas as funcionalidades',
-            'Produtos ilimitados',
-            'Clientes ilimitados',
-          ],
-          colors: colors,
-          textStyles: textStyles,
-        ),
-        const SizedBox(height: DSSpacing.md),
-        _buildPlanCard(
-          context: context,
-          planId: 'monthly',
-          name: 'Mensal Standard',
-          price: 'R\$ 79,90/mês',
-          features: [
-            'Até 1.000 clientes',
-            'Até 50 produtos',
-            'Suporte por email',
-          ],
-          colors: colors,
-          textStyles: textStyles,
-        ),
-        const SizedBox(height: DSSpacing.md),
-        _buildPlanCard(
-          context: context,
-          planId: 'monthly_pro',
-          name: 'Mensal Pro',
-          price: 'R\$ 149,90/mês',
-          features: [
-            'Clientes ilimitados',
-            'Até 500 produtos',
-            'Suporte prioritário',
-          ],
-          colors: colors,
-          textStyles: textStyles,
-        ),
-        const SizedBox(height: DSSpacing.md),
-        _buildPlanCard(
-          context: context,
-          planId: 'quarterly',
-          name: 'Trimestral Standard',
-          price: 'R\$ 199,90/trimestre',
-          features: [
-            'Até 1.000 clientes',
-            'Até 50 produtos',
-            'Suporte por email',
-            'Economia de 16%',
-          ],
-          colors: colors,
-          textStyles: textStyles,
-        ),
-        const SizedBox(height: DSSpacing.md),
-        _buildPlanCard(
-          context: context,
-          planId: 'quarterly_pro',
-          name: 'Trimestral Pro',
-          price: 'R\$ 399,90/trimestre',
-          features: [
-            'Clientes ilimitados',
-            'Até 500 produtos',
-            'Suporte prioritário',
-            'Relatórios avançados',
-            'Economia de 11%',
-          ],
-          colors: colors,
-          textStyles: textStyles,
-        ),
-      ],
+      children: plans.asMap().entries.map((entry) {
+        final plan = entry.value;
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: entry.key == plans.length - 1 ? 0 : DSSpacing.md,
+          ),
+          child: _buildPlanCard(
+            context: context,
+            plan: plan,
+            colors: colors,
+            textStyles: textStyles,
+          ),
+        );
+      }).toList(),
     );
   }
 
   Widget _buildPlanCard({
     required BuildContext context,
-    required String planId,
-    required String name,
-    required String price,
-    required List<String> features,
+    required PlanCatalogModel plan,
     required DSColors colors,
     required DSTextStyle textStyles,
   }) {
     final currentCombo = viewModel.isTrial
         ? 'trial'
         : viewModel.currentPlanTier == 'pro'
-            ? '${viewModel.currentPlan}_pro'
-            : viewModel.currentPlan;
-    final isCurrent = currentCombo == planId;
+        ? '${viewModel.currentPlan}_pro'
+        : viewModel.currentPlan;
+    final isCurrent = currentCombo == plan.id;
 
     return Container(
       width: double.infinity,
@@ -293,7 +244,7 @@ class PlanSection extends StatelessWidget {
           Row(
             children: [
               Text(
-                name,
+                plan.displayName,
                 style: textStyles.headline3.copyWith(
                   color: isCurrent ? colors.primaryColor : colors.textPrimary,
                 ),
@@ -309,11 +260,16 @@ class PlanSection extends StatelessWidget {
           ),
           const SizedBox(height: DSSpacing.xxs),
           Text(
-            price,
+            plan.billingLabel,
             style: textStyles.bodyMedium.copyWith(color: colors.textSecondary),
           ),
+          const SizedBox(height: DSSpacing.xxs),
+          Text(
+            plan.limitsLabel,
+            style: textStyles.bodySmall.copyWith(color: colors.textTertiary),
+          ),
           const SizedBox(height: DSSpacing.md),
-          ...features.map(
+          ...plan.features.map(
             (f) => Padding(
               padding: const EdgeInsets.only(bottom: DSSpacing.xxs),
               child: Row(
@@ -332,7 +288,7 @@ class PlanSection extends StatelessWidget {
           const SizedBox(height: DSSpacing.md),
           if (!isCurrent)
             DSButton.secondary(
-              label: 'Selecionar $name',
+              label: 'Selecionar ${plan.displayName}',
               icon: Icons.arrow_forward_rounded,
               onTap: () => _handleUpgrade(context),
             ),

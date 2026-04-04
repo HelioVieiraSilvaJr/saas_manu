@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../Commons/Models/TenantModel.dart';
 import '../../Commons/Utils/AppLogger.dart';
+import '../SuperAdminPlans/PlanCatalogRepository.dart';
 import 'TenantsRepository.dart';
 
 /// Presenter para formulário de criação/edição de Tenant.
 class TenantFormPresenter {
   final TenantsRepository _repository = TenantsRepository();
+  final PlanCatalogRepository _planRepository = PlanCatalogRepository();
 
   // Controllers
   final nameController = TextEditingController();
@@ -173,6 +175,10 @@ class TenantFormPresenter {
 
   Future<bool> _update() async {
     final tenant = editingTenant!;
+    final planConfig = await _planRepository.getByPeriodAndTier(
+      selectedPlan,
+      selectedPlanTier,
+    );
     final updated = TenantModel(
       uid: tenant.uid,
       name: nameController.text.trim(),
@@ -187,6 +193,12 @@ class TenantFormPresenter {
       trialEndDate: tenant.trialEndDate,
       nextPaymentDate: tenant.nextPaymentDate,
       lastPaymentId: tenant.lastPaymentId,
+      contractedPlanAmount: planConfig.price,
+      contractedCustomerLimit: planConfig.customerLimit,
+      contractedProductLimit: planConfig.productLimit,
+      contractedDurationDays: planConfig.durationDays,
+      contractedPlanName: planConfig.name,
+      contractedPlanCatalogId: planConfig.id,
       evolutionApiUrl: tenant.evolutionApiUrl,
       evolutionApiKey: tenant.evolutionApiKey,
       evolutionInstanceName: tenant.evolutionInstanceName,

@@ -466,6 +466,7 @@ class ProductsListWebView extends StatelessWidget {
         children: [
           Expanded(flex: 5, child: Text('Produto', style: headerStyle)),
           Expanded(flex: 2, child: Text('SKU', style: headerStyle)),
+          Expanded(flex: 2, child: Text('Cor / Tam.', style: headerStyle)),
           Expanded(flex: 2, child: Text('Preço', style: headerStyle)),
           Expanded(flex: 2, child: Text('Estoque', style: headerStyle)),
           Expanded(flex: 2, child: Text('Status', style: headerStyle)),
@@ -594,6 +595,18 @@ class _ProductTableRowState extends State<_ProductTableRow> {
                 ),
               ),
 
+              Expanded(
+                flex: 2,
+                child: Text(
+                  _variantLabel(product),
+                  style: textStyles.bodySmall.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+
               // Preço
               Expanded(
                 flex: 2,
@@ -646,5 +659,16 @@ class _ProductTableRowState extends State<_ProductTableRow> {
     if (stock == 0) return colors.red;
     if (stock < 10) return colors.orange;
     return colors.green;
+  }
+
+  String _variantLabel(ProductModel product) {
+    final parts = <String>[];
+    if (product.color?.isNotEmpty ?? false) {
+      parts.add(product.color!);
+    }
+    if (product.size?.isNotEmpty ?? false) {
+      parts.add(product.size!);
+    }
+    return parts.isEmpty ? '—' : parts.join(' • ');
   }
 }

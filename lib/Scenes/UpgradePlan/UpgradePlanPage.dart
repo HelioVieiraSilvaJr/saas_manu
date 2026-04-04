@@ -4,15 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../Commons/Enums/PlanPeriod.dart';
 import '../../Commons/Enums/PlanTier.dart';
+import '../../Commons/Models/PlanCatalogModel.dart';
 import '../../Commons/Models/TenantModel.dart';
 import '../../Commons/Widgets/DesignSystem/DSColors.dart';
 import '../../Commons/Widgets/DesignSystem/DSTextStyle.dart';
 import '../../Commons/Widgets/DesignSystem/DSSpacing.dart';
 import '../../Commons/Widgets/DesignSystem/DSButton.dart';
+import '../../Commons/Widgets/DesignSystem/LoadingIndicator.dart';
 import '../../Sources/SessionManager.dart';
 import '../../Sources/Coordinators/AppShell.dart';
 import '../../Sources/BackendApi.dart';
 import '../ManageTenants/TenantsRepository.dart';
+import '../SuperAdminPlans/PlanCatalogRepository.dart';
 
 /// Tela de upgrade de plano com pagamento via PIX.
 ///
@@ -31,10 +34,13 @@ class UpgradePlanPage extends StatefulWidget {
 
 class _UpgradePlanPageState extends State<UpgradePlanPage> {
   final TenantsRepository _repository = TenantsRepository();
+  final PlanCatalogRepository _planRepository = PlanCatalogRepository();
 
   // Seleção do plano
   String _selectedPeriod = 'monthly';
   String _selectedTier = 'standard';
+  List<PlanCatalogModel> _availablePlans = const [];
+  bool _isLoadingPlans = true;
 
   // Estado do pagamento
   bool _isGeneratingPix = false;
@@ -57,6 +63,7 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
       _selectedPeriod = _tenant!.plan;
       _selectedTier = _tenant!.planTier;
     }
+    _loadPlans();
   }
 
   @override
@@ -65,18 +72,41 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
     super.dispose();
   }
 
-  double get _selectedPrice {
-    return PlanTier.fromString(_selectedTier).priceForPeriod(_selectedPeriod);
+  PlanCatalogModel get _selectedPlan {
+    return _availablePlans.firstWhere(
+      (plan) => plan.period == _selectedPeriod && plan.tier == _selectedTier,
+      orElse: () => PlanCatalogModel.defaultFor(_selectedPeriod, _selectedTier),
+    );
   }
 
-  int get _selectedDays {
-    return PlanPeriod.fromString(_selectedPeriod).durationDays;
+  double get _selectedPrice => _selectedPlan.price;
+
+  int get _selectedDays => _selectedPlan.durationDays;
+
+  String get _selectedPlanLabel => _selectedPlan.displayName;
+
+  List<PlanCatalogModel> get _periodPlans {
+    final plans = _availablePlans
+        .where((plan) => plan.period == _selectedPeriod && plan.isActive)
+        .toList();
+    plans.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    return plans;
   }
 
-  String get _selectedPlanLabel {
-    final period = PlanPeriod.fromString(_selectedPeriod).label;
-    final tier = PlanTier.fromString(_selectedTier).label;
-    return '$period $tier';
+  Future<void> _loadPlans() async {
+    final plans = await _planRepository.getAll();
+    if (!mounted) return;
+    setState(() {
+      _availablePlans = plans.where((plan) => plan.period != 'trial').toList();
+      _isLoadingPlans = false;
+      final hasSelectedPlan = _availablePlans.any(
+        (plan) => plan.period == _selectedPeriod && plan.tier == _selectedTier,
+      );
+      if (!hasSelectedPlan && _availablePlans.isNotEmpty) {
+        _selectedPeriod = _availablePlans.first.period;
+        _selectedTier = _availablePlans.first.tier;
+      }
+    });
   }
 
   // MARK: - Gerar PIX
@@ -204,6 +234,10 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
   // MARK: - Plan Selection View
 
   Widget _buildPlanSelection(DSColors colors, DSTextStyle textStyles) {
+    if (_isLoadingPlans) {
+      return const LoadingIndicator(message: 'Carregando planos...');
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -253,7 +287,8 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
               child: _buildPeriodCard(
                 period: 'monthly',
                 title: 'Mensal',
-                subtitle: '30 dias',
+                subtitle:
+                    '${PlanCatalogModel.defaultFor('monthly', 'standard').durationDays} dias',
                 colors: colors,
                 textStyles: textStyles,
               ),
@@ -263,7 +298,8 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
               child: _buildPeriodCard(
                 period: 'quarterly',
                 title: 'Trimestral',
-                subtitle: '90 dias',
+                subtitle:
+                    '${PlanCatalogModel.defaultFor('quarterly', 'standard').durationDays} dias',
                 badge: 'Economia',
                 colors: colors,
                 textStyles: textStyles,
@@ -279,33 +315,19 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
           style: textStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: DSSpacing.sm),
-        _buildTierCard(
-          tier: 'standard',
-          title: 'Standard',
-          features: [
-            'Até 1.000 clientes',
-            'Até 50 produtos',
-            'CRM completo',
-            'WhatsApp Bot',
-          ],
-          colors: colors,
-          textStyles: textStyles,
-        ),
-        const SizedBox(height: DSSpacing.sm),
-        _buildTierCard(
-          tier: 'pro',
-          title: 'Pro',
-          features: [
-            'Clientes ilimitados',
-            'Até 500 produtos',
-            'CRM completo',
-            'WhatsApp Bot',
-            'Suporte prioritário',
-          ],
-          badge: 'Recomendado',
-          colors: colors,
-          textStyles: textStyles,
-        ),
+        ..._periodPlans.asMap().entries.map((entry) {
+          final plan = entry.value;
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: entry.key == _periodPlans.length - 1 ? 0 : DSSpacing.sm,
+            ),
+            child: _buildTierCard(
+              plan: plan,
+              colors: colors,
+              textStyles: textStyles,
+            ),
+          );
+        }),
         const SizedBox(height: DSSpacing.xl),
 
         // Price summary
@@ -388,9 +410,22 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
     required DSTextStyle textStyles,
   }) {
     final isSelected = _selectedPeriod == period;
+    final periodPlans = _availablePlans
+        .where((plan) => plan.period == period && plan.isActive)
+        .toList();
+    final minDays = periodPlans.isEmpty
+        ? PlanPeriod.fromString(period).durationDays
+        : periodPlans.first.durationDays;
 
     return InkWell(
-      onTap: () => setState(() => _selectedPeriod = period),
+      onTap: () => setState(() {
+        _selectedPeriod = period;
+        final firstActiveTier = _availablePlans.firstWhere(
+          (plan) => plan.period == period && plan.isActive,
+          orElse: () => PlanCatalogModel.defaultFor(period, 'standard'),
+        );
+        _selectedTier = firstActiveTier.tier;
+      }),
       borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
       child: Container(
         padding: const EdgeInsets.all(DSSpacing.md),
@@ -429,7 +464,7 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
               ),
             ),
             Text(
-              subtitle,
+              subtitle.replaceFirst(RegExp(r'^\d+'), minDays.toString()),
               style: textStyles.bodySmall.copyWith(color: colors.textTertiary),
             ),
           ],
@@ -439,18 +474,16 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
   }
 
   Widget _buildTierCard({
-    required String tier,
-    required String title,
-    required List<String> features,
+    required PlanCatalogModel plan,
     String? badge,
     required DSColors colors,
     required DSTextStyle textStyles,
   }) {
-    final isSelected = _selectedTier == tier;
-    final price = PlanTier.fromString(tier).priceForPeriod(_selectedPeriod);
+    final isSelected = _selectedTier == plan.tier;
+    final tierLabel = PlanTier.fromString(plan.tier).label;
 
     return InkWell(
-      onTap: () => setState(() => _selectedTier = tier),
+      onTap: () => setState(() => _selectedTier = plan.tier),
       borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
       child: Container(
         padding: const EdgeInsets.all(DSSpacing.md),
@@ -467,7 +500,7 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
         child: Row(
           children: [
             Radio<String>(
-              value: tier,
+              value: plan.tier,
               groupValue: _selectedTier,
               onChanged: (v) {
                 if (v != null) setState(() => _selectedTier = v);
@@ -481,7 +514,7 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
                   Row(
                     children: [
                       Text(
-                        title,
+                        tierLabel,
                         style: textStyles.headline3.copyWith(
                           color: isSelected
                               ? colors.primaryColor
@@ -512,7 +545,7 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
                     ],
                   ),
                   const SizedBox(height: DSSpacing.xs),
-                  ...features.map(
+                  ...plan.features.map(
                     (f) => Padding(
                       padding: const EdgeInsets.only(bottom: 2),
                       child: Row(
@@ -537,7 +570,7 @@ class _UpgradePlanPageState extends State<UpgradePlanPage> {
               ),
             ),
             Text(
-              'R\$ ${price.toStringAsFixed(2).replaceAll('.', ',')}',
+              'R\$ ${plan.price.toStringAsFixed(2).replaceAll('.', ',')}',
               style: textStyles.headline3.copyWith(
                 color: isSelected ? colors.primaryColor : colors.textPrimary,
               ),

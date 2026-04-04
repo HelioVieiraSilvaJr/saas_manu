@@ -1319,20 +1319,23 @@ class _ProductFormPageState extends State<ProductFormPage> {
             style: textStyles.bodySmall.copyWith(color: colors.textTertiary),
           ),
           const SizedBox(height: DSSpacing.lg),
-          Wrap(
-            spacing: DSSpacing.sm,
-            runSpacing: DSSpacing.sm,
+          Row(
             children: [
-              DSButton.secondary(
-                label: 'Copiar Produto',
-                icon: Icons.content_copy_rounded,
-                onTap: _viewModel.isSaving ? null : _handleDuplicateProduct,
+              Expanded(
+                child: DSButton.ghost(
+                  label: 'Copiar',
+                  icon: Icons.content_copy_rounded,
+                  onTap: _viewModel.isSaving ? null : _handleDuplicateProduct,
+                ),
               ),
+              const SizedBox(width: DSSpacing.sm),
               if (_viewModel.isEditing)
-                DSButton.danger(
-                  label: 'Excluir esse produto',
-                  icon: Icons.delete_outline_rounded,
-                  onTap: _viewModel.isSaving ? null : _handleDeleteProduct,
+                Expanded(
+                  child: DSButton.text(
+                    label: 'Excluir',
+                    icon: Icons.delete_outline_rounded,
+                    onTap: _viewModel.isSaving ? null : _handleDeleteProduct,
+                  ),
                 ),
             ],
           ),

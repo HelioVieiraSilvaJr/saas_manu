@@ -110,6 +110,18 @@ class _ProductCardState extends State<ProductCard> {
 
                       // Estoque
                       _buildStockText(colors, textStyles),
+                      if ((widget.product.color?.isNotEmpty ?? false) ||
+                          (widget.product.size?.isNotEmpty ?? false)) ...[
+                        const SizedBox(height: DSSpacing.xxs),
+                        Text(
+                          _buildVariantLabel(),
+                          style: textStyles.caption.copyWith(
+                            color: colors.textSecondary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                       const SizedBox(height: DSSpacing.sm),
 
                       // Badge Status
@@ -168,5 +180,16 @@ class _ProductCardState extends State<ProductCard> {
         fontWeight: FontWeight.w600,
       ),
     );
+  }
+
+  String _buildVariantLabel() {
+    final parts = <String>[];
+    if (widget.product.color?.isNotEmpty ?? false) {
+      parts.add('Cor: ${widget.product.color}');
+    }
+    if (widget.product.size?.isNotEmpty ?? false) {
+      parts.add('Tam: ${widget.product.size}');
+    }
+    return parts.join(' • ');
   }
 }

@@ -128,5 +128,10 @@ service cloud.firestore {
     match /platform_analytics/{docId} {
       allow read, write: if isSuperAdmin();
     }
+
+    match /platform_billing_plans/{planId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
   }
 }

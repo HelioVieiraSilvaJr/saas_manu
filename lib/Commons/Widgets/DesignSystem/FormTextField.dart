@@ -59,6 +59,12 @@ class FormTextField extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = DSColors();
     final textStyles = DSTextStyle();
+    final effectiveKeyboardType =
+        identical(textInputAction, TextInputAction.newline) &&
+            maxLines != 1 &&
+            identical(keyboardType, TextInputType.text)
+        ? TextInputType.multiline
+        : keyboardType;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -80,7 +86,7 @@ class FormTextField extends StatelessWidget {
         TextFormField(
           controller: controller,
           validator: validator,
-          keyboardType: keyboardType,
+          keyboardType: effectiveKeyboardType,
           obscureText: obscureText,
           readOnly: readOnly,
           enabled: enabled,

@@ -79,6 +79,127 @@ function normalizeSaleSource(source) {
     : "whatsapp_automation";
 }
 
+const DEFAULT_PLAN_CATALOG = Object.freeze({
+  trial: {
+    id: "trial",
+    period: "trial",
+    tier: "standard",
+    name: "Trial",
+    description: "Periodo inicial para explorar a plataforma.",
+    price: 0,
+    customerLimit: 0,
+    productLimit: 500,
+    durationDays: 15,
+    isActive: true,
+    sortOrder: 0,
+  },
+  monthly_standard: {
+    id: "monthly_standard",
+    period: "monthly",
+    tier: "standard",
+    name: "Mensal Standard",
+    description: "Plano mensal para operacao recorrente.",
+    price: 79.9,
+    customerLimit: 1000,
+    productLimit: 50,
+    durationDays: 30,
+    isActive: true,
+    sortOrder: 10,
+  },
+  monthly_pro: {
+    id: "monthly_pro",
+    period: "monthly",
+    tier: "pro",
+    name: "Mensal Pro",
+    description: "Plano mensal com limites ampliados.",
+    price: 149.9,
+    customerLimit: 0,
+    productLimit: 500,
+    durationDays: 30,
+    isActive: true,
+    sortOrder: 20,
+  },
+  quarterly_standard: {
+    id: "quarterly_standard",
+    period: "quarterly",
+    tier: "standard",
+    name: "Trimestral Standard",
+    description: "Plano trimestral com economia no ciclo.",
+    price: 199.9,
+    customerLimit: 1000,
+    productLimit: 50,
+    durationDays: 90,
+    isActive: true,
+    sortOrder: 30,
+  },
+  quarterly_pro: {
+    id: "quarterly_pro",
+    period: "quarterly",
+    tier: "pro",
+    name: "Trimestral Pro",
+    description: "Plano trimestral com maior escala.",
+    price: 399.9,
+    customerLimit: 0,
+    productLimit: 500,
+    durationDays: 90,
+    isActive: true,
+    sortOrder: 40,
+  },
+});
+
+function buildPlanCatalogId(plan, tier = "standard") {
+  if (plan === "trial") return "trial";
+  return `${plan}_${tier || "standard"}`;
+}
+
+function asNumber(value, fallback = 0) {
+  if (value === null || value === undefined || value === "") return fallback;
+  const normalized = Number(value);
+  return Number.isFinite(normalized) ? normalized : fallback;
+}
+
+function getDefaultPlanConfig(plan, tier = "standard") {
+  const planId = buildPlanCatalogId(plan, tier);
+  return DEFAULT_PLAN_CATALOG[planId] || DEFAULT_PLAN_CATALOG.trial;
+}
+
+function normalizePlanCatalogData(data = {}, fallbackPlan, fallbackTier) {
+  const fallback = getDefaultPlanConfig(fallbackPlan, fallbackTier);
+  return {
+    id: String(data.id || fallback.id || "").trim() || buildPlanCatalogId(fallbackPlan, fallbackTier),
+    period: String(data.period || fallback.period || fallbackPlan || "trial").trim() || "trial",
+    tier: String(data.tier || fallback.tier || fallbackTier || "standard").trim() || "standard",
+    name: String(data.name || fallback.name || "").trim() || fallback.name,
+    description: String(data.description || fallback.description || "").trim() || fallback.description,
+    price: asNumber(data.price, fallback.price || 0),
+    customerLimit: asNumber(data.customer_limit ?? data.customerLimit, fallback.customerLimit || 0),
+    productLimit: asNumber(data.product_limit ?? data.productLimit, fallback.productLimit || 0),
+    durationDays: asNumber(data.duration_days ?? data.durationDays, fallback.durationDays || 30),
+    isActive: data.is_active !== false,
+    sortOrder: asNumber(data.sort_order ?? data.sortOrder, fallback.sortOrder || 0),
+  };
+}
+
+async function resolvePlanConfig(plan, tier = "standard") {
+  const planId = buildPlanCatalogId(plan, tier);
+  const doc = await db.collection("platform_billing_plans").doc(planId).get();
+  if (!doc.exists) {
+    return normalizePlanCatalogData({ id: planId }, plan, tier);
+  }
+  return normalizePlanCatalogData({ id: doc.id, ...doc.data() }, plan, tier);
+}
+
+function buildContractSnapshotFromPlan(planConfig) {
+  return {
+    contracted_plan_catalog_id: planConfig.id,
+    contracted_plan_name: planConfig.name,
+    contracted_plan_amount: planConfig.price,
+    contracted_customer_limit: planConfig.customerLimit,
+    contracted_product_limit: planConfig.productLimit,
+    contracted_duration_days: planConfig.durationDays,
+  };
+}
+
 async function parseJsonResponse(response) {
   const rawText = await response.text();
   if (!rawText) {
@@ -806,9 +927,12 @@ async function assertCanAccessTenant(tenantId, uid) {
   }
 }
 
-function buildTenantData(payload) {
+async function buildTenantData(payload) {
   const now = new Date();
-  const durationDays = payload.plan === "quarterly" ? 90 : payload.plan === "monthly" ? 30 : 15;
+  const plan = payload.plan || "trial";
+  const planTier = payload.planTier || "standard";
+  const planConfig = await resolvePlanConfig(plan, planTier);
+  const durationDays = planConfig.durationDays;
   const expirationDate = admin.firestore.Timestamp.fromDate(
     new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000),
   );
@@ -817,11 +941,12 @@ function buildTenantData(payload) {
     name: String(payload.name || "").trim(),
     contact_email: sanitizeEmail(payload.email),
     contact_phone: sanitizePhone(payload.phone),
-    plan: payload.plan || "trial",
-    plan_tier: payload.planTier || "standard",
+    plan,
+    plan_tier: planTier,
     is_active: payload.isActive !== false,
     is_expired: false,
     expiration_date: expirationDate,
+    ...buildContractSnapshotFromPlan(planConfig),
     updated_at: nowTs(),
   };
 
@@ -980,7 +1105,7 @@ exports.createTenantWithAdmin = onRequest(
     }
 
     const body = jsonBody(req);
-    const tenantData = buildTenantData(body);
+    const tenantData = await buildTenantData(body);
 
     if (!tenantData.name || !tenantData.contact_email) {
       res.status(400).json({ ok: false, error: "invalid-tenant-payload" });
@@ -1920,15 +2045,50 @@ exports.createPixCheckout = onRequest(
     const tenantId = String(body.tenantId || "").trim();
     const plan = String(body.plan || "").trim();
     const planTier = String(body.planTier || "standard").trim();
-    const amount = Number(body.amount || 0);
-    const expirationDays = Number(body.expirationDays || 30);
 
-    if (!tenantId || !plan || amount <= 0) {
+    if (!tenantId || !plan) {
       res.status(400).json({ ok: false, error: "invalid-payment-payload" });
       return;
     }
 
     await assertCanManageTenant(tenantId, auth.uid);
+
+    const tenantRef = db.collection("tenants").doc(tenantId);
+    const tenantDoc = await tenantRef.get();
+    if (!tenantDoc.exists) {
+      res.status(404).json({ ok: false, error: "tenant-not-found" });
+      return;
+    }
+
+    const tenantData = tenantDoc.data() || {};
+    const isRenewingCurrentPlan =
+      String(tenantData.plan || "").trim() === plan &&
+      String(tenantData.plan_tier || "standard").trim() === planTier &&
+      Number.isFinite(Number(tenantData.contracted_plan_amount));
+
+    const resolvedPlanConfig = isRenewingCurrentPlan
+      ? {
+          id: String(
+            tenantData.contracted_plan_catalog_id || buildPlanCatalogId(plan, planTier),
+          ).trim() || buildPlanCatalogId(plan, planTier),
+          name: String(tenantData.contracted_plan_name || getDefaultPlanConfig(plan, planTier).name).trim(),
+          price: asNumber(tenantData.contracted_plan_amount, 0),
+          customerLimit: asNumber(tenantData.contracted_customer_limit, 0),
+          productLimit: asNumber(tenantData.contracted_product_limit, 0),
+          durationDays: asNumber(
+            tenantData.contracted_duration_days,
+            getDefaultPlanConfig(plan, planTier).durationDays,
+          ),
+        }
+      : await resolvePlanConfig(plan, planTier);
+
+    const amount = resolvedPlanConfig.price;
+    const expirationDays = resolvedPlanConfig.durationDays;
+
+    if (amount <= 0) {
+      res.status(400).json({ ok: false, error: "invalid-payment-amount" });
+      return;
+    }
 
     const paymentRef = db.collection(`tenants/${tenantId}/payments`).doc();
     const expiration = admin.firestore.Timestamp.fromDate(
@@ -1939,6 +2099,11 @@ exports.createPixCheckout = onRequest(
       plan,
       plan_tier: planTier,
       amount,
+      contracted_plan_catalog_id: resolvedPlanConfig.id,
+      contracted_plan_name: resolvedPlanConfig.name,
+      contracted_customer_limit: resolvedPlanConfig.customerLimit,
+      contracted_product_limit: resolvedPlanConfig.productLimit,
+      contracted_duration_days: resolvedPlanConfig.durationDays,
       status: "pending",
       created_at: nowTs(),
       plan_expiration_date: expiration,
@@ -2029,6 +2194,8 @@ exports.paymentWebhook = onRequest(
 
     const tenantRef = db.collection("tenants").doc(tenantId);
     const paymentRef = tenantRef.collection("payments").doc(paymentId);
+    const paymentDoc = await paymentRef.get();
+    const storedPayment = paymentDoc.data() || {};
 
     const paymentData = {
       status,
@@ -2046,21 +2213,44 @@ exports.paymentWebhook = onRequest(
     batch.set(paymentRef, paymentData, { merge: true });
 
     if (status === "paid") {
+      const resolvedDuration = asNumber(
+        body.contractedDurationDays ?? storedPayment.contracted_duration_days,
+        30,
+      );
       const expirationDate = body.planExpirationDate
         ? admin.firestore.Timestamp.fromDate(new Date(body.planExpirationDate))
-        : admin.firestore.Timestamp.fromDate(
-            new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        : storedPayment.plan_expiration_date || admin.firestore.Timestamp.fromDate(
+            new Date(Date.now() + resolvedDuration * 24 * 60 * 60 * 1000),
           );
 
       batch.set(
         tenantRef,
         {
-          plan: body.plan || "monthly",
-          plan_tier: body.planTier || "standard",
+          plan: body.plan || storedPayment.plan || "monthly",
+          plan_tier: body.planTier || storedPayment.plan_tier || "standard",
           last_payment_id: paymentId,
           next_payment_date: expirationDate,
           expiration_date: expirationDate,
           is_expired: false,
+          contracted_plan_catalog_id:
+            body.contractedPlanCatalogId ||
+            storedPayment.contracted_plan_catalog_id ||
+            buildPlanCatalogId(body.plan || storedPayment.plan || "monthly", body.planTier || storedPayment.plan_tier || "standard"),
+          contracted_plan_name:
+            body.contractedPlanName || storedPayment.contracted_plan_name || null,
+          contracted_plan_amount: asNumber(
+            body.amount ?? storedPayment.amount,
+            0,
+          ),
+          contracted_customer_limit: asNumber(
+            body.contractedCustomerLimit ?? storedPayment.contracted_customer_limit,
+            0,
+          ),
+          contracted_product_limit: asNumber(
+            body.contractedProductLimit ?? storedPayment.contracted_product_limit,
+            0,
+          ),
+          contracted_duration_days: resolvedDuration,
           updated_at: nowTs(),
         },
         { merge: true },
@@ -2081,17 +2271,22 @@ exports.syncMembershipAccessIndex = onRequest(
     }
 
     const auth = await verifyAuth(req);
-    if (!(await isSuperAdmin(auth.uid))) {
-      res.status(403).json({ ok: false, error: "super-admin-required" });
-      return;
-    }
-
-    const memberships = await db.collection("memberships").get();
+    const canMigrateAll = await isSuperAdmin(auth.uid);
+    const memberships = canMigrateAll
+      ? await db.collection("memberships").get()
+      : await db
+          .collection("memberships")
+          .where("user_id", "==", auth.uid)
+          .get();
     let migrated = 0;
 
     for (const doc of memberships.docs) {
       const data = doc.data();
       if (!data.tenant_id || !data.user_id) {
+        continue;
+      }
+
+      if (!canMigrateAll && data.user_id !== auth.uid) {
         continue;
       }
 
@@ -2126,6 +2321,7 @@ exports.syncMembershipAccessIndex = onRequest(
     res.status(200).json({
       ok: true,
       migrated,
+      scope: canMigrateAll ? "global" : "self",
     });
   }),
 );

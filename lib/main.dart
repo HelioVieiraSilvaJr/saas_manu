@@ -24,6 +24,7 @@ import 'Scenes/DashboardSuperAdmin/SuperAdminDashboardPage.dart';
 import 'Scenes/ManageTenants/TenantsListPage.dart';
 import 'Scenes/ManageTenants/TenantFormPage.dart';
 import 'Scenes/ManageTenants/TenantDetailPage.dart';
+import 'Scenes/SuperAdminPlans/PlansManagementPage.dart';
 import 'Scenes/TenantSettings/TenantSettingsPage.dart';
 import 'Scenes/TeamManagement/TeamManagementPage.dart';
 import 'Scenes/TeamManagement/AddMemberPage.dart';
@@ -175,6 +176,7 @@ class SaasManApp extends StatelessWidget {
           '/admin/tenants/new': (context) => const TenantFormPage(),
           '/admin/tenants/edit': (context) => const TenantFormPage(),
           '/admin/tenants/detail': (context) => const TenantDetailPage(),
+          '/admin/plans': (context) => const PlansManagementPage(),
           '/settings': (context) => const TenantSettingsPage(),
           '/upgrade': (context) => const UpgradePlanPage(),
           '/team': (context) => const TeamManagementPage(),

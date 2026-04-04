@@ -5,6 +5,7 @@ import '../Commons/Models/TenantModel.dart';
 import '../Commons/Models/MembershipModel.dart';
 import '../Commons/Enums/UserRole.dart';
 import '../Commons/Utils/AppLogger.dart';
+import 'BackendApi.dart';
 import 'PreferencesManager.dart';
 
 /// Singleton para gerenciamento de sessão multi-tenant.
@@ -48,6 +49,21 @@ class SessionManager {
 
   /// Carrega sessão completa após login.
   Future<void> loadSession(User firebaseUser) async {
+    try {
+      await _loadSessionCore(firebaseUser);
+    } catch (e) {
+      if (await _tryRepairLegacyMembershipAccess(e)) {
+        AppLogger.info(
+          'Migração de memberships concluída. Recarregando sessão...',
+        );
+        await _loadSessionCore(firebaseUser);
+        return;
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> _loadSessionCore(User firebaseUser) async {
     AppLogger.info('Carregando sessão para: ${firebaseUser.email}');
 
     // 1. Buscar UserModel
@@ -104,6 +120,39 @@ class SessionManager {
     AppLogger.info(
       'Sessão carregada: ${currentUser!.name} → ${currentTenant!.name} (${currentMembership!.role.label})',
     );
+  }
+
+  Future<bool> _tryRepairLegacyMembershipAccess(Object error) async {
+    if (!_isPermissionDeniedError(error)) {
+      return false;
+    }
+
+    AppLogger.warning(
+      'Permission denied ao carregar sessão. Tentando migrar memberships legados...',
+    );
+
+    try {
+      await BackendApi.instance.postAuthenticated(
+        functionName: 'syncMembershipAccessIndex',
+        body: const {},
+      );
+      return true;
+    } catch (migrationError) {
+      AppLogger.warning(
+        'Não foi possível migrar memberships automaticamente: $migrationError',
+      );
+      return false;
+    }
+  }
+
+  bool _isPermissionDeniedError(Object error) {
+    if (error is FirebaseException && error.code == 'permission-denied') {
+      return true;
+    }
+
+    final message = error.toString().toLowerCase();
+    return message.contains('permission-denied') ||
+        message.contains('insufficient permissions');
   }
 
   // MARK: - Switch Tenant

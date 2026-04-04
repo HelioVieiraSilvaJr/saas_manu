@@ -22,6 +22,12 @@ class TenantModel {
   DateTime? trialEndDate; // Mantido para compatibilidade
   DateTime? nextPaymentDate;
   String? lastPaymentId; // ID do último pagamento (subcollection payments/)
+  double? contractedPlanAmount;
+  int? contractedCustomerLimit;
+  int? contractedProductLimit;
+  int? contractedDurationDays;
+  String? contractedPlanName;
+  String? contractedPlanCatalogId;
 
   // Contexto comercial
   String? businessSegment;
@@ -63,6 +69,12 @@ class TenantModel {
     this.trialEndDate,
     this.nextPaymentDate,
     this.lastPaymentId,
+    this.contractedPlanAmount,
+    this.contractedCustomerLimit,
+    this.contractedProductLimit,
+    this.contractedDurationDays,
+    this.contractedPlanName,
+    this.contractedPlanCatalogId,
     this.businessSegment,
     this.businessSubsegment,
     this.businessDescription,
@@ -131,6 +143,25 @@ class TenantModel {
       trialEndDate: _asDateTime(data['trial_end_date']),
       nextPaymentDate: _asDateTime(data['next_payment_date']),
       lastPaymentId: _asNullableString(data['last_payment_id']),
+      contractedPlanAmount: data['contracted_plan_amount'] is num
+          ? (data['contracted_plan_amount'] as num).toDouble()
+          : double.tryParse('${data['contracted_plan_amount'] ?? ''}'),
+      contractedCustomerLimit:
+          _asInt(data['contracted_customer_limit'], fallback: -1) == -1
+          ? null
+          : _asInt(data['contracted_customer_limit']),
+      contractedProductLimit:
+          _asInt(data['contracted_product_limit'], fallback: -1) == -1
+          ? null
+          : _asInt(data['contracted_product_limit']),
+      contractedDurationDays:
+          _asInt(data['contracted_duration_days'], fallback: -1) == -1
+          ? null
+          : _asInt(data['contracted_duration_days']),
+      contractedPlanName: _asNullableString(data['contracted_plan_name']),
+      contractedPlanCatalogId: _asNullableString(
+        data['contracted_plan_catalog_id'],
+      ),
       businessSegment: _asNullableString(data['business_segment']),
       businessSubsegment: _asNullableString(data['business_subsegment']),
       businessDescription: _asNullableString(data['business_description']),
@@ -185,6 +216,12 @@ class TenantModel {
           ? Timestamp.fromDate(nextPaymentDate!)
           : null,
       'last_payment_id': lastPaymentId,
+      'contracted_plan_amount': contractedPlanAmount,
+      'contracted_customer_limit': contractedCustomerLimit,
+      'contracted_product_limit': contractedProductLimit,
+      'contracted_duration_days': contractedDurationDays,
+      'contracted_plan_name': contractedPlanName,
+      'contracted_plan_catalog_id': contractedPlanCatalogId,
       'business_segment': businessSegment,
       'business_subsegment': businessSubsegment,
       'business_description': businessDescription,
@@ -247,6 +284,12 @@ class TenantModel {
     DateTime? trialEndDate,
     DateTime? nextPaymentDate,
     String? lastPaymentId,
+    double? contractedPlanAmount,
+    int? contractedCustomerLimit,
+    int? contractedProductLimit,
+    int? contractedDurationDays,
+    String? contractedPlanName,
+    String? contractedPlanCatalogId,
     String? businessSegment,
     String? businessSubsegment,
     String? businessDescription,
@@ -284,6 +327,16 @@ class TenantModel {
       trialEndDate: trialEndDate ?? this.trialEndDate,
       nextPaymentDate: nextPaymentDate ?? this.nextPaymentDate,
       lastPaymentId: lastPaymentId ?? this.lastPaymentId,
+      contractedPlanAmount: contractedPlanAmount ?? this.contractedPlanAmount,
+      contractedCustomerLimit:
+          contractedCustomerLimit ?? this.contractedCustomerLimit,
+      contractedProductLimit:
+          contractedProductLimit ?? this.contractedProductLimit,
+      contractedDurationDays:
+          contractedDurationDays ?? this.contractedDurationDays,
+      contractedPlanName: contractedPlanName ?? this.contractedPlanName,
+      contractedPlanCatalogId:
+          contractedPlanCatalogId ?? this.contractedPlanCatalogId,
       businessSegment: businessSegment ?? this.businessSegment,
       businessSubsegment: businessSubsegment ?? this.businessSubsegment,
       businessDescription: businessDescription ?? this.businessDescription,
@@ -403,13 +456,22 @@ class TenantModel {
 
   /// Preço do plano atual.
   double get planPrice {
+    if (contractedPlanAmount != null) return contractedPlanAmount!;
     if (isTrial) return 0;
     return planTierEnum.priceForPeriod(plan);
   }
 
   /// Limite de clientes do plano (0 = ilimitado).
-  int get maxCustomers => isTrial ? 0 : planTierEnum.maxCustomers;
+  int get maxCustomers {
+    if (contractedCustomerLimit != null) return contractedCustomerLimit!;
+    return isTrial ? 0 : planTierEnum.maxCustomers;
+  }
 
   /// Limite de produtos do plano.
-  int get maxProducts => isTrial ? 500 : planTierEnum.maxProducts;
+  int get maxProducts {
+    if (contractedProductLimit != null) return contractedProductLimit!;
+    return isTrial ? 500 : planTierEnum.maxProducts;
+  }
+
+  int get billingCycleDays => contractedDurationDays ?? planPeriod.durationDays;
 }

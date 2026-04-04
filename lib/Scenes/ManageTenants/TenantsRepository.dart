@@ -5,12 +5,14 @@ import '../../Commons/Models/PaymentModel.dart';
 import '../../Commons/Enums/PlanPeriod.dart';
 import '../../Commons/Utils/AppLogger.dart';
 import '../../Sources/BackendApi.dart';
+import '../SuperAdminPlans/PlanCatalogRepository.dart';
 
 /// Repository CRUD de Tenants (SuperAdmin).
 ///
 /// Acessa coleção global `tenants/`.
 class TenantsRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final PlanCatalogRepository _planRepository = PlanCatalogRepository();
 
   CollectionReference<Map<String, dynamic>> get _collection =>
       _firestore.collection('tenants');
@@ -150,14 +152,27 @@ class TenantsRepository {
   }) async {
     try {
       final now = DateTime.now();
+      final planConfig = await _planRepository.getByPeriodAndTier(
+        newPlan,
+        newTier,
+      );
       final period = PlanPeriod.fromString(newPlan);
-      final expiration = now.add(Duration(days: period.durationDays));
+      final durationDays = planConfig.durationDays > 0
+          ? planConfig.durationDays
+          : period.durationDays;
+      final expiration = now.add(Duration(days: durationDays));
 
       final data = <String, dynamic>{
         'plan': newPlan,
         'plan_tier': newTier,
         'expiration_date': Timestamp.fromDate(expiration),
         'is_expired': false,
+        'contracted_plan_catalog_id': planConfig.id,
+        'contracted_plan_name': planConfig.name,
+        'contracted_plan_amount': planConfig.price,
+        'contracted_customer_limit': planConfig.customerLimit,
+        'contracted_product_limit': planConfig.productLimit,
+        'contracted_duration_days': durationDays,
         'updated_at': FieldValue.serverTimestamp(),
       };
 
