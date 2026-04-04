@@ -1,6 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../Enums/BusinessSegment.dart';
 import '../Enums/PlanPeriod.dart';
 import '../Enums/PlanTier.dart';
+import '../Enums/WhatsAppConnectionStatus.dart';
+import '../Enums/WhatsAppProvider.dart';
 
 /// Modelo de tenant (organização/empresa).
 ///
@@ -20,11 +23,31 @@ class TenantModel {
   DateTime? nextPaymentDate;
   String? lastPaymentId; // ID do último pagamento (subcollection payments/)
 
+  // Contexto comercial
+  String? businessSegment;
+  String? businessSubsegment;
+  String? businessDescription;
+  String? salesPlaybook;
+  String? toneOfVoice;
+  String? targetAudience;
+  String? businessHours;
+  String? deliveryPolicies;
+  String? paymentPolicies;
+  String? exchangePolicies;
+
   // Integrações
   String? evolutionApiUrl;
   String? evolutionApiKey;
   String? evolutionInstanceName;
   String? webhookToken;
+  String? whatsappProvider;
+  String? whatsappInstanceId;
+  String? whatsappConnectionStatus;
+  String? whatsappConnectedNumber;
+  String? whatsappWebhookUrl;
+  DateTime? whatsappLastSeenAt;
+  DateTime? whatsappQrExpiresAt;
+  int aiSalesProfileVersion;
 
   TenantModel({
     required this.uid,
@@ -40,11 +63,55 @@ class TenantModel {
     this.trialEndDate,
     this.nextPaymentDate,
     this.lastPaymentId,
+    this.businessSegment,
+    this.businessSubsegment,
+    this.businessDescription,
+    this.salesPlaybook,
+    this.toneOfVoice,
+    this.targetAudience,
+    this.businessHours,
+    this.deliveryPolicies,
+    this.paymentPolicies,
+    this.exchangePolicies,
     this.evolutionApiUrl,
     this.evolutionApiKey,
     this.evolutionInstanceName,
     this.webhookToken,
+    this.whatsappProvider,
+    this.whatsappInstanceId,
+    this.whatsappConnectionStatus,
+    this.whatsappConnectedNumber,
+    this.whatsappWebhookUrl,
+    this.whatsappLastSeenAt,
+    this.whatsappQrExpiresAt,
+    this.aiSalesProfileVersion = 1,
   });
+
+  static String _asString(dynamic value, {String fallback = ''}) {
+    if (value == null) return fallback;
+    final normalized = value.toString().trim();
+    return normalized.isEmpty ? fallback : normalized;
+  }
+
+  static String? _asNullableString(dynamic value) {
+    if (value == null) return null;
+    final normalized = value.toString().trim();
+    return normalized.isEmpty ? null : normalized;
+  }
+
+  static DateTime? _asDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    return null;
+  }
+
+  static int _asInt(dynamic value, {int fallback = 0}) {
+    if (value == null) return fallback;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString()) ?? fallback;
+  }
 
   // MARK: - Factory
 
@@ -52,30 +119,47 @@ class TenantModel {
     final data = doc.data() as Map<String, dynamic>;
     return TenantModel(
       uid: doc.id,
-      name: data['name'] ?? '',
-      contactEmail: data['contact_email'] ?? '',
-      contactPhone: data['contact_phone'] ?? '',
-      plan: data['plan'] ?? 'trial',
-      planTier: data['plan_tier'] ?? 'standard',
+      name: _asString(data['name']),
+      contactEmail: _asString(data['contact_email']),
+      contactPhone: _asString(data['contact_phone']),
+      plan: _asString(data['plan'], fallback: 'trial'),
+      planTier: _asString(data['plan_tier'], fallback: 'standard'),
       isActive: data['is_active'] ?? true,
       isExpired: data['is_expired'] ?? false,
-      createdAt: data['created_at'] != null
-          ? (data['created_at'] as Timestamp).toDate()
-          : DateTime.now(),
-      expirationDate: data['expiration_date'] != null
-          ? (data['expiration_date'] as Timestamp).toDate()
-          : null,
-      trialEndDate: data['trial_end_date'] != null
-          ? (data['trial_end_date'] as Timestamp).toDate()
-          : null,
-      nextPaymentDate: data['next_payment_date'] != null
-          ? (data['next_payment_date'] as Timestamp).toDate()
-          : null,
-      lastPaymentId: data['last_payment_id'],
-      evolutionApiUrl: data['evolution_api_url'],
-      evolutionApiKey: data['evolution_api_key'],
-      evolutionInstanceName: data['evolution_instance_name'],
-      webhookToken: data['webhook_token'],
+      createdAt: _asDateTime(data['created_at']) ?? DateTime.now(),
+      expirationDate: _asDateTime(data['expiration_date']),
+      trialEndDate: _asDateTime(data['trial_end_date']),
+      nextPaymentDate: _asDateTime(data['next_payment_date']),
+      lastPaymentId: _asNullableString(data['last_payment_id']),
+      businessSegment: _asNullableString(data['business_segment']),
+      businessSubsegment: _asNullableString(data['business_subsegment']),
+      businessDescription: _asNullableString(data['business_description']),
+      salesPlaybook: _asNullableString(data['sales_playbook']),
+      toneOfVoice: _asNullableString(data['tone_of_voice']),
+      targetAudience: _asNullableString(data['target_audience']),
+      businessHours: _asNullableString(data['business_hours']),
+      deliveryPolicies: _asNullableString(data['delivery_policies']),
+      paymentPolicies: _asNullableString(data['payment_policies']),
+      exchangePolicies: _asNullableString(data['exchange_policies']),
+      evolutionApiUrl: _asNullableString(data['evolution_api_url']),
+      evolutionApiKey: _asNullableString(data['evolution_api_key']),
+      evolutionInstanceName: _asNullableString(data['evolution_instance_name']),
+      webhookToken: _asNullableString(data['webhook_token']),
+      whatsappProvider: _asNullableString(data['whatsapp_provider']),
+      whatsappInstanceId: _asNullableString(data['whatsapp_instance_id']),
+      whatsappConnectionStatus: _asNullableString(
+        data['whatsapp_connection_status'],
+      ),
+      whatsappConnectedNumber: _asNullableString(
+        data['whatsapp_connected_number'],
+      ),
+      whatsappWebhookUrl: _asNullableString(data['whatsapp_webhook_url']),
+      whatsappLastSeenAt: _asDateTime(data['whatsapp_last_seen_at']),
+      whatsappQrExpiresAt: _asDateTime(data['whatsapp_qr_expires_at']),
+      aiSalesProfileVersion: _asInt(
+        data['ai_sales_profile_version'],
+        fallback: 1,
+      ),
     );
   }
 
@@ -101,10 +185,32 @@ class TenantModel {
           ? Timestamp.fromDate(nextPaymentDate!)
           : null,
       'last_payment_id': lastPaymentId,
+      'business_segment': businessSegment,
+      'business_subsegment': businessSubsegment,
+      'business_description': businessDescription,
+      'sales_playbook': salesPlaybook,
+      'tone_of_voice': toneOfVoice,
+      'target_audience': targetAudience,
+      'business_hours': businessHours,
+      'delivery_policies': deliveryPolicies,
+      'payment_policies': paymentPolicies,
+      'exchange_policies': exchangePolicies,
       'evolution_api_url': evolutionApiUrl,
       'evolution_api_key': evolutionApiKey,
       'evolution_instance_name': evolutionInstanceName,
       'webhook_token': webhookToken,
+      'whatsapp_provider': whatsappProvider,
+      'whatsapp_instance_id': whatsappInstanceId,
+      'whatsapp_connection_status': whatsappConnectionStatus,
+      'whatsapp_connected_number': whatsappConnectedNumber,
+      'whatsapp_webhook_url': whatsappWebhookUrl,
+      'whatsapp_last_seen_at': whatsappLastSeenAt != null
+          ? Timestamp.fromDate(whatsappLastSeenAt!)
+          : null,
+      'whatsapp_qr_expires_at': whatsappQrExpiresAt != null
+          ? Timestamp.fromDate(whatsappQrExpiresAt!)
+          : null,
+      'ai_sales_profile_version': aiSalesProfileVersion,
     };
   }
 
@@ -141,10 +247,28 @@ class TenantModel {
     DateTime? trialEndDate,
     DateTime? nextPaymentDate,
     String? lastPaymentId,
+    String? businessSegment,
+    String? businessSubsegment,
+    String? businessDescription,
+    String? salesPlaybook,
+    String? toneOfVoice,
+    String? targetAudience,
+    String? businessHours,
+    String? deliveryPolicies,
+    String? paymentPolicies,
+    String? exchangePolicies,
     String? evolutionApiUrl,
     String? evolutionApiKey,
     String? evolutionInstanceName,
     String? webhookToken,
+    String? whatsappProvider,
+    String? whatsappInstanceId,
+    String? whatsappConnectionStatus,
+    String? whatsappConnectedNumber,
+    String? whatsappWebhookUrl,
+    DateTime? whatsappLastSeenAt,
+    DateTime? whatsappQrExpiresAt,
+    int? aiSalesProfileVersion,
   }) {
     return TenantModel(
       uid: uid ?? this.uid,
@@ -160,11 +284,32 @@ class TenantModel {
       trialEndDate: trialEndDate ?? this.trialEndDate,
       nextPaymentDate: nextPaymentDate ?? this.nextPaymentDate,
       lastPaymentId: lastPaymentId ?? this.lastPaymentId,
+      businessSegment: businessSegment ?? this.businessSegment,
+      businessSubsegment: businessSubsegment ?? this.businessSubsegment,
+      businessDescription: businessDescription ?? this.businessDescription,
+      salesPlaybook: salesPlaybook ?? this.salesPlaybook,
+      toneOfVoice: toneOfVoice ?? this.toneOfVoice,
+      targetAudience: targetAudience ?? this.targetAudience,
+      businessHours: businessHours ?? this.businessHours,
+      deliveryPolicies: deliveryPolicies ?? this.deliveryPolicies,
+      paymentPolicies: paymentPolicies ?? this.paymentPolicies,
+      exchangePolicies: exchangePolicies ?? this.exchangePolicies,
       evolutionApiUrl: evolutionApiUrl ?? this.evolutionApiUrl,
       evolutionApiKey: evolutionApiKey ?? this.evolutionApiKey,
       evolutionInstanceName:
           evolutionInstanceName ?? this.evolutionInstanceName,
       webhookToken: webhookToken ?? this.webhookToken,
+      whatsappProvider: whatsappProvider ?? this.whatsappProvider,
+      whatsappInstanceId: whatsappInstanceId ?? this.whatsappInstanceId,
+      whatsappConnectionStatus:
+          whatsappConnectionStatus ?? this.whatsappConnectionStatus,
+      whatsappConnectedNumber:
+          whatsappConnectedNumber ?? this.whatsappConnectedNumber,
+      whatsappWebhookUrl: whatsappWebhookUrl ?? this.whatsappWebhookUrl,
+      whatsappLastSeenAt: whatsappLastSeenAt ?? this.whatsappLastSeenAt,
+      whatsappQrExpiresAt: whatsappQrExpiresAt ?? this.whatsappQrExpiresAt,
+      aiSalesProfileVersion:
+          aiSalesProfileVersion ?? this.aiSalesProfileVersion,
     );
   }
 
@@ -176,11 +321,29 @@ class TenantModel {
   /// Enum tipado do tier.
   PlanTier get planTierEnum => PlanTier.fromString(planTier);
 
+  /// Segmento de negocio normalizado para uso da IA.
+  BusinessSegment get businessSegmentEnum =>
+      BusinessSegment.fromString(businessSegment);
+
+  /// Provider do WhatsApp normalizado.
+  WhatsAppProvider get whatsappProviderEnum =>
+      WhatsAppProvider.fromString(whatsappProvider);
+
+  /// Status atual da conexao do WhatsApp.
+  WhatsAppConnectionStatus get whatsappConnectionStatusEnum =>
+      WhatsAppConnectionStatus.fromString(whatsappConnectionStatus);
+
   /// Verifica se o tenant está em período trial.
   bool get isTrial => plan == 'trial';
 
   /// Verifica se é plano pago.
   bool get isPaidPlan => plan == 'monthly' || plan == 'quarterly';
+
+  /// Indica se o tenant ja tem uma integracao gerenciada preparada.
+  bool get hasManagedWhatsAppSetup =>
+      whatsappProviderEnum != WhatsAppProvider.unknown ||
+      (whatsappInstanceId?.isNotEmpty ?? false) ||
+      (whatsappConnectionStatus?.isNotEmpty ?? false);
 
   /// Label combinado do plano. Ex: "Mensal Pro", "Trial", "Trimestral Standard"
   String get planLabel {

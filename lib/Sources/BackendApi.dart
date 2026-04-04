@@ -30,6 +30,30 @@ class BackendApi {
     );
   }
 
+  Future<Map<String, dynamic>> provisionManagedWhatsApp({
+    required String tenantId,
+    String? webhookUrl,
+  }) {
+    return postAuthenticated(
+      functionName: 'provisionManagedWhatsApp',
+      body: {
+        'tenantId': tenantId,
+        if (webhookUrl != null && webhookUrl.isNotEmpty)
+          'webhookUrl': webhookUrl,
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> getManagedWhatsAppStatus({
+    required String tenantId,
+    bool includeQrCode = false,
+  }) {
+    return postAuthenticated(
+      functionName: 'getManagedWhatsAppStatus',
+      body: {'tenantId': tenantId, 'includeQrCode': includeQrCode},
+    );
+  }
+
   Future<Map<String, dynamic>> postAuthenticated({
     required String functionName,
     required Map<String, dynamic> body,

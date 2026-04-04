@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../Commons/Widgets/DesignSystem/DSButton.dart';
@@ -25,9 +27,47 @@ class IntegrationsSection extends StatefulWidget {
 
 class _IntegrationsSectionState extends State<IntegrationsSection> {
   bool _showApiKey = false;
+  Timer? _pollingTimer;
 
   TenantSettingsPresenter get presenter => widget.presenter;
   TenantSettingsViewModel get viewModel => widget.viewModel;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncPolling();
+  }
+
+  @override
+  void didUpdateWidget(covariant IntegrationsSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncPolling();
+  }
+
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
+  }
+
+  void _syncPolling() {
+    final shouldPoll =
+        viewModel.hasManagedWhatsAppSetup &&
+        !viewModel.isWhatsAppConnected &&
+        !viewModel.isProvisioningManagedWhatsApp;
+
+    if (!shouldPoll) {
+      _pollingTimer?.cancel();
+      _pollingTimer = null;
+      return;
+    }
+
+    if (_pollingTimer != null) return;
+
+    _pollingTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+      presenter.refreshManagedWhatsAppStatus(includeQrCode: true, silent: true);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -117,6 +157,267 @@ class _IntegrationsSectionState extends State<IntegrationsSection> {
               ),
             ),
           ],
+        ),
+        const SizedBox(height: DSSpacing.md),
+
+        _buildManagedWhatsAppPanel(colors, textStyles),
+        const SizedBox(height: DSSpacing.lg),
+
+        ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: EdgeInsets.zero,
+          iconColor: colors.textSecondary,
+          collapsedIconColor: colors.textSecondary,
+          title: Text(
+            'Configuração avançada',
+            style: textStyles.bodyLarge.copyWith(fontWeight: FontWeight.w600),
+          ),
+          subtitle: Text(
+            'Use apenas como fallback manual da Evolution API.',
+            style: textStyles.bodySmall.copyWith(color: colors.textTertiary),
+          ),
+          children: [_buildAdvancedWhatsAppForm(colors, textStyles)],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildManagedWhatsAppPanel(DSColors colors, DSTextStyle textStyles) {
+    final statusColor = _statusColor(colors);
+    final hasQrCode = viewModel.managedWhatsAppQrCodeBase64.isNotEmpty;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(DSSpacing.md),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            colors.secundarySurface,
+            colors.primarySurface.withValues(alpha: 0.65),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
+        border: Border.all(color: colors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(DSSpacing.sm),
+                decoration: BoxDecoration(
+                  color: colors.white.withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+                ),
+                child: Icon(
+                  Icons.qr_code_2_rounded,
+                  color: colors.secundaryColor,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: DSSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Integração Gerenciada',
+                      style: textStyles.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: DSSpacing.xxs),
+                    Text(
+                      'Conecte o número do vendedor com QR Code e deixe a automação pronta para atender sem expor credenciais técnicas.',
+                      style: textStyles.bodySmall.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: DSSpacing.sm,
+                  vertical: DSSpacing.xxs,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
+                ),
+                child: Text(
+                  viewModel.hasManagedWhatsAppSetup
+                      ? viewModel.whatsappConnectionStatus
+                      : 'Pronto para conectar',
+                  style: textStyles.bodySmall.copyWith(
+                    color: statusColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: DSSpacing.md),
+          Wrap(
+            spacing: DSSpacing.sm,
+            runSpacing: DSSpacing.sm,
+            children: [
+              _buildMetaChip(
+                colors,
+                textStyles,
+                icon: Icons.hub_outlined,
+                label: 'Provider',
+                value: viewModel.hasManagedWhatsAppSetup
+                    ? viewModel.whatsappProvider
+                    : 'Evolution API',
+              ),
+              _buildMetaChip(
+                colors,
+                textStyles,
+                icon: Icons.phone_iphone_outlined,
+                label: 'Número',
+                value: viewModel.whatsappConnectedNumber.isNotEmpty
+                    ? viewModel.whatsappConnectedNumber
+                    : 'Ainda não conectado',
+              ),
+              _buildMetaChip(
+                colors,
+                textStyles,
+                icon: Icons.webhook_outlined,
+                label: 'Webhook',
+                value: viewModel.webhookToken.isNotEmpty
+                    ? 'Pronto'
+                    : 'Pendente',
+              ),
+            ],
+          ),
+          const SizedBox(height: DSSpacing.md),
+          Text(
+            viewModel.isWhatsAppConnected
+                ? 'Tudo certo. Esse número já está apto para receber os contatos e alimentar o mestre de vendas.'
+                : hasQrCode
+                ? 'Escaneie o QR Code abaixo no WhatsApp do vendedor. Enquanto ele estiver aberto, a tela acompanha o status automaticamente.'
+                : 'Clique em "Conectar número" para criar a instância gerenciada e abrir o QR Code de pareamento.',
+            style: textStyles.bodySmall.copyWith(color: colors.textSecondary),
+          ),
+          if (hasQrCode && !viewModel.isWhatsAppConnected) ...[
+            const SizedBox(height: DSSpacing.lg),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(DSSpacing.lg),
+              decoration: BoxDecoration(
+                color: colors.white,
+                borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
+                border: Border.all(color: colors.divider),
+              ),
+              child: Column(
+                children: [
+                  Image.memory(
+                    base64Decode(viewModel.managedWhatsAppQrCodeBase64),
+                    width: 220,
+                    height: 220,
+                  ),
+                  const SizedBox(height: DSSpacing.sm),
+                  Text(
+                    'Abra o WhatsApp no celular, vá em aparelhos conectados e escaneie este código.',
+                    textAlign: TextAlign.center,
+                    style: textStyles.bodySmall.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: DSSpacing.md),
+          Wrap(
+            alignment: WrapAlignment.end,
+            spacing: DSSpacing.sm,
+            runSpacing: DSSpacing.sm,
+            children: [
+              DSButton.secondary(
+                label: 'Atualizar status',
+                icon: Icons.refresh_rounded,
+                isLoading: viewModel.isRefreshingManagedWhatsApp,
+                onTap: () => presenter.refreshManagedWhatsAppStatus(
+                  includeQrCode: !viewModel.isWhatsAppConnected,
+                ),
+              ),
+              DSButton.accent(
+                label: viewModel.hasManagedWhatsAppSetup
+                    ? 'Gerar QR novamente'
+                    : 'Conectar número',
+                icon: Icons.qr_code_rounded,
+                isLoading: viewModel.isProvisioningManagedWhatsApp,
+                onTap: presenter.provisionManagedWhatsApp,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetaChip(
+    DSColors colors,
+    DSTextStyle textStyles, {
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: DSSpacing.sm,
+        vertical: DSSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: colors.white.withValues(alpha: 0.82),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        border: Border.all(color: colors.divider),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: colors.textTertiary),
+          const SizedBox(width: DSSpacing.xs),
+          Text(
+            '$label: ',
+            style: textStyles.bodySmall.copyWith(color: colors.textTertiary),
+          ),
+          Text(
+            value,
+            style: textStyles.bodySmall.copyWith(
+              color: colors.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _statusColor(DSColors colors) {
+    final status = viewModel.whatsappConnectionStatus.toLowerCase();
+    if (status.contains('conectado')) return colors.green;
+    if (status.contains('qr') || status.contains('preparando')) {
+      return colors.yellow;
+    }
+    if (status.contains('erro')) return colors.red;
+    return colors.textSecondary;
+  }
+
+  Widget _buildAdvancedWhatsAppForm(DSColors colors, DSTextStyle textStyles) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: DSSpacing.sm),
+        Text(
+          'Modo avançado para operação manual ou contingência.',
+          style: textStyles.bodySmall.copyWith(color: colors.textTertiary),
         ),
         const SizedBox(height: DSSpacing.md),
 

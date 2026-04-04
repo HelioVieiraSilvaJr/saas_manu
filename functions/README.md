@@ -28,8 +28,12 @@ As funcoes aceitam operar com configuracao minima, mas para fluxo completo de bi
 - `PAYMENT_ORCHESTRATOR_URL`
 - `PAYMENT_ORCHESTRATOR_SECRET`
 - `PAYMENT_WEBHOOK_SECRET`
+- `EVOLUTION_API_URL`
+- `EVOLUTION_API_KEY`
 
 Se `DEFAULT_INVITE_PASSWORD` nao for informado, as funcoes passam a gerar uma senha temporaria aleatoria por usuario.
+
+Para a integracao gerenciada do WhatsApp via Evolution API, prefira cadastrar `EVOLUTION_API_URL` e `EVOLUTION_API_KEY` no Secret Manager e vincular esses secrets as functions que provisionam instancia, consultam status e enviam notificacoes de reposicao.
 
 ## Deploy sugerido
 

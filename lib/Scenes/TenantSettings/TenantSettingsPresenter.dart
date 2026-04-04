@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../Commons/Utils/AppLogger.dart';
+import '../../Commons/Enums/WhatsAppConnectionStatus.dart';
+import '../../Commons/Models/TenantModel.dart';
 import '../../Sources/SessionManager.dart';
 import '../../Sources/BackendApi.dart';
 import 'TenantSettingsRepository.dart';
@@ -25,6 +27,70 @@ class TenantSettingsPresenter {
     onUpdate?.call();
   }
 
+  String _buildWebhookUrl(TenantModel tenant) {
+    final webhookToken = tenant.webhookToken ?? '';
+    if (webhookToken.isEmpty) return '';
+    return BackendApi.instance.n8nSaleWebhookUrl(
+      tenantId: tenant.uid,
+      token: webhookToken,
+    );
+  }
+
+  void _applyTenantToState(
+    TenantModel tenant, {
+    bool isLoading = false,
+    String? managedWhatsAppQrCodeBase64,
+  }) {
+    nameController.text = tenant.name;
+    emailController.text = tenant.contactEmail;
+    phoneController.text = tenant.contactPhone;
+    evolutionUrlController.text = tenant.evolutionApiUrl ?? '';
+    apiKeyController.text = tenant.evolutionApiKey ?? '';
+    instanceNameController.text = tenant.evolutionInstanceName ?? '';
+
+    viewModel = viewModel.copyWith(
+      isLoading: isLoading,
+      companyName: tenant.name,
+      companyEmail: tenant.contactEmail,
+      companyPhone: tenant.contactPhone,
+      businessSegment: tenant.businessSegment ?? '',
+      businessSubsegment: tenant.businessSubsegment ?? '',
+      evolutionApiUrl: tenant.evolutionApiUrl ?? '',
+      evolutionApiKey: tenant.evolutionApiKey ?? '',
+      evolutionInstanceName: tenant.evolutionInstanceName ?? '',
+      isWhatsAppConnected:
+          tenant.whatsappConnectionStatusEnum ==
+              WhatsAppConnectionStatus.connected ||
+          (tenant.evolutionApiUrl ?? '').isNotEmpty,
+      hasManagedWhatsAppSetup: tenant.hasManagedWhatsAppSetup,
+      whatsappProvider: tenant.whatsappProviderEnum.label,
+      whatsappConnectionStatus: tenant.whatsappConnectionStatusEnum.label,
+      whatsappConnectedNumber: tenant.whatsappConnectedNumber ?? '',
+      webhookUrl: _buildWebhookUrl(tenant),
+      webhookToken: tenant.webhookToken ?? '',
+      currentPlan: tenant.plan,
+      currentPlanTier: tenant.planTier,
+      trialEndDate: tenant.trialEndDate,
+      nextPaymentDate: tenant.nextPaymentDate,
+      trialDaysRemaining: tenant.trialDaysRemaining,
+      isTrialExpired: tenant.isTrialExpired,
+      managedWhatsAppQrCodeBase64:
+          managedWhatsAppQrCodeBase64 ??
+          (tenant.whatsappConnectionStatusEnum ==
+                  WhatsAppConnectionStatus.connected
+              ? ''
+              : viewModel.managedWhatsAppQrCodeBase64),
+    );
+  }
+
+  Future<TenantModel?> _reloadTenantIntoSession(String tenantId) async {
+    final reloaded = await _repository.reloadTenant(tenantId);
+    if (reloaded != null) {
+      SessionManager.instance.currentTenant = reloaded;
+    }
+    return reloaded;
+  }
+
   // MARK: - Load
 
   Future<void> loadSettings() async {
@@ -45,42 +111,7 @@ class TenantSettingsPresenter {
       // Recarregar do Firestore
       final reloaded = await _repository.reloadTenant(tenant.uid);
       final t = reloaded ?? tenant;
-
-      // Preencher controllers
-      nameController.text = t.name;
-      emailController.text = t.contactEmail;
-      phoneController.text = t.contactPhone;
-      evolutionUrlController.text = t.evolutionApiUrl ?? '';
-      apiKeyController.text = t.evolutionApiKey ?? '';
-      instanceNameController.text = t.evolutionInstanceName ?? '';
-
-      // Webhook URL
-      final webhookToken = t.webhookToken ?? '';
-      final webhookUrl = webhookToken.isNotEmpty
-          ? BackendApi.instance.n8nSaleWebhookUrl(
-              tenantId: t.uid,
-              token: webhookToken,
-            )
-          : '';
-
-      viewModel = viewModel.copyWith(
-        isLoading: false,
-        companyName: t.name,
-        companyEmail: t.contactEmail,
-        companyPhone: t.contactPhone,
-        evolutionApiUrl: t.evolutionApiUrl ?? '',
-        evolutionApiKey: t.evolutionApiKey ?? '',
-        evolutionInstanceName: t.evolutionInstanceName ?? '',
-        isWhatsAppConnected: (t.evolutionApiUrl ?? '').isNotEmpty,
-        webhookUrl: webhookUrl,
-        webhookToken: webhookToken,
-        currentPlan: t.plan,
-        currentPlanTier: t.planTier,
-        trialEndDate: t.trialEndDate,
-        nextPaymentDate: t.nextPaymentDate,
-        trialDaysRemaining: t.trialDaysRemaining,
-        isTrialExpired: t.isTrialExpired,
-      );
+      _applyTenantToState(t, isLoading: false);
       _notify();
     } catch (e) {
       AppLogger.error('Erro ao carregar configurações', error: e);
@@ -151,9 +182,10 @@ class TenantSettingsPresenter {
 
     // Recarregar tenant na sessão
     if (success) {
-      final reloaded = await _repository.reloadTenant(tenantId);
+      final reloaded = await _reloadTenantIntoSession(tenantId);
       if (reloaded != null) {
-        SessionManager.instance.currentTenant = reloaded;
+        _applyTenantToState(reloaded);
+        _notify();
       }
     }
 
@@ -196,9 +228,10 @@ class TenantSettingsPresenter {
     _notify();
 
     if (success) {
-      final reloaded = await _repository.reloadTenant(tenantId);
+      final reloaded = await _reloadTenantIntoSession(tenantId);
       if (reloaded != null) {
-        SessionManager.instance.currentTenant = reloaded;
+        _applyTenantToState(reloaded);
+        _notify();
       }
     }
 
@@ -238,6 +271,95 @@ class TenantSettingsPresenter {
     _notify();
   }
 
+  Future<void> provisionManagedWhatsApp() async {
+    final tenant = SessionManager.instance.currentTenant;
+    if (tenant == null) return;
+
+    String webhookUrl = viewModel.webhookUrl;
+    if (webhookUrl.isEmpty) {
+      webhookUrl = await generateWebhookUrl();
+    }
+
+    viewModel = viewModel.copyWith(
+      isProvisioningManagedWhatsApp: true,
+      errorMessage: null,
+      successMessage: null,
+    );
+    _notify();
+
+    final result = await _repository.provisionManagedWhatsApp(
+      tenantId: tenant.uid,
+      webhookUrl: webhookUrl,
+    );
+
+    final qrCodeBase64 = (result['qrCodeBase64'] ?? '').toString().trim();
+    final reloaded = await _reloadTenantIntoSession(tenant.uid);
+    if (reloaded != null) {
+      _applyTenantToState(reloaded, managedWhatsAppQrCodeBase64: qrCodeBase64);
+    }
+
+    viewModel = viewModel.copyWith(
+      isProvisioningManagedWhatsApp: false,
+      hasManagedWhatsAppSetup:
+          result['ok'] == true || viewModel.hasManagedWhatsAppSetup,
+      successMessage: result['ok'] == true
+          ? (viewModel.isWhatsAppConnected
+                ? 'WhatsApp conectado com sucesso.'
+                : 'QR Code gerado. Escaneie com o WhatsApp para conectar.')
+          : null,
+      errorMessage: result['ok'] == true
+          ? null
+          : (result['message'] ??
+                    result['error'] ??
+                    'Não foi possível iniciar a conexão.')
+                .toString(),
+    );
+    _notify();
+  }
+
+  Future<void> refreshManagedWhatsAppStatus({
+    bool includeQrCode = false,
+    bool silent = false,
+  }) async {
+    final tenant = SessionManager.instance.currentTenant;
+    if (tenant == null) return;
+
+    viewModel = viewModel.copyWith(
+      isRefreshingManagedWhatsApp: true,
+      errorMessage: silent ? viewModel.errorMessage : null,
+      successMessage: silent ? viewModel.successMessage : null,
+    );
+    _notify();
+
+    final result = await _repository.getManagedWhatsAppStatus(
+      tenantId: tenant.uid,
+      includeQrCode: includeQrCode,
+    );
+
+    final qrCodeBase64 = (result['qrCodeBase64'] ?? '').toString().trim();
+    final reloaded = await _reloadTenantIntoSession(tenant.uid);
+    if (reloaded != null) {
+      _applyTenantToState(reloaded, managedWhatsAppQrCodeBase64: qrCodeBase64);
+    }
+
+    final isOk = result['ok'] == true;
+    viewModel = viewModel.copyWith(
+      isRefreshingManagedWhatsApp: false,
+      successMessage: !silent && isOk
+          ? (viewModel.isWhatsAppConnected
+                ? 'WhatsApp conectado e pronto para atendimento.'
+                : 'Status do WhatsApp atualizado.')
+          : null,
+      errorMessage: !silent && !isOk
+          ? (result['message'] ??
+                    result['error'] ??
+                    'Não foi possível atualizar o status.')
+                .toString()
+          : null,
+    );
+    _notify();
+  }
+
   // MARK: - Webhook
 
   Future<String> generateWebhookUrl() async {
@@ -254,6 +376,12 @@ class TenantSettingsPresenter {
 
     viewModel = viewModel.copyWith(webhookUrl: url, webhookToken: token);
     _notify();
+
+    final reloaded = await _reloadTenantIntoSession(tenantId);
+    if (reloaded != null) {
+      _applyTenantToState(reloaded);
+      _notify();
+    }
 
     return url;
   }

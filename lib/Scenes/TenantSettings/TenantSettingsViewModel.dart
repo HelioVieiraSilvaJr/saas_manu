@@ -4,6 +4,8 @@ class TenantSettingsViewModel {
   final bool isSavingCompany;
   final bool isSavingWhatsApp;
   final bool isTestingConnection;
+  final bool isProvisioningManagedWhatsApp;
+  final bool isRefreshingManagedWhatsApp;
   final String? errorMessage;
   final String? successMessage;
 
@@ -11,12 +13,19 @@ class TenantSettingsViewModel {
   final String companyName;
   final String companyEmail;
   final String companyPhone;
+  final String businessSegment;
+  final String businessSubsegment;
 
   // WhatsApp / Evolution API
   final String evolutionApiUrl;
   final String evolutionApiKey;
   final String evolutionInstanceName;
   final bool isWhatsAppConnected;
+  final bool hasManagedWhatsAppSetup;
+  final String whatsappProvider;
+  final String whatsappConnectionStatus;
+  final String whatsappConnectedNumber;
+  final String managedWhatsAppQrCodeBase64;
 
   // Webhook
   final String webhookUrl;
@@ -35,15 +44,24 @@ class TenantSettingsViewModel {
     this.isSavingCompany = false,
     this.isSavingWhatsApp = false,
     this.isTestingConnection = false,
+    this.isProvisioningManagedWhatsApp = false,
+    this.isRefreshingManagedWhatsApp = false,
     this.errorMessage,
     this.successMessage,
     this.companyName = '',
     this.companyEmail = '',
     this.companyPhone = '',
+    this.businessSegment = '',
+    this.businessSubsegment = '',
     this.evolutionApiUrl = '',
     this.evolutionApiKey = '',
     this.evolutionInstanceName = '',
     this.isWhatsAppConnected = false,
+    this.hasManagedWhatsAppSetup = false,
+    this.whatsappProvider = '',
+    this.whatsappConnectionStatus = '',
+    this.whatsappConnectedNumber = '',
+    this.managedWhatsAppQrCodeBase64 = '',
     this.webhookUrl = '',
     this.webhookToken = '',
     this.currentPlan = 'trial',
@@ -59,15 +77,24 @@ class TenantSettingsViewModel {
     bool? isSavingCompany,
     bool? isSavingWhatsApp,
     bool? isTestingConnection,
+    bool? isProvisioningManagedWhatsApp,
+    bool? isRefreshingManagedWhatsApp,
     String? errorMessage,
     String? successMessage,
     String? companyName,
     String? companyEmail,
     String? companyPhone,
+    String? businessSegment,
+    String? businessSubsegment,
     String? evolutionApiUrl,
     String? evolutionApiKey,
     String? evolutionInstanceName,
     bool? isWhatsAppConnected,
+    bool? hasManagedWhatsAppSetup,
+    String? whatsappProvider,
+    String? whatsappConnectionStatus,
+    String? whatsappConnectedNumber,
+    String? managedWhatsAppQrCodeBase64,
     String? webhookUrl,
     String? webhookToken,
     String? currentPlan,
@@ -82,16 +109,31 @@ class TenantSettingsViewModel {
       isSavingCompany: isSavingCompany ?? this.isSavingCompany,
       isSavingWhatsApp: isSavingWhatsApp ?? this.isSavingWhatsApp,
       isTestingConnection: isTestingConnection ?? this.isTestingConnection,
+      isProvisioningManagedWhatsApp:
+          isProvisioningManagedWhatsApp ?? this.isProvisioningManagedWhatsApp,
+      isRefreshingManagedWhatsApp:
+          isRefreshingManagedWhatsApp ?? this.isRefreshingManagedWhatsApp,
       errorMessage: errorMessage,
       successMessage: successMessage,
       companyName: companyName ?? this.companyName,
       companyEmail: companyEmail ?? this.companyEmail,
       companyPhone: companyPhone ?? this.companyPhone,
+      businessSegment: businessSegment ?? this.businessSegment,
+      businessSubsegment: businessSubsegment ?? this.businessSubsegment,
       evolutionApiUrl: evolutionApiUrl ?? this.evolutionApiUrl,
       evolutionApiKey: evolutionApiKey ?? this.evolutionApiKey,
       evolutionInstanceName:
           evolutionInstanceName ?? this.evolutionInstanceName,
       isWhatsAppConnected: isWhatsAppConnected ?? this.isWhatsAppConnected,
+      hasManagedWhatsAppSetup:
+          hasManagedWhatsAppSetup ?? this.hasManagedWhatsAppSetup,
+      whatsappProvider: whatsappProvider ?? this.whatsappProvider,
+      whatsappConnectionStatus:
+          whatsappConnectionStatus ?? this.whatsappConnectionStatus,
+      whatsappConnectedNumber:
+          whatsappConnectedNumber ?? this.whatsappConnectedNumber,
+      managedWhatsAppQrCodeBase64:
+          managedWhatsAppQrCodeBase64 ?? this.managedWhatsAppQrCodeBase64,
       webhookUrl: webhookUrl ?? this.webhookUrl,
       webhookToken: webhookToken ?? this.webhookToken,
       currentPlan: currentPlan ?? this.currentPlan,

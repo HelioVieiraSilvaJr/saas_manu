@@ -90,6 +90,47 @@ class TenantSettingsRepository {
     }
   }
 
+  Future<Map<String, dynamic>> provisionManagedWhatsApp({
+    required String tenantId,
+    String? webhookUrl,
+  }) async {
+    try {
+      return await BackendApi.instance.provisionManagedWhatsApp(
+        tenantId: tenantId,
+        webhookUrl: webhookUrl,
+      );
+    } catch (e) {
+      AppLogger.error('Erro ao provisionar WhatsApp gerenciado', error: e);
+      return {
+        'ok': false,
+        'success': false,
+        'message': 'Nao foi possivel provisionar o WhatsApp: ${e.toString()}',
+      };
+    }
+  }
+
+  Future<Map<String, dynamic>> getManagedWhatsAppStatus({
+    required String tenantId,
+    bool includeQrCode = false,
+  }) async {
+    try {
+      return await BackendApi.instance.getManagedWhatsAppStatus(
+        tenantId: tenantId,
+        includeQrCode: includeQrCode,
+      );
+    } catch (e) {
+      AppLogger.error(
+        'Erro ao consultar status do WhatsApp gerenciado',
+        error: e,
+      );
+      return {
+        'ok': false,
+        'success': false,
+        'message': 'Nao foi possivel consultar o status: ${e.toString()}',
+      };
+    }
+  }
+
   // MARK: - Webhook
 
   /// Salva/gera o webhook token e retorna a URL completa.

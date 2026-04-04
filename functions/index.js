@@ -1,12 +1,16 @@
 const crypto = require("crypto");
 const admin = require("firebase-admin");
 const logger = require("firebase-functions/logger");
-const { onRequest, setGlobalOptions } = require("firebase-functions/v2/https");
+const { onRequest } = require("firebase-functions/v2/https");
+const { setGlobalOptions } = require("firebase-functions/v2/options");
+const { defineSecret } = require("firebase-functions/params");
 
 admin.initializeApp();
 setGlobalOptions({ region: "us-central1", maxInstances: 10 });
 
 const db = admin.firestore();
+const EVOLUTION_API_URL = defineSecret("EVOLUTION_API_URL");
+const EVOLUTION_API_KEY = defineSecret("EVOLUTION_API_KEY");
 
 function withCors(handler) {
   return async (req, res) => {
@@ -41,6 +45,16 @@ function sanitizePhone(phone) {
 
 function sanitizeUrl(url) {
   return String(url || "").trim().replace(/\/+$/, "");
+}
+
+function slugify(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 function normalizeBrazilianPhone(phone) {
@@ -106,6 +120,283 @@ async function sendEvolutionTextMessage({
   return data;
 }
 
+function getManagedEvolutionConfig() {
+  return {
+    evolutionApiUrl: sanitizeUrl(EVOLUTION_API_URL.value()),
+    apiKey: String(EVOLUTION_API_KEY.value() || "").trim(),
+  };
+}
+
+function hasManagedEvolutionSecrets() {
+  const { evolutionApiUrl, apiKey } = getManagedEvolutionConfig();
+  return Boolean(evolutionApiUrl && apiKey);
+}
+
+function normalizeManagedInstanceName(tenantId, tenantName) {
+  const tenantSlug = slugify(tenantName) || "tenant";
+  const tenantSuffix = slugify(tenantId).slice(0, 12) || crypto.randomUUID().slice(0, 12);
+  return `saas-manu-${tenantSlug}-${tenantSuffix}`.slice(0, 60);
+}
+
+function resolveTenantEvolutionConfig(tenantData = {}) {
+  const manualConfig = {
+    evolutionApiUrl: sanitizeUrl(tenantData.evolution_api_url),
+    apiKey: String(tenantData.evolution_api_key || "").trim(),
+    instanceName: String(tenantData.evolution_instance_name || "").trim(),
+    source: "manual",
+  };
+
+  if (manualConfig.evolutionApiUrl && manualConfig.apiKey && manualConfig.instanceName) {
+    return manualConfig;
+  }
+
+  const managedInstanceName =
+    String(tenantData.whatsapp_instance_id || tenantData.evolution_instance_name || "").trim();
+  const provider = String(tenantData.whatsapp_provider || "").trim().toLowerCase();
+  const managedSecrets = getManagedEvolutionConfig();
+
+  if (managedInstanceName && managedSecrets.evolutionApiUrl && managedSecrets.apiKey) {
+    return {
+      evolutionApiUrl: managedSecrets.evolutionApiUrl,
+      apiKey: managedSecrets.apiKey,
+      instanceName: managedInstanceName,
+      source: provider === "evolution" ? "managed" : "managed-fallback",
+    };
+  }
+
+  return null;
+}
+
+async function evolutionRequest({
+  evolutionApiUrl,
+  apiKey,
+  method = "GET",
+  path,
+  body,
+}) {
+  const response = await fetch(`${sanitizeUrl(evolutionApiUrl)}${path}`, {
+    method,
+    headers: {
+      apikey: apiKey,
+      ...(body ? { "Content-Type": "application/json" } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+
+  const { rawText, data } = await parseJsonResponse(response);
+  return {
+    ok: response.ok,
+    status: response.status,
+    rawText,
+    data,
+  };
+}
+
+function extractEvolutionState(payload) {
+  const state = String(
+    payload?.instance?.state ||
+      payload?.state ||
+      payload?.connectionStatus ||
+      payload?.status ||
+      "",
+  )
+    .trim()
+    .toLowerCase();
+
+  if (!state) return "unconfigured";
+  if (["open", "connected"].includes(state)) return "connected";
+  if (["connecting"].includes(state)) return "connecting";
+  if (["close", "closed", "disconnected"].includes(state)) return "disconnected";
+  if (["qrcode", "qr", "awaiting_qr_scan"].includes(state)) return "awaiting_qr_scan";
+  return state;
+}
+
+function extractEvolutionConnectedNumber(payload) {
+  return sanitizePhone(
+    payload?.instance?.owner ||
+      payload?.instance?.profileName ||
+      payload?.instance?.profilePictureUrl ||
+      payload?.instance?.number ||
+      payload?.number ||
+      payload?.owner ||
+      "",
+  );
+}
+
+function extractEvolutionQrCode(payload) {
+  const qrValue =
+    payload?.base64 ||
+    payload?.qrcode ||
+    payload?.qr ||
+    payload?.code ||
+    payload?.data?.base64 ||
+    payload?.data?.qrcode ||
+    payload?.data?.qr ||
+    payload?.data?.code ||
+    payload?.instance?.qrcode ||
+    payload?.instance?.qr;
+
+  if (!qrValue) return null;
+  const normalized = String(qrValue).trim();
+  if (!normalized) return null;
+  return normalized.replace(/^data:image\/png;base64,/, "");
+}
+
+async function createEvolutionInstance({
+  evolutionApiUrl,
+  apiKey,
+  instanceName,
+}) {
+  const attempts = [
+    {
+      path: "/instance/create",
+      body: {
+        instanceName,
+        integration: "WHATSAPP-BAILEYS",
+        qrcode: true,
+      },
+    },
+    {
+      path: "/instance/create",
+      body: {
+        instanceName,
+        token: crypto.randomUUID(),
+        qrcode: true,
+      },
+    },
+  ];
+
+  let lastResponse = null;
+  for (const attempt of attempts) {
+    const response = await evolutionRequest({
+      evolutionApiUrl,
+      apiKey,
+      method: "POST",
+      path: attempt.path,
+      body: attempt.body,
+    });
+    lastResponse = response;
+
+    if (response.ok) {
+      return response;
+    }
+
+    const bodyText = (response.rawText || "").toLowerCase();
+    if (
+      response.status === 409 ||
+      bodyText.includes("already exists") ||
+      bodyText.includes("instance already exists")
+    ) {
+      return response;
+    }
+  }
+
+  return lastResponse;
+}
+
+async function getEvolutionInstanceStatus({
+  evolutionApiUrl,
+  apiKey,
+  instanceName,
+}) {
+  const attempts = [
+    { method: "GET", path: `/instance/${instanceName}/status` },
+    { method: "GET", path: `/instance/connectionState/${instanceName}` },
+  ];
+
+  for (const attempt of attempts) {
+    const response = await evolutionRequest({
+      evolutionApiUrl,
+      apiKey,
+      method: attempt.method,
+      path: attempt.path,
+    });
+
+    if (response.ok) {
+      return response;
+    }
+  }
+
+  return {
+    ok: false,
+    status: 502,
+    rawText: "",
+    data: null,
+  };
+}
+
+async function getEvolutionInstanceQrCode({
+  evolutionApiUrl,
+  apiKey,
+  instanceName,
+}) {
+  const attempts = [
+    { method: "GET", path: `/instance/connect/${instanceName}` },
+    { method: "GET", path: `/instance/qrcode/${instanceName}` },
+  ];
+
+  for (const attempt of attempts) {
+    const response = await evolutionRequest({
+      evolutionApiUrl,
+      apiKey,
+      method: attempt.method,
+      path: attempt.path,
+    });
+
+    if (response.ok) {
+      return response;
+    }
+  }
+
+  return {
+    ok: false,
+    status: 502,
+    rawText: "",
+    data: null,
+  };
+}
+
+async function persistManagedWhatsAppState({
+  tenantId,
+  tenantData = {},
+  instanceName,
+  status,
+  connectedNumber,
+  webhookUrl,
+  qrCodeBase64,
+}) {
+  const nextStatus = String(status || "unconfigured").trim() || "unconfigured";
+  const payload = {
+    whatsapp_provider: "evolution",
+    whatsapp_instance_id: instanceName,
+    whatsapp_connection_status: nextStatus,
+    evolution_instance_name: instanceName,
+    updated_at: nowTs(),
+  };
+
+  if (connectedNumber) {
+    payload.whatsapp_connected_number = connectedNumber;
+  }
+
+  if (webhookUrl) {
+    payload.whatsapp_webhook_url = webhookUrl;
+  }
+
+  if (nextStatus === "connected") {
+    payload.whatsapp_last_seen_at = nowTs();
+  }
+
+  if (qrCodeBase64) {
+    payload.whatsapp_qr_expires_at = admin.firestore.Timestamp.fromDate(
+      new Date(Date.now() + 60 * 1000),
+    );
+  } else if (tenantData.whatsapp_qr_expires_at) {
+    payload.whatsapp_qr_expires_at = null;
+  }
+
+  await db.collection("tenants").doc(tenantId).set(payload, { merge: true });
+}
+
 function membershipDocId(tenantId, userId) {
   return `${tenantId}_${userId}`;
 }
@@ -152,8 +443,53 @@ async function isSuperAdmin(uid) {
 }
 
 async function getMembership(tenantId, userId) {
-  const doc = await db.collection("memberships").doc(membershipDocId(tenantId, userId)).get();
-  return doc.exists ? { id: doc.id, ...doc.data() } : null;
+  const deterministicDoc = await db
+    .collection("memberships")
+    .doc(membershipDocId(tenantId, userId))
+    .get();
+
+  if (deterministicDoc.exists) {
+    return { id: deterministicDoc.id, ...deterministicDoc.data() };
+  }
+
+  const legacySnapshot = await db
+    .collection("memberships")
+    .where("tenant_id", "==", tenantId)
+    .where("user_id", "==", userId)
+    .limit(1)
+    .get();
+
+  if (legacySnapshot.empty) {
+    return null;
+  }
+
+  const legacyDoc = legacySnapshot.docs[0];
+  const legacyData = legacyDoc.data() || {};
+
+  // Auto-repara o indice deterministico sem depender de rodar a migracao manualmente.
+  await db
+    .collection("memberships")
+    .doc(membershipDocId(tenantId, userId))
+    .set(
+      {
+        ...legacyData,
+        tenant_id: tenantId,
+        user_id: userId,
+        updated_at: nowTs(),
+      },
+      { merge: true },
+    );
+
+  return { id: legacyDoc.id, ...legacyData };
+}
+
+function normalizeMembershipRole(role) {
+  const value = String(role || "").trim().toLowerCase();
+  if (["superadmin", "super_admin"].includes(value)) return "superAdmin";
+  if (["tenantadmin", "tenant_admin", "admin", "administrator"].includes(value)) {
+    return "tenantAdmin";
+  }
+  return value || "user";
 }
 
 async function assertCanManageTenant(tenantId, uid) {
@@ -166,7 +502,7 @@ async function assertCanManageTenant(tenantId, uid) {
     throw new Error("tenant-access-denied");
   }
 
-  if (!["tenantAdmin", "superAdmin"].includes(membership.role)) {
+  if (!["tenantAdmin", "superAdmin"].includes(normalizeMembershipRole(membership.role))) {
     throw new Error("tenant-management-denied");
   }
 }
@@ -531,6 +867,179 @@ exports.testEvolutionConnection = onRequest(
   }),
 );
 
+exports.provisionManagedWhatsApp = onRequest(
+  { secrets: [EVOLUTION_API_URL, EVOLUTION_API_KEY] },
+  withCors(async (req, res) => {
+    if (req.method !== "POST") {
+      res.status(405).json({ ok: false, error: "method-not-allowed" });
+      return;
+    }
+
+    if (!hasManagedEvolutionSecrets()) {
+      res.status(501).json({ ok: false, error: "managed-whatsapp-unconfigured" });
+      return;
+    }
+
+    const auth = await verifyAuth(req);
+    const body = jsonBody(req);
+    const tenantId = String(body.tenantId || "").trim();
+    if (!tenantId) {
+      res.status(400).json({ ok: false, error: "missing-tenant-id" });
+      return;
+    }
+
+    await assertCanManageTenant(tenantId, auth.uid);
+
+    const tenantRef = db.collection("tenants").doc(tenantId);
+    const tenantDoc = await tenantRef.get();
+    if (!tenantDoc.exists) {
+      res.status(404).json({ ok: false, error: "tenant-not-found" });
+      return;
+    }
+
+    const tenantData = tenantDoc.data() || {};
+    const instanceName =
+      String(tenantData.whatsapp_instance_id || tenantData.evolution_instance_name || "").trim() ||
+      normalizeManagedInstanceName(tenantId, tenantData.name);
+    const { evolutionApiUrl, apiKey } = getManagedEvolutionConfig();
+
+    const createResponse = await createEvolutionInstance({
+      evolutionApiUrl,
+      apiKey,
+      instanceName,
+    });
+    const statusResponse = await getEvolutionInstanceStatus({
+      evolutionApiUrl,
+      apiKey,
+      instanceName,
+    });
+    const qrResponse = await getEvolutionInstanceQrCode({
+      evolutionApiUrl,
+      apiKey,
+      instanceName,
+    });
+
+    const statusPayload = statusResponse.data || createResponse.data || {};
+    const connectionStatus = extractEvolutionState(statusPayload);
+    const connectedNumber = extractEvolutionConnectedNumber(statusPayload);
+    const qrCodeBase64 = extractEvolutionQrCode(qrResponse.data || createResponse.data);
+    const webhookUrl = String(body.webhookUrl || tenantData.whatsapp_webhook_url || "").trim();
+
+    await persistManagedWhatsAppState({
+      tenantId,
+      tenantData,
+      instanceName,
+      status: qrCodeBase64 && connectionStatus === "unconfigured"
+          ? "awaiting_qr_scan"
+          : connectionStatus,
+      connectedNumber,
+      webhookUrl,
+      qrCodeBase64,
+    });
+
+    res.status(200).json({
+      ok: true,
+      instanceName,
+      provider: "evolution",
+      connectionStatus:
+        qrCodeBase64 && connectionStatus === "unconfigured"
+          ? "awaiting_qr_scan"
+          : connectionStatus,
+      connectedNumber,
+      qrCodeBase64,
+      createStatusCode: createResponse?.status || null,
+      statusStatusCode: statusResponse?.status || null,
+      qrStatusCode: qrResponse?.status || null,
+      managed: true,
+    });
+  }),
+);
+
+exports.getManagedWhatsAppStatus = onRequest(
+  { secrets: [EVOLUTION_API_URL, EVOLUTION_API_KEY] },
+  withCors(async (req, res) => {
+    if (req.method !== "POST") {
+      res.status(405).json({ ok: false, error: "method-not-allowed" });
+      return;
+    }
+
+    if (!hasManagedEvolutionSecrets()) {
+      res.status(501).json({ ok: false, error: "managed-whatsapp-unconfigured" });
+      return;
+    }
+
+    const auth = await verifyAuth(req);
+    const body = jsonBody(req);
+    const tenantId = String(body.tenantId || "").trim();
+    const includeQrCode = body.includeQrCode === true;
+    if (!tenantId) {
+      res.status(400).json({ ok: false, error: "missing-tenant-id" });
+      return;
+    }
+
+    await assertCanManageTenant(tenantId, auth.uid);
+
+    const tenantRef = db.collection("tenants").doc(tenantId);
+    const tenantDoc = await tenantRef.get();
+    if (!tenantDoc.exists) {
+      res.status(404).json({ ok: false, error: "tenant-not-found" });
+      return;
+    }
+
+    const tenantData = tenantDoc.data() || {};
+    const resolvedConfig = resolveTenantEvolutionConfig(tenantData);
+    if (!resolvedConfig || !resolvedConfig.instanceName) {
+      res.status(404).json({ ok: false, error: "managed-whatsapp-not-provisioned" });
+      return;
+    }
+
+    const statusResponse = await getEvolutionInstanceStatus(resolvedConfig);
+    if (!statusResponse.ok) {
+      res.status(statusResponse.status || 502).json({
+        ok: false,
+        error: "managed-whatsapp-status-failed",
+        providerResponse: statusResponse.data,
+      });
+      return;
+    }
+
+    const connectionStatus = extractEvolutionState(statusResponse.data);
+    let qrCodeBase64 = null;
+
+    if (includeQrCode && connectionStatus !== "connected") {
+      const qrResponse = await getEvolutionInstanceQrCode(resolvedConfig);
+      qrCodeBase64 = extractEvolutionQrCode(qrResponse.data);
+    }
+
+    const connectedNumber = extractEvolutionConnectedNumber(statusResponse.data);
+    await persistManagedWhatsAppState({
+      tenantId,
+      tenantData,
+      instanceName: resolvedConfig.instanceName,
+      status: qrCodeBase64 && connectionStatus === "unconfigured"
+          ? "awaiting_qr_scan"
+          : connectionStatus,
+      connectedNumber,
+      webhookUrl: tenantData.whatsapp_webhook_url,
+      qrCodeBase64,
+    });
+
+    res.status(200).json({
+      ok: true,
+      managed: true,
+      provider: "evolution",
+      instanceName: resolvedConfig.instanceName,
+      connectionStatus:
+        qrCodeBase64 && connectionStatus === "unconfigured"
+          ? "awaiting_qr_scan"
+          : connectionStatus,
+      connectedNumber,
+      qrCodeBase64,
+      providerResponse: statusResponse.data,
+    });
+  }),
+);
+
 exports.receiveN8nSale = onRequest(
   withCors(async (req, res) => {
     if (req.method !== "POST") {
@@ -782,6 +1291,7 @@ exports.receiveN8nSale = onRequest(
 );
 
 exports.notifyRestockCustomers = onRequest(
+  { secrets: [EVOLUTION_API_URL, EVOLUTION_API_KEY] },
   withCors(async (req, res) => {
     if (req.method !== "POST") {
       res.status(405).json({ ok: false, error: "method-not-allowed" });
@@ -832,10 +1342,8 @@ exports.notifyRestockCustomers = onRequest(
       return;
     }
 
-    const evolutionApiUrl = sanitizeUrl(tenantData.evolution_api_url);
-    const evolutionApiKey = String(tenantData.evolution_api_key || "").trim();
-    const evolutionInstanceName = String(tenantData.evolution_instance_name || "").trim();
-    if (!evolutionApiUrl || !evolutionApiKey || !evolutionInstanceName) {
+    const tenantEvolutionConfig = resolveTenantEvolutionConfig(tenantData);
+    if (!tenantEvolutionConfig) {
       res.status(400).json({ ok: false, error: "whatsapp-config-missing" });
       return;
     }
@@ -870,9 +1378,9 @@ exports.notifyRestockCustomers = onRequest(
 
       try {
         await sendEvolutionTextMessage({
-          evolutionApiUrl,
-          apiKey: evolutionApiKey,
-          instanceName: evolutionInstanceName,
+          evolutionApiUrl: tenantEvolutionConfig.evolutionApiUrl,
+          apiKey: tenantEvolutionConfig.apiKey,
+          instanceName: tenantEvolutionConfig.instanceName,
           phone: customerPhone,
           message,
         });
