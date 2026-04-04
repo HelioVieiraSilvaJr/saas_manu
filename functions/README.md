@@ -11,6 +11,9 @@ Esta pasta concentra o backend server-side da plataforma.
 - `paymentWebhook`: endpoint interno para atualizar status de pagamentos
 - `syncMembershipAccessIndex`: migra memberships antigos para IDs deterministas
 - `testEvolutionConnection`: testa a Evolution API no backend, evitando CORS e exposicao direta no navegador
+- `provisionManagedWhatsApp`: provisiona ou reutiliza a instancia gerenciada do tenant e retorna QR Code
+- `getManagedWhatsAppStatus`: consulta o estado atual da conexao gerenciada do tenant
+- `disconnectManagedWhatsApp`: encerra a sessao atual do WhatsApp gerenciado para permitir reconexao com outro numero
 
 ## Por que isso existe
 

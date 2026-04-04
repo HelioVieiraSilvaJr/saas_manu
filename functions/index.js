@@ -356,6 +356,51 @@ async function getEvolutionInstanceQrCode({
   };
 }
 
+async function disconnectEvolutionInstance({
+  evolutionApiUrl,
+  apiKey,
+  instanceName,
+}) {
+  const attempts = [
+    { method: "DELETE", path: `/instance/logout/${instanceName}` },
+    { method: "POST", path: `/instance/logout/${instanceName}` },
+    { method: "DELETE", path: `/instance/disconnect/${instanceName}` },
+    { method: "POST", path: `/instance/disconnect/${instanceName}` },
+    { method: "GET", path: `/instance/logout/${instanceName}` },
+  ];
+
+  let lastResponse = null;
+  for (const attempt of attempts) {
+    const response = await evolutionRequest({
+      evolutionApiUrl,
+      apiKey,
+      method: attempt.method,
+      path: attempt.path,
+    });
+    lastResponse = response;
+
+    if (response.ok) {
+      return response;
+    }
+  }
+
+  const statusResponse = await getEvolutionInstanceStatus({
+    evolutionApiUrl,
+    apiKey,
+    instanceName,
+  });
+  if (statusResponse.ok && extractEvolutionState(statusResponse.data) === "disconnected") {
+    return {
+      ok: true,
+      status: statusResponse.status,
+      rawText: statusResponse.rawText,
+      data: statusResponse.data,
+    };
+  }
+
+  return lastResponse || statusResponse;
+}
+
 async function persistManagedWhatsAppState({
   tenantId,
   tenantData = {},
@@ -364,6 +409,8 @@ async function persistManagedWhatsAppState({
   connectedNumber,
   webhookUrl,
   qrCodeBase64,
+  clearConnectedNumber = false,
+  clearQrCodeExpiration = false,
 }) {
   const nextStatus = String(status || "unconfigured").trim() || "unconfigured";
   const payload = {
@@ -376,6 +423,8 @@ async function persistManagedWhatsAppState({
 
   if (connectedNumber) {
     payload.whatsapp_connected_number = connectedNumber;
+  } else if (clearConnectedNumber) {
+    payload.whatsapp_connected_number = null;
   }
 
   if (webhookUrl) {
@@ -390,7 +439,7 @@ async function persistManagedWhatsAppState({
     payload.whatsapp_qr_expires_at = admin.firestore.Timestamp.fromDate(
       new Date(Date.now() + 60 * 1000),
     );
-  } else if (tenantData.whatsapp_qr_expires_at) {
+  } else if (clearQrCodeExpiration || tenantData.whatsapp_qr_expires_at) {
     payload.whatsapp_qr_expires_at = null;
   }
 
@@ -1036,6 +1085,77 @@ exports.getManagedWhatsAppStatus = onRequest(
       connectedNumber,
       qrCodeBase64,
       providerResponse: statusResponse.data,
+    });
+  }),
+);
+
+exports.disconnectManagedWhatsApp = onRequest(
+  { secrets: [EVOLUTION_API_URL, EVOLUTION_API_KEY] },
+  withCors(async (req, res) => {
+    if (req.method !== "POST") {
+      res.status(405).json({ ok: false, error: "method-not-allowed" });
+      return;
+    }
+
+    if (!hasManagedEvolutionSecrets()) {
+      res.status(501).json({ ok: false, error: "managed-whatsapp-unconfigured" });
+      return;
+    }
+
+    const auth = await verifyAuth(req);
+    const body = jsonBody(req);
+    const tenantId = String(body.tenantId || "").trim();
+    if (!tenantId) {
+      res.status(400).json({ ok: false, error: "missing-tenant-id" });
+      return;
+    }
+
+    await assertCanManageTenant(tenantId, auth.uid);
+
+    const tenantRef = db.collection("tenants").doc(tenantId);
+    const tenantDoc = await tenantRef.get();
+    if (!tenantDoc.exists) {
+      res.status(404).json({ ok: false, error: "tenant-not-found" });
+      return;
+    }
+
+    const tenantData = tenantDoc.data() || {};
+    const resolvedConfig = resolveTenantEvolutionConfig(tenantData);
+    if (!resolvedConfig || !resolvedConfig.instanceName) {
+      res.status(404).json({ ok: false, error: "managed-whatsapp-not-provisioned" });
+      return;
+    }
+
+    const disconnectResponse = await disconnectEvolutionInstance(resolvedConfig);
+    if (!disconnectResponse?.ok) {
+      res.status(disconnectResponse?.status || 502).json({
+        ok: false,
+        error: "managed-whatsapp-disconnect-failed",
+        providerResponse: disconnectResponse?.data || null,
+      });
+      return;
+    }
+
+    await persistManagedWhatsAppState({
+      tenantId,
+      tenantData,
+      instanceName: resolvedConfig.instanceName,
+      status: "disconnected",
+      connectedNumber: null,
+      webhookUrl: tenantData.whatsapp_webhook_url,
+      qrCodeBase64: null,
+      clearConnectedNumber: true,
+      clearQrCodeExpiration: true,
+    });
+
+    res.status(200).json({
+      ok: true,
+      managed: true,
+      provider: "evolution",
+      instanceName: resolvedConfig.instanceName,
+      connectionStatus: "disconnected",
+      connectedNumber: null,
+      providerResponse: disconnectResponse.data,
     });
   }),
 );

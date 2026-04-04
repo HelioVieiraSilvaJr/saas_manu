@@ -46,6 +46,16 @@ Fluxo:
 3. backend ou `n8n` resolve o `tenant_id`
 4. o mestre de vendas carrega contexto e atende no escopo correto
 
+### 2.1. Governanca do n8n
+
+A URL tecnica do `n8n`, webhooks internos e detalhes de infraestrutura nao devem ficar expostos no tenant.
+
+Recomendacao:
+
+- configuracao tecnica do `n8n` em escopo de plataforma ou `Super Admin`
+- tenant enxerga apenas status operacional, conexao do WhatsApp e a experiencia comercial
+- qualquer token ou endpoint interno deve ser gerado e mantido pelo backend
+
 ### 3. Dominio de integracao WhatsApp
 
 O tenant deve ter campos dedicados para estado operacional do canal:

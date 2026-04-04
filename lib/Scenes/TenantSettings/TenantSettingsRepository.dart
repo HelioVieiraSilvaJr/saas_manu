@@ -131,6 +131,23 @@ class TenantSettingsRepository {
     }
   }
 
+  Future<Map<String, dynamic>> disconnectManagedWhatsApp({
+    required String tenantId,
+  }) async {
+    try {
+      return await BackendApi.instance.disconnectManagedWhatsApp(
+        tenantId: tenantId,
+      );
+    } catch (e) {
+      AppLogger.error('Erro ao desconectar WhatsApp gerenciado', error: e);
+      return {
+        'ok': false,
+        'success': false,
+        'message': 'Nao foi possivel desconectar o WhatsApp: ${e.toString()}',
+      };
+    }
+  }
+
   // MARK: - Webhook
 
   /// Salva/gera o webhook token e retorna a URL completa.

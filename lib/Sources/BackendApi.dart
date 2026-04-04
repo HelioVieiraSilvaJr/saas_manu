@@ -54,6 +54,15 @@ class BackendApi {
     );
   }
 
+  Future<Map<String, dynamic>> disconnectManagedWhatsApp({
+    required String tenantId,
+  }) {
+    return postAuthenticated(
+      functionName: 'disconnectManagedWhatsApp',
+      body: {'tenantId': tenantId},
+    );
+  }
+
   Future<Map<String, dynamic>> postAuthenticated({
     required String functionName,
     required Map<String, dynamic> body,

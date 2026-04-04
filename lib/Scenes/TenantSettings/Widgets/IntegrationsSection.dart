@@ -2,15 +2,17 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../Commons/Widgets/DesignSystem/DSAlertDialog.dart';
 import '../../../Commons/Widgets/DesignSystem/DSButton.dart';
 import '../../../Commons/Widgets/DesignSystem/DSColors.dart';
 import '../../../Commons/Widgets/DesignSystem/DSSpacing.dart';
 import '../../../Commons/Widgets/DesignSystem/DSTextStyle.dart';
 import '../../../Commons/Widgets/DesignSystem/FormTextField.dart';
+import '../../../Sources/SessionManager.dart';
 import '../TenantSettingsPresenter.dart';
 import '../TenantSettingsViewModel.dart';
 
-/// Widget da seção "Integrações" (WhatsApp + n8n Webhook) — Módulo 8.
+/// Widget da seção "Integrações" — Módulo 8.
 class IntegrationsSection extends StatefulWidget {
   final TenantSettingsPresenter presenter;
   final TenantSettingsViewModel viewModel;
@@ -73,6 +75,7 @@ class _IntegrationsSectionState extends State<IntegrationsSection> {
   Widget build(BuildContext context) {
     final colors = DSColors();
     final textStyles = DSTextStyle();
+    final isSuperAdmin = SessionManager.instance.isSuperAdmin;
 
     return Container(
       width: double.infinity,
@@ -97,13 +100,30 @@ class _IntegrationsSectionState extends State<IntegrationsSection> {
 
           // WhatsApp Section
           _buildWhatsAppSection(colors, textStyles),
-          const SizedBox(height: DSSpacing.xl),
+          if (isSuperAdmin) ...[
+            const SizedBox(height: DSSpacing.xl),
 
-          // n8n Webhook Section
-          _buildWebhookSection(colors, textStyles),
+            // n8n Webhook Section
+            _buildWebhookSection(colors, textStyles),
+          ],
         ],
       ),
     );
+  }
+
+  Future<void> _confirmDisconnectManagedWhatsApp() async {
+    final confirmed = await DSAlertDialog.showWarning(
+      context: context,
+      title: 'Desconectar WhatsApp',
+      message:
+          'Isso vai encerrar o numero atualmente conectado para que voce possa parear outro aparelho depois.',
+      confirmLabel: 'Desconectar',
+      cancelLabel: 'Cancelar',
+    );
+
+    if (confirmed == true) {
+      await presenter.disconnectManagedWhatsApp();
+    }
   }
 
   Widget _buildWhatsAppSection(DSColors colors, DSTextStyle textStyles) {
@@ -347,13 +367,26 @@ class _IntegrationsSectionState extends State<IntegrationsSection> {
                   includeQrCode: !viewModel.isWhatsAppConnected,
                 ),
               ),
+              if (viewModel.hasManagedWhatsAppSetup)
+                DSButton.danger(
+                  label: 'Desconectar numero',
+                  icon: Icons.link_off_rounded,
+                  isLoading: viewModel.isDisconnectingManagedWhatsApp,
+                  onTap:
+                      viewModel.isProvisioningManagedWhatsApp ||
+                          viewModel.isRefreshingManagedWhatsApp
+                      ? null
+                      : _confirmDisconnectManagedWhatsApp,
+                ),
               DSButton.accent(
                 label: viewModel.hasManagedWhatsAppSetup
                     ? 'Gerar QR novamente'
                     : 'Conectar número',
                 icon: Icons.qr_code_rounded,
                 isLoading: viewModel.isProvisioningManagedWhatsApp,
-                onTap: presenter.provisionManagedWhatsApp,
+                onTap: viewModel.isDisconnectingManagedWhatsApp
+                    ? null
+                    : presenter.provisionManagedWhatsApp,
               ),
             ],
           ),

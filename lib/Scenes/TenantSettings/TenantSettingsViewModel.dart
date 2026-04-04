@@ -6,6 +6,7 @@ class TenantSettingsViewModel {
   final bool isTestingConnection;
   final bool isProvisioningManagedWhatsApp;
   final bool isRefreshingManagedWhatsApp;
+  final bool isDisconnectingManagedWhatsApp;
   final String? errorMessage;
   final String? successMessage;
 
@@ -46,6 +47,7 @@ class TenantSettingsViewModel {
     this.isTestingConnection = false,
     this.isProvisioningManagedWhatsApp = false,
     this.isRefreshingManagedWhatsApp = false,
+    this.isDisconnectingManagedWhatsApp = false,
     this.errorMessage,
     this.successMessage,
     this.companyName = '',
@@ -79,6 +81,7 @@ class TenantSettingsViewModel {
     bool? isTestingConnection,
     bool? isProvisioningManagedWhatsApp,
     bool? isRefreshingManagedWhatsApp,
+    bool? isDisconnectingManagedWhatsApp,
     String? errorMessage,
     String? successMessage,
     String? companyName,
@@ -113,6 +116,8 @@ class TenantSettingsViewModel {
           isProvisioningManagedWhatsApp ?? this.isProvisioningManagedWhatsApp,
       isRefreshingManagedWhatsApp:
           isRefreshingManagedWhatsApp ?? this.isRefreshingManagedWhatsApp,
+      isDisconnectingManagedWhatsApp:
+          isDisconnectingManagedWhatsApp ?? this.isDisconnectingManagedWhatsApp,
       errorMessage: errorMessage,
       successMessage: successMessage,
       companyName: companyName ?? this.companyName,

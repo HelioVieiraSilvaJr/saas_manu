@@ -41,6 +41,13 @@ class TenantSettingsPresenter {
     bool isLoading = false,
     String? managedWhatsAppQrCodeBase64,
   }) {
+    final isManagedConnected =
+        tenant.whatsappConnectionStatusEnum ==
+        WhatsAppConnectionStatus.connected;
+    final hasManualConnectionFallback =
+        !tenant.hasManagedWhatsAppSetup &&
+        (tenant.evolutionApiUrl ?? '').isNotEmpty;
+
     nameController.text = tenant.name;
     emailController.text = tenant.contactEmail;
     phoneController.text = tenant.contactPhone;
@@ -58,10 +65,7 @@ class TenantSettingsPresenter {
       evolutionApiUrl: tenant.evolutionApiUrl ?? '',
       evolutionApiKey: tenant.evolutionApiKey ?? '',
       evolutionInstanceName: tenant.evolutionInstanceName ?? '',
-      isWhatsAppConnected:
-          tenant.whatsappConnectionStatusEnum ==
-              WhatsAppConnectionStatus.connected ||
-          (tenant.evolutionApiUrl ?? '').isNotEmpty,
+      isWhatsAppConnected: isManagedConnected || hasManualConnectionFallback,
       hasManagedWhatsAppSetup: tenant.hasManagedWhatsAppSetup,
       whatsappProvider: tenant.whatsappProviderEnum.label,
       whatsappConnectionStatus: tenant.whatsappConnectionStatusEnum.label,
@@ -356,6 +360,42 @@ class TenantSettingsPresenter {
                     'Não foi possível atualizar o status.')
                 .toString()
           : null,
+    );
+    _notify();
+  }
+
+  Future<void> disconnectManagedWhatsApp() async {
+    final tenant = SessionManager.instance.currentTenant;
+    if (tenant == null) return;
+
+    viewModel = viewModel.copyWith(
+      isDisconnectingManagedWhatsApp: true,
+      errorMessage: null,
+      successMessage: null,
+    );
+    _notify();
+
+    final result = await _repository.disconnectManagedWhatsApp(
+      tenantId: tenant.uid,
+    );
+
+    final reloaded = await _reloadTenantIntoSession(tenant.uid);
+    if (reloaded != null) {
+      _applyTenantToState(reloaded, managedWhatsAppQrCodeBase64: '');
+    }
+
+    viewModel = viewModel.copyWith(
+      isDisconnectingManagedWhatsApp: false,
+      managedWhatsAppQrCodeBase64: '',
+      successMessage: result['ok'] == true
+          ? 'Numero desconectado. Voce ja pode conectar outro WhatsApp.'
+          : null,
+      errorMessage: result['ok'] == true
+          ? null
+          : (result['message'] ??
+                    result['error'] ??
+                    'Nao foi possivel desconectar o WhatsApp.')
+                .toString(),
     );
     _notify();
   }
