@@ -18,6 +18,7 @@ class DSMetricCard extends StatefulWidget {
   final TrendType? trend;
   final IconData? icon;
   final Color? color;
+  final bool compact;
 
   const DSMetricCard({
     super.key,
@@ -27,6 +28,7 @@ class DSMetricCard extends StatefulWidget {
     this.trend,
     this.icon,
     this.color,
+    this.compact = false,
   });
 
   @override
@@ -40,6 +42,26 @@ class _DSMetricCardState extends State<DSMetricCard> {
   Widget build(BuildContext context) {
     final colors = DSColors();
     final textStyles = DSTextStyle();
+    final cardPadding = widget.compact
+        ? const EdgeInsets.all(DSSpacing.base)
+        : const EdgeInsets.all(DSSpacing.cardPaddingLg);
+    final iconBoxSize = widget.compact ? 32.0 : 40.0;
+    final iconSize = widget.compact ? 18.0 : DSSpacing.iconMd;
+    final titleStyle = widget.compact
+        ? textStyles.labelSmall.copyWith(
+            color: colors.textSecondary,
+            fontWeight: FontWeight.w600,
+          )
+        : textStyles.labelMedium;
+    final valueStyle = widget.compact
+        ? textStyles.headline2.copyWith(
+            color: colors.textPrimary,
+            fontWeight: FontWeight.w700,
+          )
+        : textStyles.metricValue.copyWith(color: colors.textPrimary);
+    final comparisonStyle = widget.compact
+        ? textStyles.caption.copyWith(fontWeight: FontWeight.w500)
+        : textStyles.metricComparison;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -47,7 +69,7 @@ class _DSMetricCardState extends State<DSMetricCard> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOut,
-        padding: const EdgeInsets.all(DSSpacing.cardPaddingLg),
+        padding: cardPadding,
         decoration: BoxDecoration(
           color: widget.color ?? colors.cardBackground,
           borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
@@ -80,51 +102,55 @@ class _DSMetricCardState extends State<DSMetricCard> {
               children: [
                 if (widget.icon != null) ...[
                   Container(
-                    width: 40,
-                    height: 40,
+                    width: iconBoxSize,
+                    height: iconBoxSize,
                     decoration: BoxDecoration(
                       color: colors.primarySurface,
                       borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
                     ),
                     child: Icon(
                       widget.icon,
-                      size: DSSpacing.iconMd,
+                      size: iconSize,
                       color: colors.primaryColor,
                     ),
                   ),
-                  const SizedBox(width: DSSpacing.md),
+                  SizedBox(width: widget.compact ? DSSpacing.sm : DSSpacing.md),
                 ],
                 Expanded(
                   child: Text(
                     widget.title,
-                    style: textStyles.labelMedium,
+                    style: titleStyle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: DSSpacing.base),
+            SizedBox(height: widget.compact ? DSSpacing.sm : DSSpacing.base),
 
             // Value
             Text(
               widget.value,
-              style: textStyles.metricValue,
+              style: valueStyle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
 
             // Comparison
             if (widget.comparison != null && widget.trend != null) ...[
-              const SizedBox(height: DSSpacing.xs),
+              SizedBox(height: widget.compact ? 2 : DSSpacing.xs),
               Row(
                 children: [
-                  Icon(_trendIcon, size: 14, color: _trendColor(colors)),
-                  const SizedBox(width: DSSpacing.xxs),
+                  Icon(
+                    _trendIcon,
+                    size: widget.compact ? 12 : 14,
+                    color: _trendColor(colors),
+                  ),
+                  SizedBox(width: widget.compact ? 2 : DSSpacing.xxs),
                   Expanded(
                     child: Text(
                       widget.comparison!,
-                      style: textStyles.metricComparison.copyWith(
+                      style: comparisonStyle.copyWith(
                         color: _trendColor(colors),
                       ),
                       maxLines: 1,
@@ -134,12 +160,10 @@ class _DSMetricCardState extends State<DSMetricCard> {
                 ],
               ),
             ] else if (widget.comparison != null) ...[
-              const SizedBox(height: DSSpacing.xs),
+              SizedBox(height: widget.compact ? 2 : DSSpacing.xs),
               Text(
                 widget.comparison!,
-                style: textStyles.metricComparison.copyWith(
-                  color: colors.textTertiary,
-                ),
+                style: comparisonStyle.copyWith(color: colors.textTertiary),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),

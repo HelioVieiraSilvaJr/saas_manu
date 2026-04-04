@@ -33,6 +33,7 @@ class ProductsListWebView extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = DSColors();
     final textStyles = DSTextStyle();
+    const sectionGap = DSSpacing.lg;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(
@@ -43,11 +44,11 @@ class ProductsListWebView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildHeader(context, colors, textStyles),
-          const SizedBox(height: DSSpacing.xl),
+          const SizedBox(height: sectionGap),
           _buildMetricCards(colors, textStyles),
-          const SizedBox(height: DSSpacing.xl),
+          const SizedBox(height: sectionGap),
           _buildFiltersBar(colors, textStyles),
-          const SizedBox(height: DSSpacing.xl),
+          const SizedBox(height: sectionGap),
           _buildContent(context, colors, textStyles),
         ],
       ),
@@ -104,6 +105,7 @@ class ProductsListWebView extends StatelessWidget {
                 : null,
             trend: viewModel.totalCount > 0 ? TrendType.up : TrendType.neutral,
             icon: Icons.inventory_2_rounded,
+            compact: true,
           ),
         ),
         const SizedBox(width: DSSpacing.base),
@@ -116,6 +118,7 @@ class ProductsListWebView extends StatelessWidget {
                 ? TrendType.up
                 : TrendType.neutral,
             icon: Icons.check_circle_outline_rounded,
+            compact: true,
           ),
         ),
         const SizedBox(width: DSSpacing.base),
@@ -125,6 +128,7 @@ class ProductsListWebView extends StatelessWidget {
             value: '${viewModel.totalStock}',
             comparison: 'unidades em estoque',
             icon: Icons.warehouse_rounded,
+            compact: true,
           ),
         ),
         const SizedBox(width: DSSpacing.base),
@@ -135,6 +139,7 @@ class ProductsListWebView extends StatelessWidget {
             comparison: viewModel.lowStockCount > 0 ? 'repor' : 'ok',
             trend: viewModel.lowStockCount > 0 ? TrendType.down : TrendType.up,
             icon: Icons.warning_amber_rounded,
+            compact: true,
           ),
         ),
       ],

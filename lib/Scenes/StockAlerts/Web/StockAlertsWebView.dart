@@ -33,6 +33,7 @@ class StockAlertsWebView extends StatelessWidget {
     final vm = presenter.viewModel;
     final colors = DSColors();
     final textStyles = DSTextStyle();
+    const sectionGap = DSSpacing.lg;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(
@@ -43,21 +44,21 @@ class StockAlertsWebView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildHeader(vm, colors, textStyles),
-          const SizedBox(height: DSSpacing.xl),
+          const SizedBox(height: sectionGap),
           _buildMetricCards(vm, colors),
-          const SizedBox(height: DSSpacing.xl),
+          const SizedBox(height: sectionGap),
           if (vm.productRanking.isNotEmpty) ...[
             _buildProductRanking(vm, colors, textStyles),
-            const SizedBox(height: DSSpacing.xl),
+            const SizedBox(height: sectionGap),
           ],
           _buildTabs(vm, colors, textStyles),
-          const SizedBox(height: DSSpacing.lg),
+          const SizedBox(height: DSSpacing.base),
           _buildSearchBar(vm),
           if (vm.hasScopedProductFilter) ...[
             const SizedBox(height: DSSpacing.base),
             _buildProductScope(vm, colors, textStyles),
           ],
-          const SizedBox(height: DSSpacing.lg),
+          const SizedBox(height: DSSpacing.base),
           _buildContent(vm),
         ],
       ),
@@ -110,6 +111,7 @@ class StockAlertsWebView extends StatelessWidget {
             color: vm.pendingCount > 0
                 ? colors.orange
                 : colors.green.withAlpha(50),
+            compact: true,
           ),
         ),
         const SizedBox(width: DSSpacing.base),
@@ -120,6 +122,7 @@ class StockAlertsWebView extends StatelessWidget {
             comparison: 'clientes esperando',
             icon: Icons.people_rounded,
             color: colors.secundaryColor.withAlpha(50),
+            compact: true,
           ),
         ),
         const SizedBox(width: DSSpacing.base),
@@ -129,6 +132,7 @@ class StockAlertsWebView extends StatelessWidget {
             value: vm.pendingRequestsCount.toString(),
             comparison: 'solicitações de reposição',
             icon: Icons.inventory_2_rounded,
+            compact: true,
           ),
         ),
       ],
@@ -140,10 +144,10 @@ class StockAlertsWebView extends StatelessWidget {
     DSColors colors,
     DSTextStyle textStyles,
   ) {
-    final top = vm.productRanking.take(5).toList();
+    final top = vm.productRanking.take(3).toList();
 
     return Container(
-      padding: const EdgeInsets.all(DSSpacing.base),
+      padding: const EdgeInsets.all(DSSpacing.sm),
       decoration: BoxDecoration(
         color: colors.cardBackground,
         borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
@@ -161,30 +165,33 @@ class StockAlertsWebView extends StatelessWidget {
         children: [
           Text(
             'Ranking de Produtos Mais Desejados',
-            style: textStyles.labelLarge,
+            style: textStyles.labelMedium.copyWith(
+              color: colors.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          const SizedBox(height: DSSpacing.sm),
+          const SizedBox(height: DSSpacing.xs),
           ...top.asMap().entries.map((entry) {
             final idx = entry.key;
             final product = entry.value;
 
             return Padding(
-              padding: const EdgeInsets.only(bottom: DSSpacing.xs),
+              padding: const EdgeInsets.only(bottom: 4),
               child: Row(
                 children: [
                   SizedBox(
-                    width: 32,
+                    width: 24,
                     child: Text(
                       '${idx + 1}º',
-                      style: textStyles.bodyMedium,
+                      style: textStyles.bodySmall,
                       textAlign: TextAlign.center,
                     ),
                   ),
-                  const SizedBox(width: DSSpacing.sm),
+                  const SizedBox(width: DSSpacing.xs),
                   Expanded(
                     child: Text(
                       product.productName,
-                      style: textStyles.bodyMedium.copyWith(
+                      style: textStyles.bodySmall.copyWith(
                         fontWeight: FontWeight.w500,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -192,7 +199,7 @@ class StockAlertsWebView extends StatelessWidget {
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: DSSpacing.sm,
+                      horizontal: DSSpacing.xs,
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
@@ -204,13 +211,14 @@ class StockAlertsWebView extends StatelessWidget {
                       style: textStyles.caption.copyWith(
                         color: colors.secundaryColor,
                         fontWeight: FontWeight.w600,
+                        fontSize: 11,
                       ),
                     ),
                   ),
-                  const SizedBox(width: DSSpacing.sm),
+                  const SizedBox(width: DSSpacing.xs),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: DSSpacing.sm,
+                      horizontal: DSSpacing.xs,
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
@@ -222,6 +230,7 @@ class StockAlertsWebView extends StatelessWidget {
                       style: textStyles.caption.copyWith(
                         color: colors.primaryColor,
                         fontWeight: FontWeight.w600,
+                        fontSize: 11,
                       ),
                     ),
                   ),

@@ -32,6 +32,7 @@ class EscalationsWebView extends StatelessWidget {
     final vm = presenter.viewModel;
     final colors = DSColors();
     final textStyles = DSTextStyle();
+    const sectionGap = DSSpacing.lg;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(
@@ -42,15 +43,15 @@ class EscalationsWebView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildHeader(vm, colors, textStyles),
-          const SizedBox(height: DSSpacing.xl),
+          const SizedBox(height: sectionGap),
           _buildMetricCards(vm, colors),
-          const SizedBox(height: DSSpacing.xl),
+          const SizedBox(height: sectionGap),
           _buildTabs(vm, colors, textStyles),
-          const SizedBox(height: DSSpacing.lg),
+          const SizedBox(height: DSSpacing.base),
           if (vm.currentTab == EscalationTab.active)
             _buildFiltersBar(vm, colors, textStyles),
           if (vm.currentTab == EscalationTab.active)
-            const SizedBox(height: DSSpacing.lg),
+            const SizedBox(height: DSSpacing.base),
           _buildContent(vm, colors, textStyles),
         ],
       ),
@@ -107,6 +108,7 @@ class EscalationsWebView extends StatelessWidget {
             color: vm.pendingCount > 0
                 ? colors.orange.withAlpha(50)
                 : colors.green.withAlpha(50),
+            compact: true,
           ),
         ),
         const SizedBox(width: DSSpacing.base),
@@ -117,6 +119,7 @@ class EscalationsWebView extends StatelessWidget {
             comparison: 'sendo atendidos',
             icon: Icons.headset_mic_rounded,
             color: colors.secundaryColor.withAlpha(50),
+            compact: true,
           ),
         ),
         const SizedBox(width: DSSpacing.base),
@@ -126,6 +129,7 @@ class EscalationsWebView extends StatelessWidget {
             value: vm.activeCount.toString(),
             comparison: 'atendimentos abertos',
             icon: Icons.support_agent_rounded,
+            compact: true,
           ),
         ),
       ],

@@ -32,6 +32,7 @@ class CustomersListWebView extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = DSColors();
     final textStyles = DSTextStyle();
+    const sectionGap = DSSpacing.lg;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(
@@ -42,11 +43,11 @@ class CustomersListWebView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildHeader(context, colors, textStyles),
-          const SizedBox(height: DSSpacing.xl),
+          const SizedBox(height: sectionGap),
           _buildMetricCards(colors, textStyles),
-          const SizedBox(height: DSSpacing.xl),
+          const SizedBox(height: sectionGap),
           _buildFiltersBar(colors, textStyles),
-          const SizedBox(height: DSSpacing.xl),
+          const SizedBox(height: sectionGap),
           _buildContent(context, colors, textStyles),
         ],
       ),
@@ -100,6 +101,7 @@ class CustomersListWebView extends StatelessWidget {
                 : null,
             trend: viewModel.totalCount > 0 ? TrendType.up : TrendType.neutral,
             icon: Icons.people_rounded,
+            compact: true,
           ),
         ),
         const SizedBox(width: DSSpacing.base),
@@ -112,6 +114,7 @@ class CustomersListWebView extends StatelessWidget {
                 : null,
             trend: viewModel.activeCount > 0 ? TrendType.up : TrendType.neutral,
             icon: Icons.check_circle_outline_rounded,
+            compact: true,
           ),
         ),
         const SizedBox(width: DSSpacing.base),
@@ -121,6 +124,7 @@ class CustomersListWebView extends StatelessWidget {
             value: viewModel.totalSpentAll.formatToBRL(),
             comparison: 'de todos os clientes',
             icon: Icons.attach_money_rounded,
+            compact: true,
           ),
         ),
         const SizedBox(width: DSSpacing.base),
@@ -133,6 +137,7 @@ class CustomersListWebView extends StatelessWidget {
                 : 'nenhum recente',
             trend: viewModel.recentCount > 0 ? TrendType.up : TrendType.neutral,
             icon: Icons.person_add_alt_1_rounded,
+            compact: true,
           ),
         ),
       ],

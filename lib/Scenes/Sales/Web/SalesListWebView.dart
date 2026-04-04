@@ -44,6 +44,7 @@ class SalesListWebView extends StatelessWidget {
     final vm = presenter.viewModel;
     final colors = DSColors();
     final textStyles = DSTextStyle();
+    const sectionGap = DSSpacing.lg;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(
@@ -54,11 +55,11 @@ class SalesListWebView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildHeader(context, vm, colors, textStyles),
-          const SizedBox(height: DSSpacing.xl),
+          const SizedBox(height: sectionGap),
           _buildMetricCards(vm, colors, textStyles),
-          const SizedBox(height: DSSpacing.xl),
+          const SizedBox(height: sectionGap),
           _buildFiltersBar(vm, colors, textStyles),
-          const SizedBox(height: DSSpacing.xl),
+          const SizedBox(height: sectionGap),
           _buildContent(vm, colors, textStyles),
         ],
       ),
@@ -115,6 +116,7 @@ class SalesListWebView extends StatelessWidget {
             comparison: '${vm.todayCount} vendas',
             trend: vm.todayCount > 0 ? TrendType.up : TrendType.neutral,
             icon: Icons.today_rounded,
+            compact: true,
           ),
         ),
         const SizedBox(width: DSSpacing.base),
@@ -125,6 +127,7 @@ class SalesListWebView extends StatelessWidget {
             comparison: '${vm.monthCount} vendas',
             trend: vm.monthCount > 0 ? TrendType.up : TrendType.neutral,
             icon: Icons.calendar_month_rounded,
+            compact: true,
           ),
         ),
         const SizedBox(width: DSSpacing.base),
@@ -134,6 +137,7 @@ class SalesListWebView extends StatelessWidget {
             value: vm.averageTicket.formatToBRL(),
             comparison: 'por venda',
             icon: Icons.receipt_long_rounded,
+            compact: true,
           ),
         ),
         const SizedBox(width: DSSpacing.base),
@@ -143,6 +147,7 @@ class SalesListWebView extends StatelessWidget {
             value: '${vm.totalCount}',
             comparison: '${vm.filteredCount} exibidas',
             icon: Icons.point_of_sale_rounded,
+            compact: true,
           ),
         ),
       ],
@@ -683,7 +688,7 @@ class _SaleTableRowState extends State<_SaleTableRow> {
                         size: DSBadgeSize.small,
                       ),
 
-                    // Se confirmada sem orderStatus (vendas legadas) — 
+                    // Se confirmada sem orderStatus (vendas legadas) —
                     // oferecer enviar para esteira
                     if (sale.isConfirmed && sale.orderStatus == null)
                       DSBadge(
@@ -812,4 +817,3 @@ class _QuickActionButtonState extends State<_QuickActionButton> {
     );
   }
 }
-
