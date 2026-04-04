@@ -439,6 +439,248 @@
       ],
       "id": "e5c6d7e8-0001-4000-8000-000000000001",
       "name": "Escalar_Humano"
+    },
+    {
+      "parameters": {
+        "name": "Registrar_Aviso_Estoque",
+        "description": "Registra que o cliente quer ser avisado quando um produto sem estoque voltar. Use somente quando o cliente confirmar que quer aguardar reposicao. Exige product_id e customer_id.",
+        "workflowId": {
+          "__rl": true,
+          "value": "REGISTRAR_AVISO_ESTOQUE_ID",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/REGISTRAR_AVISO_ESTOQUE_ID",
+          "cachedResultName": "Sub - Registrar Aviso de Estoque"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "tenant_id": "={{ $fromAI('tenant_id', 'ID do tenant', 'string') }}",
+            "phone": "={{ $fromAI('phone', 'Telefone do cliente', 'string') }}",
+            "customer_name": "={{ $fromAI('customer_name', 'Nome do cliente', 'string') }}",
+            "customer_id": "={{ $fromAI('customer_id', 'document_id do cliente', 'string') }}",
+            "product_id": "={{ $fromAI('product_id', 'document_id do produto', 'string') }}",
+            "product_name": "={{ $fromAI('product_name', 'Nome do produto', 'string') }}",
+            "desired_quantity": "={{ $fromAI('desired_quantity', 'Quantidade desejada pelo cliente', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "tenant_id",
+              "displayName": "tenant_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "customer_name",
+              "displayName": "customer_name",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "customer_id",
+              "displayName": "customer_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "product_id",
+              "displayName": "product_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "product_name",
+              "displayName": "product_name",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "desired_quantity",
+              "displayName": "desired_quantity",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        688
+      ],
+      "id": "16161616-1616-4161-8161-161616161616",
+      "name": "Registrar_Aviso_Estoque"
+    },
+    {
+      "parameters": {
+        "name": "Registrar_Venda",
+        "description": "Fecha a venda usando o carrinho atual do cliente e registra no CRM. Use quando o cliente confirmar fechamento ou quando o pagamento for confirmado. Exige webhook_url do tenant, customer_id e phone.",
+        "workflowId": {
+          "__rl": true,
+          "value": "REGISTRAR_VENDA_ID",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/REGISTRAR_VENDA_ID",
+          "cachedResultName": "Sub - Registrar Venda"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "webhook_url": "={{ $fromAI('webhook_url', 'Webhook oficial receiveN8nSale do tenant', 'string') }}",
+            "tenant_id": "={{ $fromAI('tenant_id', 'ID do tenant', 'string') }}",
+            "phone": "={{ $fromAI('phone', 'Telefone do cliente', 'string') }}",
+            "customer_name": "={{ $fromAI('customer_name', 'Nome do cliente', 'string') }}",
+            "customer_id": "={{ $fromAI('customer_id', 'document_id do cliente', 'string') }}",
+            "customer_email": "={{ $fromAI('customer_email', 'Email do cliente', 'string') }}",
+            "customer_address": "={{ $fromAI('customer_address', 'Endereco do cliente', 'string') }}",
+            "notes": "={{ $fromAI('notes', 'Observacoes da venda', 'string') }}",
+            "conversation_id": "={{ $fromAI('conversation_id', 'ID da conversa ou mensagem', 'string') }}",
+            "status": "={{ $fromAI('status', 'pending, payment_sent ou confirmed', 'string') }}",
+            "decrement_stock": "={{ $fromAI('decrement_stock', 'true quando deve reservar ou baixar estoque', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "webhook_url",
+              "displayName": "webhook_url",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "tenant_id",
+              "displayName": "tenant_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "customer_name",
+              "displayName": "customer_name",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "customer_id",
+              "displayName": "customer_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "customer_email",
+              "displayName": "customer_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "customer_address",
+              "displayName": "customer_address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "conversation_id",
+              "displayName": "conversation_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "decrement_stock",
+              "displayName": "decrement_stock",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        688
+      ],
+      "id": "17171717-1717-4171-8171-171717171717",
+      "name": "Registrar_Venda"
     }
   ],
   "pinData": {},
@@ -488,6 +730,28 @@
       ]
     },
     "Escalar_Humano": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar_Aviso_Estoque": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar_Venda": {
       "ai_tool": [
         [
           {

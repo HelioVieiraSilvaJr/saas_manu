@@ -1,26 +1,22 @@
 import 'package:flutter/material.dart';
-import '../../../Commons/Enums/StockAlertStatus.dart';
-import '../../../Commons/Models/StockAlertModel.dart';
-import '../../../Commons/Widgets/DesignSystem/DSAvatar.dart';
+import '../../../Commons/Models/StockAlertGroupModel.dart';
 import '../../../Commons/Widgets/DesignSystem/DSBadge.dart';
 import '../../../Commons/Widgets/DesignSystem/DSColors.dart';
 import '../../../Commons/Widgets/DesignSystem/DSSpacing.dart';
 import '../../../Commons/Widgets/DesignSystem/DSTextStyle.dart';
 
-/// Card de aviso de estoque reutilizável (mobile + web).
+/// Card agrupado por produto para operação de avisos de estoque.
 class StockAlertCard extends StatelessWidget {
-  final StockAlertModel alert;
+  final StockAlertGroupModel group;
   final VoidCallback? onDismiss;
-  final VoidCallback? onNotified;
-  final VoidCallback? onWhatsApp;
+  final VoidCallback? onNotify;
   final bool isActionInProgress;
 
   const StockAlertCard({
     super.key,
-    required this.alert,
+    required this.group,
     this.onDismiss,
-    this.onNotified,
-    this.onWhatsApp,
+    this.onNotify,
     this.isActionInProgress = false,
   });
 
@@ -28,23 +24,19 @@ class StockAlertCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = DSColors();
     final textStyles = DSTextStyle();
-    final daysColor = _getDaysColor(colors);
+    final urgencyColor = _urgencyColor(colors);
 
     return Container(
       margin: const EdgeInsets.only(bottom: DSSpacing.sm),
       decoration: BoxDecoration(
         color: colors.cardBackground,
         borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
-        border: Border.all(
-          color: alert.isPending
-              ? daysColor.withValues(alpha: 0.4)
-              : colors.divider,
-        ),
+        border: Border.all(color: urgencyColor.withValues(alpha: 0.35)),
         boxShadow: [
           BoxShadow(
             color: colors.shadowColor,
             blurRadius: DSSpacing.elevationSmBlur,
-            offset: Offset(0, DSSpacing.elevationSmOffset),
+            offset: const Offset(0, DSSpacing.elevationSmOffset),
           ),
         ],
       ),
@@ -53,34 +45,26 @@ class StockAlertCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header: avatar, nome, badge, dias
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Indicador de tempo (barra lateral)
-                if (alert.isPending)
-                  Container(
-                    width: 4,
-                    height: 48,
-                    margin: const EdgeInsets.only(right: DSSpacing.sm),
-                    decoration: BoxDecoration(
-                      color: daysColor,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+                Container(
+                  width: 4,
+                  height: 54,
+                  margin: const EdgeInsets.only(right: DSSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: urgencyColor,
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                DSAvatar(name: alert.customerName, size: 40),
-                const SizedBox(width: DSSpacing.sm),
+                ),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Text(group.productName, style: textStyles.labelLarge),
+                      const SizedBox(height: 4),
                       Text(
-                        alert.customerName,
-                        style: textStyles.labelLarge,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        alert.customerWhatsapp,
+                        '${group.customerCount} cliente${group.customerCount == 1 ? '' : 's'} aguardando • ${group.totalDesiredQuantity} item${group.totalDesiredQuantity == 1 ? '' : 's'} solicitados',
                         style: textStyles.bodySmall.copyWith(
                           color: colors.textSecondary,
                         ),
@@ -91,12 +75,17 @@ class StockAlertCard extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    _buildStatusBadge(colors),
+                    DSBadge(
+                      label: group.hasPendingAlerts ? 'Pendente' : 'Resolvido',
+                      type: group.hasPendingAlerts
+                          ? DSBadgeType.warning
+                          : DSBadgeType.success,
+                    ),
                     const SizedBox(height: 4),
                     Text(
-                      alert.waitTimeFormatted,
+                      group.waitTimeFormatted,
                       style: textStyles.bodySmall.copyWith(
-                        color: daysColor,
+                        color: urgencyColor,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -104,135 +93,114 @@ class StockAlertCard extends StatelessWidget {
                 ),
               ],
             ),
-
-            // Produto desejado
             const SizedBox(height: DSSpacing.sm),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(DSSpacing.sm),
-              decoration: BoxDecoration(
-                color: colors.scaffoldBackground,
-                borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.inventory_2_rounded,
-                    size: 16,
-                    color: colors.primaryColor,
-                  ),
-                  const SizedBox(width: DSSpacing.xs),
-                  Expanded(
-                    child: Text(
-                      alert.productName,
-                      style: textStyles.bodySmall.copyWith(
-                        color: colors.textPrimary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: DSSpacing.xs,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colors.primaryColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      'Qtd: ${alert.desiredQuantity}',
-                      style: textStyles.caption.copyWith(
-                        color: colors.primaryColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            Wrap(
+              spacing: DSSpacing.xs,
+              runSpacing: DSSpacing.xs,
+              children: [
+                _InfoChip(
+                  icon: Icons.people_rounded,
+                  label:
+                      '${group.customerCount} interessado${group.customerCount == 1 ? '' : 's'}',
+                  color: colors.secundaryColor,
+                ),
+                _InfoChip(
+                  icon: Icons.inventory_2_rounded,
+                  label: 'Demanda ${group.totalDesiredQuantity} unid.',
+                  color: colors.primaryColor,
+                ),
+                _InfoChip(
+                  icon: Icons.schedule_rounded,
+                  label: 'Desde ${group.waitTimeFormatted.toLowerCase()}',
+                  color: urgencyColor,
+                ),
+              ],
             ),
-
-            // Notas (se resolvido)
-            if (!alert.isPending &&
-                alert.notes != null &&
-                alert.notes!.isNotEmpty) ...[
-              const SizedBox(height: DSSpacing.xs),
-              Row(
-                children: [
-                  Icon(
-                    Icons.notes_rounded,
-                    size: 14,
-                    color: colors.textTertiary,
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      alert.notes!,
-                      style: textStyles.bodySmall.copyWith(
-                        color: colors.textTertiary,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-
-            // Ações (apenas pendentes)
-            if (alert.isPending) ...[
+            if (group.alerts.isNotEmpty) ...[
               const SizedBox(height: DSSpacing.sm),
-              Row(
-                children: [
-                  // WhatsApp
-                  if (onWhatsApp != null)
-                    _ActionChip(
-                      icon: Icons.chat_rounded,
-                      label: 'WhatsApp',
-                      color: const Color(0xFF25D366),
-                      onTap: onWhatsApp!,
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(DSSpacing.sm),
+                decoration: BoxDecoration(
+                  color: colors.scaffoldBackground,
+                  borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Clientes aguardando',
+                      style: textStyles.caption.copyWith(
+                        color: colors.textTertiary,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  const Spacer(),
-                  // Ações
-                  if (isActionInProgress)
-                    const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  else ...[
-                    if (onDismiss != null)
-                      OutlinedButton.icon(
-                        onPressed: onDismiss,
-                        icon: const Icon(Icons.close_rounded, size: 18),
-                        label: const Text('Encerrar'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: colors.red,
-                          side: BorderSide(
-                            color: colors.red.withValues(alpha: 0.5),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: DSSpacing.sm,
-                            vertical: DSSpacing.xs,
+                    const SizedBox(height: DSSpacing.xs),
+                    ...group.alerts
+                        .take(3)
+                        .map(
+                          (alert) => Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Text(
+                              '${alert.customerName} • ${alert.desiredQuantity} unid.',
+                              style: textStyles.bodySmall,
+                            ),
                           ),
                         ),
-                      ),
-                    const SizedBox(width: DSSpacing.xs),
-                    if (onNotified != null)
-                      FilledButton.icon(
-                        onPressed: onNotified,
-                        icon: const Icon(Icons.check_circle_rounded, size: 18),
-                        label: const Text('Notificado'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: colors.green,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: DSSpacing.sm,
-                            vertical: DSSpacing.xs,
-                          ),
+                    if (group.alerts.length > 3)
+                      Text(
+                        '+${group.alerts.length - 3} cliente${group.alerts.length - 3 == 1 ? '' : 's'} aguardando',
+                        style: textStyles.caption.copyWith(
+                          color: colors.textTertiary,
                         ),
                       ),
                   ],
+                ),
+              ),
+            ],
+            if (group.hasPendingAlerts &&
+                (onDismiss != null || onNotify != null)) ...[
+              const SizedBox(height: DSSpacing.sm),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: isActionInProgress ? null : onDismiss,
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                      label: const Text('Encerrar'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: colors.red,
+                        side: BorderSide(
+                          color: colors.red.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: DSSpacing.sm),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: isActionInProgress ? null : onNotify,
+                      icon: isActionInProgress
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.notifications_active_rounded,
+                              size: 18,
+                            ),
+                      label: Text(
+                        isActionInProgress ? 'Enviando...' : 'Notificar',
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: colors.green,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -242,73 +210,50 @@ class StockAlertCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusBadge(DSColors colors) {
-    DSBadgeType type;
-    switch (alert.status) {
-      case StockAlertStatus.pending:
-        type = DSBadgeType.warning;
-        break;
-      case StockAlertStatus.notified:
-        type = DSBadgeType.success;
-        break;
-      case StockAlertStatus.dismissed:
-        type = DSBadgeType.error;
-        break;
-    }
-    return DSBadge(label: alert.status.shortLabel, type: type);
-  }
-
-  Color _getDaysColor(DSColors colors) {
-    final days = alert.daysSinceCreation;
+  Color _urgencyColor(DSColors colors) {
+    final days = DateTime.now().difference(group.oldestCreatedAt).inDays;
     if (days < 3) return colors.green;
     if (days < 7) return colors.orange;
     return colors.red;
   }
 }
 
-/// Chip de ação compacto.
-class _ActionChip extends StatelessWidget {
+class _InfoChip extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
-  final VoidCallback onTap;
 
-  const _ActionChip({
+  const _InfoChip({
     required this.icon,
     required this.label,
     required this.color,
-    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: DSSpacing.sm,
-          vertical: DSSpacing.xs,
-        ),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: color,
-              ),
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: DSSpacing.sm,
+        vertical: DSSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

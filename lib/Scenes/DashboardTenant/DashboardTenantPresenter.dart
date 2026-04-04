@@ -304,7 +304,7 @@ class DashboardTenantPresenter {
         DashboardAlert(
           type: DashboardAlertType.pendingStockAlerts,
           title:
-              'Você tem $pendingStockAlertsCount alerta${pendingStockAlertsCount > 1 ? "s" : ""} de estoque pendente${pendingStockAlertsCount > 1 ? "s" : ""}.',
+              'Você tem $pendingStockAlertsCount produto${pendingStockAlertsCount > 1 ? "s" : ""} com aviso de estoque pendente.',
           actionLabel: 'Ver Estoque',
           route: '/stock-alerts',
           isWarning: true,

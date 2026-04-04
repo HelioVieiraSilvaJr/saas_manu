@@ -10,6 +10,10 @@ class ProductModel {
   String sku;
   double price;
   int stock;
+  String? category;
+  String? color;
+  String? size;
+  List<String> tags;
   String? description;
   String? imageUrl;
   List<String> imageUrls;
@@ -24,6 +28,10 @@ class ProductModel {
     required this.sku,
     required this.price,
     required this.stock,
+    this.category,
+    this.color,
+    this.size,
+    this.tags = const [],
     this.description,
     this.imageUrl,
     this.imageUrls = const [],
@@ -44,6 +52,31 @@ class ProductModel {
 
   // MARK: - Factory
 
+  static String? _asNullableString(dynamic value) {
+    if (value == null) return null;
+    final normalized = value.toString().trim();
+    return normalized.isEmpty ? null : normalized;
+  }
+
+  static List<String> _normalizeTags(dynamic value) {
+    if (value is List) {
+      return value
+          .map((item) => item?.toString().trim() ?? '')
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+
+    if (value is String) {
+      return value
+          .split(',')
+          .map((item) => item.trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+
+    return const [];
+  }
+
   static ProductModel fromDocumentSnapshot(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
 
@@ -62,14 +95,18 @@ class ProductModel {
 
     return ProductModel(
       uid: doc.id,
-      name: data['name'] ?? '',
-      sku: data['sku'] ?? '',
-      price: (data['price'] ?? 0).toDouble(),
-      stock: (data['stock'] ?? 0) as int,
-      description: data['description'],
+      name: _asNullableString(data['name']) ?? '',
+      sku: _asNullableString(data['sku']) ?? '',
+      price: (data['price'] as num? ?? 0).toDouble(),
+      stock: (data['stock'] as num? ?? 0).toInt(),
+      category: _asNullableString(data['category']),
+      color: _asNullableString(data['color']),
+      size: _asNullableString(data['size']),
+      tags: _normalizeTags(data['tags']),
+      description: _asNullableString(data['description']),
       imageUrl: urls.isNotEmpty ? urls.first : null,
       imageUrls: urls,
-      mainImageIndex: (data['main_image_index'] ?? 0) as int,
+      mainImageIndex: (data['main_image_index'] as num? ?? 0).toInt(),
       isActive: data['is_active'] ?? true,
       createdAt: data['created_at'] != null
           ? (data['created_at'] as Timestamp).toDate()
@@ -88,6 +125,10 @@ class ProductModel {
       'sku': sku,
       'price': price,
       'stock': stock,
+      'category': category,
+      'color': color,
+      'size': size,
+      'tags': tags,
       'description': description,
       'image_url': mainImageUrl,
       'image_urls': imageUrls,
@@ -107,6 +148,7 @@ class ProductModel {
       sku: '',
       price: 0,
       stock: 0,
+      tags: const [],
       isActive: true,
       createdAt: DateTime.now(),
     );
@@ -118,6 +160,10 @@ class ProductModel {
     String? sku,
     double? price,
     int? stock,
+    String? category,
+    String? color,
+    String? size,
+    List<String>? tags,
     String? description,
     String? imageUrl,
     List<String>? imageUrls,
@@ -132,6 +178,10 @@ class ProductModel {
       sku: sku ?? this.sku,
       price: price ?? this.price,
       stock: stock ?? this.stock,
+      category: category ?? this.category,
+      color: color ?? this.color,
+      size: size ?? this.size,
+      tags: tags ?? this.tags,
       description: description ?? this.description,
       imageUrl: imageUrl ?? this.imageUrl,
       imageUrls: imageUrls ?? this.imageUrls,

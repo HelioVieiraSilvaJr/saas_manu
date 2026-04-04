@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../Commons/Widgets/DesignSystem/DSColors.dart';
 import '../../../Commons/Widgets/DesignSystem/DSSpacing.dart';
 import '../../../Commons/Widgets/DesignSystem/DSTextStyle.dart';
@@ -13,17 +12,19 @@ import '../Widgets/StockAlertCard.dart';
 class StockAlertsMobileView extends StatelessWidget {
   final StockAlertsPresenter presenter;
   final TextEditingController searchController;
-  final void Function(String alertId) onDismiss;
-  final void Function(String alertId) onNotified;
+  final void Function(String productId) onDismiss;
+  final void Function(String productId) onNotify;
   final void Function(StockAlertTab tab) onTabChange;
+  final VoidCallback onClearProductFilter;
 
   const StockAlertsMobileView({
     super.key,
     required this.presenter,
     required this.searchController,
     required this.onDismiss,
-    required this.onNotified,
+    required this.onNotify,
     required this.onTabChange,
+    required this.onClearProductFilter,
   });
 
   @override
@@ -40,18 +41,16 @@ class StockAlertsMobileView extends StatelessWidget {
       onRefresh: () async => presenter.startWatchingPending(),
       child: CustomScrollView(
         slivers: [
-          // Header compacto com métricas
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(DSSpacing.base),
               child: Column(
                 children: [
-                  // Métricas em row
                   Row(
                     children: [
                       Expanded(
                         child: _buildMiniCard(
-                          '🔔 Pendentes',
+                          'Produtos',
                           vm.pendingCount.toString(),
                           vm.pendingCount > 0 ? colors.orange : colors.green,
                           colors,
@@ -61,7 +60,7 @@ class StockAlertsMobileView extends StatelessWidget {
                       const SizedBox(width: DSSpacing.sm),
                       Expanded(
                         child: _buildMiniCard(
-                          '👤 Clientes',
+                          'Clientes',
                           vm.uniqueCustomersCount.toString(),
                           colors.secundaryColor,
                           colors,
@@ -71,8 +70,8 @@ class StockAlertsMobileView extends StatelessWidget {
                       const SizedBox(width: DSSpacing.sm),
                       Expanded(
                         child: _buildMiniCard(
-                          '📦 Produtos',
-                          vm.productRanking.length.toString(),
+                          'Pedidos',
+                          vm.pendingRequestsCount.toString(),
                           colors.primaryColor,
                           colors,
                           textStyles,
@@ -81,14 +80,10 @@ class StockAlertsMobileView extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: DSSpacing.base),
-
-                  // Ranking compacto (top 3)
                   if (vm.productRanking.isNotEmpty) ...[
                     _buildCompactRanking(vm, colors, textStyles),
                     const SizedBox(height: DSSpacing.base),
                   ],
-
-                  // Busca
                   TextField(
                     controller: searchController,
                     onChanged: presenter.search,
@@ -113,9 +108,11 @@ class StockAlertsMobileView extends StatelessWidget {
                           : null,
                     ),
                   ),
+                  if (vm.hasScopedProductFilter) ...[
+                    const SizedBox(height: DSSpacing.sm),
+                    _buildProductScope(vm, colors, textStyles),
+                  ],
                   const SizedBox(height: DSSpacing.sm),
-
-                  // Tabs
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
@@ -145,21 +142,15 @@ class StockAlertsMobileView extends StatelessWidget {
               ),
             ),
           ),
-
-          // Conteúdo
           if (vm.currentTab == StockAlertTab.pending)
-            _buildPendingContent(vm, colors, textStyles)
+            _buildPendingContent(vm)
           else
-            _buildResolvedContent(vm, colors, textStyles),
-
-          // Bottom spacing
+            _buildResolvedContent(vm),
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
         ],
       ),
     );
   }
-
-  // ──────────────────── Compact Ranking ────────────────────
 
   Widget _buildCompactRanking(
     StockAlertsViewModel vm,
@@ -167,7 +158,6 @@ class StockAlertsMobileView extends StatelessWidget {
     DSTextStyle textStyles,
   ) {
     final top = vm.productRanking.take(3).toList();
-    final medals = ['🥇', '🥈', '🥉'];
 
     return Container(
       width: double.infinity,
@@ -181,7 +171,7 @@ class StockAlertsMobileView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '🏆 Mais Desejados',
+            'Mais desejados',
             style: textStyles.caption.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: DSSpacing.xs),
@@ -192,7 +182,7 @@ class StockAlertsMobileView extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 2),
               child: Row(
                 children: [
-                  Text(medals[idx], style: const TextStyle(fontSize: 12)),
+                  Text('${idx + 1}º', style: const TextStyle(fontSize: 12)),
                   const SizedBox(width: DSSpacing.xs),
                   Expanded(
                     child: Text(
@@ -217,13 +207,48 @@ class StockAlertsMobileView extends StatelessWidget {
     );
   }
 
-  // ──────────────────── Pending Content ────────────────────
-
-  Widget _buildPendingContent(
+  Widget _buildProductScope(
     StockAlertsViewModel vm,
     DSColors colors,
     DSTextStyle textStyles,
   ) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(DSSpacing.sm),
+      decoration: BoxDecoration(
+        color: colors.primarySurface,
+        borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
+        border: Border.all(color: colors.primaryColor.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Filtrando por produto',
+            style: textStyles.caption.copyWith(
+              color: colors.primaryColor,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            vm.productFilterName ?? 'Produto selecionado',
+            style: textStyles.bodySmall.copyWith(color: colors.primaryColor),
+          ),
+          const SizedBox(height: DSSpacing.xs),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: onClearProductFilter,
+              child: const Text('Limpar filtro'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPendingContent(StockAlertsViewModel vm) {
     if (vm.filteredPending.isEmpty) {
       return SliverFillRemaining(
         child: EmptyState(
@@ -233,7 +258,7 @@ class StockAlertsMobileView extends StatelessWidget {
               : 'Nenhum aviso pendente',
           message: vm.hasSearch
               ? 'Tente ajustar a busca'
-              : 'Quando um cliente solicitar aviso, aparecerá aqui',
+              : 'Quando clientes pedirem reposição de um produto, ele aparecerá aqui',
           actionLabel: vm.hasSearch ? 'Limpar Busca' : null,
           onAction: vm.hasSearch ? presenter.clearSearch : null,
         ),
@@ -244,26 +269,19 @@ class StockAlertsMobileView extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: DSSpacing.base),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate((context, index) {
-          final alert = vm.filteredPending[index];
+          final group = vm.filteredPending[index];
           return StockAlertCard(
-            alert: alert,
-            isActionInProgress: vm.actionInProgressId == alert.uid,
-            onDismiss: () => onDismiss(alert.uid),
-            onNotified: () => onNotified(alert.uid),
-            onWhatsApp: () => _openWhatsApp(alert.customerWhatsapp),
+            group: group,
+            isActionInProgress: vm.actionInProgressProductId == group.productId,
+            onDismiss: () => onDismiss(group.productId),
+            onNotify: () => onNotify(group.productId),
           );
         }, childCount: vm.filteredPending.length),
       ),
     );
   }
 
-  // ──────────────────── Resolved Content ────────────────────
-
-  Widget _buildResolvedContent(
-    StockAlertsViewModel vm,
-    DSColors colors,
-    DSTextStyle textStyles,
-  ) {
+  Widget _buildResolvedContent(StockAlertsViewModel vm) {
     if (vm.isLoadingResolved) {
       return const SliverFillRemaining(
         child: LoadingIndicator(message: 'Carregando resolvidos...'),
@@ -284,14 +302,12 @@ class StockAlertsMobileView extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: DSSpacing.base),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate((context, index) {
-          final alert = vm.filteredResolved[index];
-          return StockAlertCard(alert: alert);
+          final group = vm.filteredResolved[index];
+          return StockAlertCard(group: group);
         }, childCount: vm.filteredResolved.length),
       ),
     );
   }
-
-  // ──────────────────── Mini Card ────────────────────
 
   Widget _buildMiniCard(
     String title,
@@ -316,11 +332,5 @@ class StockAlertsMobileView extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  void _openWhatsApp(String whatsapp) {
-    final cleanNumber = whatsapp.replaceAll(RegExp(r'[^\d]'), '');
-    final uri = Uri.parse('https://wa.me/55$cleanNumber');
-    launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 }

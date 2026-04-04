@@ -43,6 +43,69 @@ function sanitizeUrl(url) {
   return String(url || "").trim().replace(/\/+$/, "");
 }
 
+function normalizeBrazilianPhone(phone) {
+  const digits = sanitizePhone(phone);
+  if (!digits) return "";
+  return digits.length <= 11 ? `55${digits}` : digits;
+}
+
+function normalizeSaleStatus(status) {
+  const value = String(status || "").trim();
+  return ["pending", "payment_sent", "confirmed", "cancelled"].includes(value)
+    ? value
+    : "pending";
+}
+
+function normalizeSaleSource(source) {
+  const value = String(source || "").trim();
+  return ["manual", "whatsapp_automation"].includes(value)
+    ? value
+    : "whatsapp_automation";
+}
+
+async function parseJsonResponse(response) {
+  const rawText = await response.text();
+  if (!rawText) {
+    return { rawText, data: null };
+  }
+
+  try {
+    return { rawText, data: JSON.parse(rawText) };
+  } catch (error) {
+    return { rawText, data: null };
+  }
+}
+
+async function sendEvolutionTextMessage({
+  evolutionApiUrl,
+  apiKey,
+  instanceName,
+  phone,
+  message,
+}) {
+  const endpoint = `${sanitizeUrl(evolutionApiUrl)}/message/sendText/${instanceName}`;
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: apiKey,
+    },
+    body: JSON.stringify({
+      number: normalizeBrazilianPhone(phone),
+      text: message,
+    }),
+  });
+
+  const { rawText, data } = await parseJsonResponse(response);
+  if (!response.ok) {
+    throw new Error(
+      `evolution-send-failed:${response.status}:${rawText || JSON.stringify(data || {})}`,
+    );
+  }
+
+  return data;
+}
+
 function membershipDocId(tenantId, userId) {
   return `${tenantId}_${userId}`;
 }
@@ -237,18 +300,19 @@ function normalizeSalePayload(body) {
       const subtotal = Number(item.subtotal ?? unitPrice * quantity);
 
       return {
-        product_id: String(item.product_id ?? item.productId ?? item.sku ?? "").trim(),
+        product_id: String(item.product_id ?? item.productId ?? "").trim(),
+        sku: String(item.sku ?? item.product_sku ?? item.productSku ?? "").trim(),
         product_name: String(item.product_name ?? item.productName ?? item.name ?? "").trim(),
         quantity,
         unit_price: unitPrice,
         subtotal,
       };
     })
-    .filter((item) => item.product_id && item.product_name && item.quantity > 0);
+    .filter((item) => (item.product_id || item.sku) && item.product_name && item.quantity > 0);
 
   const total = Number(sale.total ?? sale.total_value ?? items.reduce((sum, item) => sum + item.subtotal, 0));
-  const status = String(sale.status || "pending");
-  const source = String(sale.source || "whatsapp_automation");
+  const status = normalizeSaleStatus(sale.status || "pending");
+  const source = normalizeSaleSource(sale.source || "whatsapp_automation");
 
   return {
     externalId: String(
@@ -566,20 +630,105 @@ exports.receiveN8nSale = onRequest(
 
       const saleRef = salesCol.doc();
       const orderStatus = payload.status === "confirmed" ? "awaiting_processing" : null;
+      const paymentRequestedAt =
+        payload.status === "payment_sent" || payload.status === "confirmed"
+          ? nowTs()
+          : null;
+      const paymentConfirmedAt =
+        payload.status === "confirmed" ? nowTs() : null;
+
+      const quantityByProduct = new Map();
+      const productsById = new Map();
+      const productLookupCache = new Map();
+      const resolvedItems = [];
+
+      for (const item of payload.items) {
+        const lookupKey = item.product_id ? `id:${item.product_id}` : `sku:${item.sku}`;
+        let resolvedProduct = productLookupCache.get(lookupKey);
+
+        if (!resolvedProduct) {
+          let productDoc;
+
+          if (item.product_id) {
+            productDoc = await transaction.get(productsCol.doc(item.product_id));
+            if (!productDoc.exists) {
+              throw new Error(`product-not-found:${item.product_id}`);
+            }
+          } else {
+            const skuSnapshot = await transaction.get(
+              productsCol.where("sku", "==", item.sku).limit(1),
+            );
+            if (skuSnapshot.empty) {
+              throw new Error(`product-not-found-by-sku:${item.sku}`);
+            }
+            productDoc = skuSnapshot.docs[0];
+          }
+
+          const productData = productDoc.data() || {};
+          if (productData.is_active === false) {
+            throw new Error(`product-inactive:${productDoc.id}`);
+          }
+
+          resolvedProduct = {
+            id: productDoc.id,
+            ref: productDoc.ref,
+            data: productData,
+          };
+          productLookupCache.set(lookupKey, resolvedProduct);
+          if (item.product_id && item.product_id !== productDoc.id) {
+            productLookupCache.set(`id:${item.product_id}`, resolvedProduct);
+          }
+          if (item.sku) {
+            productLookupCache.set(`sku:${item.sku}`, resolvedProduct);
+          }
+          const productSku = String(productData.sku || "").trim();
+          if (productSku) {
+            productLookupCache.set(`sku:${productSku}`, resolvedProduct);
+          }
+        }
+
+        quantityByProduct.set(
+          resolvedProduct.id,
+          (quantityByProduct.get(resolvedProduct.id) || 0) + item.quantity,
+        );
+        productsById.set(resolvedProduct.id, resolvedProduct);
+        resolvedItems.push({
+          product_id: resolvedProduct.id,
+          sku: String(resolvedProduct.data.sku || item.sku || "").trim(),
+          product_name: String(resolvedProduct.data.name || item.product_name || "").trim(),
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          subtotal: item.subtotal,
+        });
+      }
+
+      for (const [productId, requestedQuantity] of quantityByProduct.entries()) {
+        const product = productsById.get(productId);
+        const currentStock = Number(product?.data?.stock || 0);
+        if (payload.decrementStock && currentStock < requestedQuantity) {
+          throw new Error(`insufficient-stock:${productId}`);
+        }
+      }
+
+      const normalizedItems = resolvedItems.map((item) => ({
+        product_id: item.product_id,
+        sku: item.sku,
+        product_name: item.product_name,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        subtotal: item.subtotal,
+      }));
 
       transaction.set(saleRef, {
         external_id: payload.externalId || null,
         customer_id: customerId,
         customer_name: payload.customer.name || payload.customer.whatsapp,
         customer_whatsapp: payload.customer.whatsapp,
-        items: payload.items.map((item) => ({
-          product_id: item.product_id,
-          product_name: item.product_name,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          subtotal: item.subtotal,
-        })),
-        item_product_ids: payload.items.map((item) => item.product_id),
+        customer_email: payload.customer.email || "",
+        customer_address: payload.customer.address || "",
+        items: normalizedItems,
+        item_product_ids: normalizedItems.map((item) => item.product_id),
+        item_count: normalizedItems.reduce((sum, item) => sum + item.quantity, 0),
         total: payload.total,
         status: payload.status,
         source: payload.source,
@@ -588,14 +737,16 @@ exports.receiveN8nSale = onRequest(
         conversation_id: payload.conversationId,
         created_at: nowTs(),
         updated_at: nowTs(),
+        payment_requested_at: paymentRequestedAt,
+        payment_confirmed_at: paymentConfirmedAt,
       });
 
       if (payload.decrementStock) {
-        for (const item of payload.items) {
+        for (const [productId, requestedQuantity] of quantityByProduct.entries()) {
           transaction.set(
-            productsCol.doc(item.product_id),
+            productsCol.doc(productId),
             {
-              stock: admin.firestore.FieldValue.increment(-item.quantity),
+              stock: admin.firestore.FieldValue.increment(-requestedQuantity),
               updated_at: nowTs(),
             },
             { merge: true },
@@ -626,6 +777,146 @@ exports.receiveN8nSale = onRequest(
     res.status(200).json({
       ok: true,
       ...result,
+    });
+  }),
+);
+
+exports.notifyRestockCustomers = onRequest(
+  withCors(async (req, res) => {
+    if (req.method !== "POST") {
+      res.status(405).json({ ok: false, error: "method-not-allowed" });
+      return;
+    }
+
+    const auth = await verifyAuth(req);
+    const body = jsonBody(req);
+    const tenantId = String(body.tenantId || "").trim();
+    const productId = String(body.productId || "").trim();
+
+    if (!tenantId || !productId) {
+      res.status(400).json({ ok: false, error: "invalid-restock-payload" });
+      return;
+    }
+
+    await assertCanManageTenant(tenantId, auth.uid);
+
+    const tenantRef = db.collection("tenants").doc(tenantId);
+    const productRef = tenantRef.collection("products").doc(productId);
+    const alertsQuery = tenantRef
+      .collection("stockAlerts")
+      .where("product_id", "==", productId)
+      .where("status", "==", "pending");
+
+    const [tenantDoc, productDoc, alertsSnapshot] = await Promise.all([
+      tenantRef.get(),
+      productRef.get(),
+      alertsQuery.get(),
+    ]);
+
+    if (!tenantDoc.exists) {
+      res.status(404).json({ ok: false, error: "tenant-not-found" });
+      return;
+    }
+
+    if (!productDoc.exists) {
+      res.status(404).json({ ok: false, error: "product-not-found" });
+      return;
+    }
+
+    const tenantData = tenantDoc.data() || {};
+    const productData = productDoc.data() || {};
+    const stock = Number(productData.stock || 0);
+
+    if (stock <= 0) {
+      res.status(400).json({ ok: false, error: "product-out-of-stock" });
+      return;
+    }
+
+    const evolutionApiUrl = sanitizeUrl(tenantData.evolution_api_url);
+    const evolutionApiKey = String(tenantData.evolution_api_key || "").trim();
+    const evolutionInstanceName = String(tenantData.evolution_instance_name || "").trim();
+    if (!evolutionApiUrl || !evolutionApiKey || !evolutionInstanceName) {
+      res.status(400).json({ ok: false, error: "whatsapp-config-missing" });
+      return;
+    }
+
+    if (alertsSnapshot.empty) {
+      res.status(404).json({ ok: false, error: "no-pending-alerts" });
+      return;
+    }
+
+    const tenantName = String(tenantData.name || "sua loja").trim();
+    const productName = String(productData.name || "produto").trim();
+    const successes = [];
+    const failures = [];
+    const batch = db.batch();
+
+    for (const alertDoc of alertsSnapshot.docs) {
+      const alert = alertDoc.data() || {};
+      const customerName = String(alert.customer_name || "cliente").trim();
+      const customerPhone = String(alert.customer_whatsapp || "").trim();
+      if (!customerPhone) {
+        failures.push({
+          alertId: alertDoc.id,
+          customerName,
+          reason: "missing-customer-phone",
+        });
+        continue;
+      }
+
+      const message =
+        `Oi ${customerName}! A ${productName} voltou ao estoque na ${tenantName}. ` +
+        "Se ainda quiser, me responde aqui que eu separo pra voce.";
+
+      try {
+        await sendEvolutionTextMessage({
+          evolutionApiUrl,
+          apiKey: evolutionApiKey,
+          instanceName: evolutionInstanceName,
+          phone: customerPhone,
+          message,
+        });
+
+        batch.update(alertDoc.ref, {
+          status: "notified",
+          notes: "Notificacao de reposicao enviada automaticamente.",
+          resolved_at: nowTs(),
+          updated_at: nowTs(),
+        });
+
+        successes.push({
+          alertId: alertDoc.id,
+          customerName,
+          customerPhone,
+        });
+      } catch (error) {
+        logger.error("Erro ao notificar cliente sobre reposicao", {
+          tenantId,
+          productId,
+          alertId: alertDoc.id,
+          error: error.message,
+        });
+        failures.push({
+          alertId: alertDoc.id,
+          customerName,
+          customerPhone,
+          reason: error.message,
+        });
+      }
+    }
+
+    if (successes.length > 0) {
+      await batch.commit();
+    }
+
+    res.status(200).json({
+      ok: true,
+      productId,
+      productName,
+      notifiedCount: successes.length,
+      failedCount: failures.length,
+      notifiedCustomers: successes,
+      failedCustomers: failures,
     });
   }),
 );

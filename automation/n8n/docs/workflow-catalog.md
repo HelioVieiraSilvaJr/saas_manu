@@ -50,6 +50,8 @@ Tools expostas:
 - `Buscar_Produtos`
 - `Carrinho_Operar`
 - `Carrinho_View`
+- `Registrar_Aviso_Estoque`
+- `Registrar_Venda`
 - `Escalar_Humano`
 
 ## Subworkflows
@@ -104,6 +106,33 @@ Retorno esperado:
 
 Observacao:
 - o algoritmo foi desenhado para dar contexto suficiente para o agente sugerir alternativas sem inventar disponibilidade
+
+### `register-stock-alert`
+
+Arquivo: [register-stock-alert.json](/Users/heliojunior/projetos/saas_manu/automation/n8n/workflows/production/subworkflows/catalog/register-stock-alert.json)
+
+Papel:
+- registrar ou atualizar o interesse do cliente em um produto sem estoque
+
+Entradas:
+- `tenant_id`
+- `phone`
+- `customer_name`
+- `customer_id`
+- `product_id`
+- `product_name`
+- `desired_quantity`
+
+Efeitos:
+- valida se o produto existe e esta sem estoque
+- evita duplicar aviso pendente para o mesmo cliente e produto
+- atualiza a quantidade desejada quando o cliente ja estava aguardando
+
+Retorno esperado:
+- `success`
+- `created`
+- `alert_id`
+- `message`
 
 ### `cart-operate`
 
@@ -162,6 +191,38 @@ Retorno esperado:
 - `item_count`
 - `message` quando carrinho estiver vazio
 
+### `register-sale`
+
+Arquivo: [register-sale.json](/Users/heliojunior/projetos/saas_manu/automation/n8n/workflows/production/subworkflows/cart/register-sale.json)
+
+Papel:
+- transformar o carrinho atual em uma venda registrada no CRM
+
+Entradas:
+- `webhook_url`
+- `tenant_id`
+- `phone`
+- `customer_name`
+- `customer_id`
+- `customer_email`
+- `customer_address`
+- `notes`
+- `conversation_id`
+- `status`
+- `decrement_stock`
+
+Efeitos:
+- lê o carrinho atual do cliente
+- monta payload padronizado de venda automatizada
+- envia para o endpoint `receiveN8nSale`
+
+Retorno esperado:
+- `success`
+- `sale_id`
+- `customer_id`
+- `created`
+- `message`
+
 ### `update-whatsapp-status`
 
 Arquivo: [update-whatsapp-status.json](/Users/heliojunior/Projetos/saas_manu/automation/n8n/workflows/production/subworkflows/channel/update-whatsapp-status.json)
@@ -203,3 +264,7 @@ Retorno esperado:
 
 Ponto de atencao:
 - o ID atual do workflow aparece como `ESCALAR_HUMANO_ID`, sugerindo que a referencia final ainda precisa ser confirmada
+
+Pontos de atencao gerais:
+- `register-sale` depende da `webhook_url` oficial do tenant estar configurada no ambiente do agente
+- os novos IDs `REGISTRAR_VENDA_ID` e `REGISTRAR_AVISO_ESTOQUE_ID` devem ser substituidos pelos IDs reais apos importacao

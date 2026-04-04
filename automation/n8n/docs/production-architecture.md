@@ -42,6 +42,8 @@ O workflow [firestore-mcp-server.json](/Users/heliojunior/Projetos/saas_manu/aut
 - `Buscar_Produtos`
 - `Carrinho_Operar`
 - `Carrinho_View`
+- `Registrar_Aviso_Estoque`
+- `Registrar_Venda`
 - `Escalar_Humano`
 
 Essa camada ajuda a separar a conversa da logica de dados.
@@ -51,8 +53,8 @@ Essa camada ajuda a separar a conversa da logica de dados.
 Os subworkflows encapsulam operacoes de negocio:
 
 - `customer`: atualizacao de cadastro
-- `catalog`: busca e ranqueamento de produtos
-- `cart`: leitura e escrita do carrinho
+- `catalog`: busca, ranqueamento e registro de aviso de reposicao
+- `cart`: leitura, escrita e fechamento do carrinho em venda
 - `channel`: atualizacao de status no WhatsApp
 - `handoff`: escalonamento para time humano
 
@@ -72,10 +74,14 @@ O prompt do agente implementa algumas politicas importantes:
 - nunca inventar estoque, frete, prazo ou dados internos
 - operar carrinho apenas com pedido explicito do cliente
 - atualizar cadastro enviando todos os campos conhecidos
+- registrar aviso de estoque quando o cliente quiser ser avisado sobre um item esgotado
+- registrar venda no CRM antes de encaminhar para pagamento ou confirmacao
 - escalar para humano quando houver pedido do cliente ou falha recorrente da IA
 
 ## Pontos de atencao
 
 - o workflow principal foi exportado sem `id`; o repositorio preserva o conteudo e adiciona apenas `name`
 - o subworkflow de escalacao ainda referencia `ESCALAR_HUMANO_ID`, o que sugere placeholder
+- os novos subworkflows `REGISTRAR_VENDA_ID` e `REGISTRAR_AVISO_ESTOQUE_ID` tambem usam placeholders e devem ser atualizados apos importacao
+- o fluxo de registro de venda depende da `webhook_url` oficial do tenant para reutilizar a validacao server-side do backend
 - parte do comportamento operacional depende de endpoints externos e credenciais do ambiente do `n8n`

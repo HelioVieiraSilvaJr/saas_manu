@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../Commons/Models/ProductModel.dart';
+import '../../Commons/Models/StockAlertGroupModel.dart';
 import '../../Commons/Utils/ScreenResponsive.dart';
 import '../../Commons/Widgets/DesignSystem/DSColors.dart';
 import '../../Commons/Widgets/DesignSystem/DSTextStyle.dart';
@@ -12,6 +14,7 @@ import '../../Sources/Coordinators/AppShell.dart';
 import 'ProductFormPresenter.dart';
 import 'ProductFormViewModel.dart';
 import 'ProductsCoordinator.dart';
+import '../StockAlerts/StockAlertsRepository.dart';
 
 /// Página de criação/edição de produto.
 ///
@@ -25,6 +28,7 @@ class ProductFormPage extends StatefulWidget {
 
 class _ProductFormPageState extends State<ProductFormPage> {
   late final ProductFormPresenter _presenter;
+  final _stockAlertsRepository = StockAlertsRepository();
   ProductFormViewModel _viewModel = const ProductFormViewModel();
 
   final _formKey = GlobalKey<FormState>();
@@ -32,8 +36,13 @@ class _ProductFormPageState extends State<ProductFormPage> {
   final _skuController = TextEditingController();
   final _priceController = TextEditingController();
   final _stockController = TextEditingController();
+  final _categoryController = TextEditingController();
+  final _colorController = TextEditingController();
+  final _sizeController = TextEditingController();
+  final _tagsController = TextEditingController();
   final _descriptionController = TextEditingController();
   bool _isActive = true;
+  bool _isRestockNotificationSending = false;
 
   bool _initialized = false;
 
@@ -75,6 +84,10 @@ class _ProductFormPageState extends State<ProductFormPage> {
           .toStringAsFixed(2)
           .replaceAll('.', ',');
       _stockController.text = product.stock.toString();
+      _categoryController.text = product.category ?? '';
+      _colorController.text = product.color ?? '';
+      _sizeController.text = product.size ?? '';
+      _tagsController.text = product.tags.join(', ');
       _descriptionController.text = product.description ?? '';
       _isActive = product.isActive;
     }
@@ -86,6 +99,10 @@ class _ProductFormPageState extends State<ProductFormPage> {
     _skuController.dispose();
     _priceController.dispose();
     _stockController.dispose();
+    _categoryController.dispose();
+    _colorController.dispose();
+    _sizeController.dispose();
+    _tagsController.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
@@ -135,6 +152,10 @@ class _ProductFormPageState extends State<ProductFormPage> {
                 child: Column(
                   children: [
                     _buildInfoCard(colors, textStyles),
+                    if (_viewModel.isEditing && _viewModel.product != null) ...[
+                      const SizedBox(height: DSSpacing.xl),
+                      _buildStockAlertsContextCard(colors, textStyles),
+                    ],
                     const SizedBox(height: DSSpacing.xl),
                     _buildImageCard(colors, textStyles),
                     const SizedBox(height: DSSpacing.huge),
@@ -313,6 +334,55 @@ class _ProductFormPageState extends State<ProductFormPage> {
                 ),
                 const SizedBox(height: DSSpacing.lg),
 
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: FormTextField(
+                        label: 'Categoria',
+                        controller: _categoryController,
+                        hintText: 'Ex: Camisetas',
+                        textInputAction: TextInputAction.next,
+                      ),
+                    ),
+                    const SizedBox(width: DSSpacing.lg),
+                    Expanded(
+                      child: FormTextField(
+                        label: 'Cor',
+                        controller: _colorController,
+                        hintText: 'Ex: Preta',
+                        textInputAction: TextInputAction.next,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: DSSpacing.lg),
+
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: FormTextField(
+                        label: 'Tamanho',
+                        controller: _sizeController,
+                        hintText: 'Ex: M',
+                        textInputAction: TextInputAction.next,
+                      ),
+                    ),
+                    const SizedBox(width: DSSpacing.lg),
+                    Expanded(
+                      child: FormTextField(
+                        label: 'Tags',
+                        controller: _tagsController,
+                        hintText: 'Ex: basica, algodao, casual',
+                        helperText: 'Separe por vírgulas',
+                        textInputAction: TextInputAction.next,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: DSSpacing.lg),
+
                 FormTextField(
                   label: 'Descrição',
                   controller: _descriptionController,
@@ -359,6 +429,179 @@ class _ProductFormPageState extends State<ProductFormPage> {
 
                 _buildStatusToggle(colors, textStyles),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStockAlertsContextCard(DSColors colors, DSTextStyle textStyles) {
+    final product = _viewModel.product;
+    if (product == null) return const SizedBox.shrink();
+
+    return StreamBuilder<StockAlertGroupModel?>(
+      stream: _stockAlertsRepository.watchPendingGroupForProduct(product.uid),
+      builder: (context, snapshot) {
+        final group = snapshot.data;
+        final hasWaitingCustomers = group != null && group.requestsCount > 0;
+        final canNotifyNow = hasWaitingCustomers && product.stock > 0;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: colors.cardBackground,
+            borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
+            border: Border.all(
+              color: hasWaitingCustomers
+                  ? colors.orange.withValues(alpha: 0.35)
+                  : colors.divider,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: colors.shadowColor,
+                blurRadius: DSSpacing.elevationSmBlur,
+                offset: const Offset(0, DSSpacing.elevationSmOffset),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(DSSpacing.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.notifications_active_rounded,
+                      color: hasWaitingCustomers
+                          ? colors.orange
+                          : colors.textTertiary,
+                    ),
+                    const SizedBox(width: DSSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        'Avisos de Estoque deste Produto',
+                        style: textStyles.headline3,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: DSSpacing.sm),
+                Text(
+                  hasWaitingCustomers
+                      ? '${group.customerCount} cliente${group.customerCount == 1 ? '' : 's'} aguardando reposição, total de ${group.totalDesiredQuantity} unidade${group.totalDesiredQuantity == 1 ? '' : 's'} solicitada${group.totalDesiredQuantity == 1 ? '' : 's'}.'
+                      : 'Nenhum cliente está aguardando reposição para este produto no momento.',
+                  style: textStyles.bodyMedium.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+                if (hasWaitingCustomers) ...[
+                  const SizedBox(height: DSSpacing.sm),
+                  Wrap(
+                    spacing: DSSpacing.xs,
+                    runSpacing: DSSpacing.xs,
+                    children: [
+                      _buildMetricPill(
+                        colors,
+                        textStyles,
+                        icon: Icons.people_rounded,
+                        label: '${group.customerCount} interessados',
+                        color: colors.secundaryColor,
+                      ),
+                      _buildMetricPill(
+                        colors,
+                        textStyles,
+                        icon: Icons.inventory_2_rounded,
+                        label:
+                            '${group.totalDesiredQuantity} itens solicitados',
+                        color: colors.primaryColor,
+                      ),
+                      _buildMetricPill(
+                        colors,
+                        textStyles,
+                        icon: Icons.schedule_rounded,
+                        label:
+                            'Aguardando há ${group.waitTimeFormatted.toLowerCase()}',
+                        color: colors.orange,
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: DSSpacing.base),
+                Wrap(
+                  spacing: DSSpacing.sm,
+                  runSpacing: DSSpacing.sm,
+                  children: [
+                    DSButton.secondary(
+                      label: 'Ver Lista de Avisos',
+                      icon: Icons.visibility_rounded,
+                      onTap: hasWaitingCustomers
+                          ? () => Navigator.pushNamed(
+                              context,
+                              '/stock-alerts',
+                              arguments: {
+                                'productId': product.uid,
+                                'productName': product.name,
+                              },
+                            )
+                          : null,
+                    ),
+                    DSButton.accent(
+                      label: product.stock > 0
+                          ? 'Notificar Reposição'
+                          : 'Sem Estoque para Avisar',
+                      icon: Icons.campaign_rounded,
+                      isLoading: _isRestockNotificationSending,
+                      onTap: canNotifyNow && !_isRestockNotificationSending
+                          ? () => _handleNotifyRestock(product)
+                          : null,
+                    ),
+                  ],
+                ),
+                if (hasWaitingCustomers && product.stock <= 0) ...[
+                  const SizedBox(height: DSSpacing.sm),
+                  Text(
+                    'Reponha o estoque para liberar o disparo das notificações.',
+                    style: textStyles.caption.copyWith(
+                      color: colors.orange,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMetricPill(
+    DSColors colors,
+    DSTextStyle textStyles, {
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: DSSpacing.sm,
+        vertical: DSSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: textStyles.caption.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -654,6 +897,10 @@ class _ProductFormPageState extends State<ProductFormPage> {
 
           _buildImageSection(colors, textStyles),
           const SizedBox(height: DSSpacing.xl),
+          if (_viewModel.isEditing && _viewModel.product != null) ...[
+            _buildStockAlertsContextCard(colors, textStyles),
+            const SizedBox(height: DSSpacing.xl),
+          ],
 
           FormTextField(
             label: 'Nome do Produto *',
@@ -690,6 +937,43 @@ class _ProductFormPageState extends State<ProductFormPage> {
             prefixIcon: Icons.inventory_2_outlined,
             keyboardType: TextInputType.number,
             validator: _validateStock,
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: DSSpacing.lg),
+          FormTextField(
+            label: 'Categoria',
+            controller: _categoryController,
+            hintText: 'Ex: Camisetas',
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: DSSpacing.lg),
+          Row(
+            children: [
+              Expanded(
+                child: FormTextField(
+                  label: 'Cor',
+                  controller: _colorController,
+                  hintText: 'Ex: Preta',
+                  textInputAction: TextInputAction.next,
+                ),
+              ),
+              const SizedBox(width: DSSpacing.md),
+              Expanded(
+                child: FormTextField(
+                  label: 'Tamanho',
+                  controller: _sizeController,
+                  hintText: 'Ex: M',
+                  textInputAction: TextInputAction.next,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: DSSpacing.lg),
+          FormTextField(
+            label: 'Tags',
+            controller: _tagsController,
+            hintText: 'Ex: basica, algodao, casual',
+            helperText: 'Separe por vírgulas',
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: DSSpacing.lg),
@@ -962,6 +1246,35 @@ class _ProductFormPageState extends State<ProductFormPage> {
 
   // MARK: - Actions
 
+  Future<void> _handleNotifyRestock(ProductModel product) async {
+    setState(() => _isRestockNotificationSending = true);
+    try {
+      final result = await _stockAlertsRepository.notifyCustomersForProduct(
+        product.uid,
+      );
+      if (!mounted) return;
+
+      final ok = result['ok'] == true;
+      final notifiedCount = result['notifiedCount'] ?? 0;
+      final failedCount = result['failedCount'] ?? 0;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            ok
+                ? '$notifiedCount cliente${notifiedCount == 1 ? '' : 's'} notificado${notifiedCount == 1 ? '' : 's'}${failedCount > 0 ? ' • $failedCount falha${failedCount == 1 ? '' : 's'}' : ''}.'
+                : (result['error']?.toString() ??
+                      'Não foi possível disparar as notificações.'),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isRestockNotificationSending = false);
+      }
+    }
+  }
+
   Future<void> _pickImage() async {
     if (!_viewModel.canAddImage) return;
 
@@ -1014,12 +1327,28 @@ class _ProductFormPageState extends State<ProductFormPage> {
         .replaceAll(',', '.');
     final price = double.tryParse(priceText) ?? 0;
     final stock = int.tryParse(_stockController.text) ?? 0;
+    final tags = _tagsController.text
+        .split(',')
+        .map((tag) => tag.trim())
+        .where((tag) => tag.isNotEmpty)
+        .toSet()
+        .toList();
 
     final success = await _presenter.save(
       name: _nameController.text.trim(),
       sku: _skuController.text.trim(),
       price: price,
       stock: stock,
+      category: _categoryController.text.trim().isEmpty
+          ? null
+          : _categoryController.text.trim(),
+      color: _colorController.text.trim().isEmpty
+          ? null
+          : _colorController.text.trim(),
+      size: _sizeController.text.trim().isEmpty
+          ? null
+          : _sizeController.text.trim(),
+      tags: tags,
       description: _descriptionController.text.trim().isEmpty
           ? null
           : _descriptionController.text.trim(),

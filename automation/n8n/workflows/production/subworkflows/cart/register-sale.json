@@ -1,0 +1,249 @@
+{
+  "name": "Sub - Registrar Venda",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "webhook_url"
+            },
+            {
+              "name": "tenant_id"
+            },
+            {
+              "name": "phone"
+            },
+            {
+              "name": "customer_name"
+            },
+            {
+              "name": "customer_id"
+            },
+            {
+              "name": "customer_email"
+            },
+            {
+              "name": "customer_address"
+            },
+            {
+              "name": "notes"
+            },
+            {
+              "name": "conversation_id"
+            },
+            {
+              "name": "status"
+            },
+            {
+              "name": "decrement_stock"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1184,
+        16
+      ],
+      "id": "11111111-1111-4111-8111-111111111111",
+      "name": "Workflow Trigger"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $json.tenant_id }}:runQuery",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleFirebaseCloudFirestoreOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"structuredQuery\": {\n    \"from\": [{ \"collectionId\": \"carts\" }],\n    \"where\": {\n      \"fieldFilter\": {\n        \"field\": { \"fieldPath\": \"phone\" },\n        \"op\": \"EQUAL\",\n        \"value\": { \"stringValue\": \"{{ $json.phone }}\" }\n      }\n    },\n    \"limit\": 1\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -928,
+        16
+      ],
+      "id": "22222222-2222-4222-8222-222222222222",
+      "name": "Buscar Carrinho",
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "QxD9cYkBZKwyeLQL",
+          "name": "Saas Manu - Firestore OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const trigger = $('Workflow Trigger').first().json;\nconst raw = $input.first().json;\n\nif (!trigger.webhook_url) {\n  return [{ json: { success: false, message: 'Webhook de vendas não configurado.' } }];\n}\n\nif (!raw.document) {\n  return [{ json: { success: false, empty: true, message: 'Carrinho vazio.' } }];\n}\n\nconst fields = raw.document.fields || {};\nconst rawItems = fields.items?.arrayValue?.values || [];\nconst items = rawItems\n  .map((entry) => {\n    const f = entry.mapValue?.fields || {};\n    const quantity = Number(f.quantity?.integerValue ?? f.quantity?.doubleValue ?? 1);\n    const price = Number(f.price?.doubleValue ?? f.price?.integerValue ?? 0);\n    return {\n      sku: f.sku?.stringValue || '',\n      product_name: f.product_name?.stringValue || '',\n      quantity,\n      unit_price: price,\n      subtotal: Math.round(quantity * price * 100) / 100,\n    };\n  })\n  .filter((item) => item.sku && item.product_name && item.quantity > 0);\n\nif (items.length === 0) {\n  return [{ json: { success: false, empty: true, message: 'Carrinho vazio.' } }];\n}\n\nconst total = Number(fields.total?.doubleValue ?? fields.total?.integerValue ?? items.reduce((sum, item) => sum + item.subtotal, 0));\nconst cartId = raw.document.name.split('/').pop();\nconst status = String(trigger.status || 'pending').trim() || 'pending';\nconst sale = {\n  customer_id: trigger.customer_id || '',\n  customer_name: trigger.customer_name || '',\n  customer_whatsapp: trigger.phone || '',\n  customer_email: trigger.customer_email || '',\n  customer_address: trigger.customer_address || '',\n  items,\n  total,\n  status,\n  source: 'whatsapp_automation',\n  notes: trigger.notes || '',\n  conversation_id: trigger.conversation_id || '',\n  decrement_stock: ['true', '1', 'yes'].includes(String(trigger.decrement_stock || '').toLowerCase()),\n};\n\nreturn [{\n  json: {\n    _webhookUrl: trigger.webhook_url,\n    _cartId: cartId,\n    _tenantId: trigger.tenant_id,\n    sale,\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -672,
+        16
+      ],
+      "id": "33333333-3333-4333-8333-333333333333",
+      "name": "Montar Payload da Venda"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-sale",
+              "leftValue": "={{ $json.sale }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -432,
+        16
+      ],
+      "id": "44444444-4444-4444-8444-444444444444",
+      "name": "Tem Venda?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json._webhookUrl }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ sale: $json.sale }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -192,
+        -80
+      ],
+      "id": "55555555-5555-4555-8555-555555555555",
+      "name": "Registrar Venda"
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json || {};\nconst salePayload = $('Montar Payload da Venda').first().json;\n\nreturn [{\n  json: {\n    success: response.ok === true,\n    ok: response.ok === true,\n    sale_id: response.saleId || null,\n    customer_id: response.customerId || salePayload.sale?.customer_id || null,\n    created: response.created === true,\n    total: salePayload.sale?.total || 0,\n    item_count: salePayload.sale?.items?.length || 0,\n    message: response.ok === true\n      ? 'Venda registrada com sucesso.'\n      : (response.error || 'Não foi possível registrar a venda.'),\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        32,
+        -80
+      ],
+      "id": "66666666-6666-4666-8666-666666666666",
+      "name": "Normalizar Resultado"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $input.first().json }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -176,
+        112
+      ],
+      "id": "77777777-7777-4777-8777-777777777777",
+      "name": "Sem Venda"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Buscar Carrinho",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Carrinho": {
+      "main": [
+        [
+          {
+            "node": "Montar Payload da Venda",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar Payload da Venda": {
+      "main": [
+        [
+          {
+            "node": "Tem Venda?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem Venda?": {
+      "main": [
+        [
+          {
+            "node": "Registrar Venda",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sem Venda",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar Venda": {
+      "main": [
+        [
+          {
+            "node": "Normalizar Resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "88888888-8888-4888-8888-888888888888",
+  "meta": {
+    "instanceId": "8f610a00096a913663098d07d4589b06a2b6a8fa62c633cf329d6f8ac12d3afd"
+  },
+  "id": "REGISTRAR_VENDA_ID",
+  "tags": []
+}

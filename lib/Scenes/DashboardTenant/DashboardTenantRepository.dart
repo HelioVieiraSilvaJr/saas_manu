@@ -187,7 +187,6 @@ class DashboardTenantRepository {
             .get(),
         _stockAlertsCollection
             .where('status', isEqualTo: StockAlertStatus.pending.name)
-            .count()
             .get(),
       ]);
 
@@ -204,8 +203,13 @@ class DashboardTenantRepository {
           ((results[6] as AggregateQuerySnapshot).count ?? 0);
       final pendingEscalationsCount =
           (results[7] as AggregateQuerySnapshot).count ?? 0;
-      final pendingStockAlertsCount =
-          (results[8] as AggregateQuerySnapshot).count ?? 0;
+      final pendingStockAlertsSnapshot =
+          results[8] as QuerySnapshot<Map<String, dynamic>>;
+      final pendingStockAlertsCount = pendingStockAlertsSnapshot.docs
+          .map((doc) => doc.data()['product_id'] as String? ?? '')
+          .where((productId) => productId.isNotEmpty)
+          .toSet()
+          .length;
 
       double salesToday = 0;
       double salesYesterday = 0;

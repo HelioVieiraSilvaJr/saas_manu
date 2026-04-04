@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import '../../Commons/Models/StockAlertModel.dart';
+import '../../Commons/Models/StockAlertGroupModel.dart';
 import 'StockAlertsRepository.dart';
 import 'StockAlertsViewModel.dart';
 
@@ -16,7 +16,7 @@ class StockAlertsPresenter {
 
   VoidCallback? onUpdate;
 
-  StreamSubscription<List<StockAlertModel>>? _pendingSubscription;
+  StreamSubscription<List<StockAlertGroupModel>>? _pendingSubscription;
   Timer? _debounceTimer;
 
   // MARK: - Inicialização
@@ -26,16 +26,25 @@ class StockAlertsPresenter {
     _viewModel = _viewModel.copyWith(isLoading: true);
     onUpdate?.call();
 
-    _pendingSubscription = _repository.watchPendingAlerts().listen(
-      (alerts) {
-        final uniqueCustomers = alerts.map((a) => a.customerId).toSet().length;
+    _pendingSubscription?.cancel();
+    _pendingSubscription = _repository.watchPendingAlertGroups().listen(
+      (groups) {
+        final uniqueCustomers = groups
+            .expand((group) => group.alerts.map((alert) => alert.customerId))
+            .toSet()
+            .length;
+        final pendingRequests = groups.fold<int>(
+          0,
+          (sum, group) => sum + group.requestsCount,
+        );
 
         _viewModel = _viewModel.copyWith(
           isLoading: false,
-          pendingAlerts: alerts,
-          pendingCount: alerts.length,
+          pendingGroups: groups,
+          pendingGroupsCount: groups.length,
+          pendingRequestsCount: pendingRequests,
           uniqueCustomersCount: uniqueCustomers,
-          productRanking: _buildProductRanking(alerts),
+          productRanking: groups,
         );
         _applyFilters();
       },
@@ -54,12 +63,12 @@ class StockAlertsPresenter {
     _viewModel = _viewModel.copyWith(isLoadingResolved: true);
     onUpdate?.call();
 
-    final resolved = await _repository.getResolved();
+    final resolved = await _repository.getResolvedGroups();
 
     _viewModel = _viewModel.copyWith(
       isLoadingResolved: false,
-      resolvedAlerts: resolved,
-      filteredResolved: resolved,
+      resolvedGroups: resolved,
+      filteredResolvedGroups: resolved,
     );
     _applyFilters();
   }
@@ -71,7 +80,7 @@ class StockAlertsPresenter {
     onUpdate?.call();
 
     if (tab == StockAlertTab.resolved &&
-        _viewModel.resolvedAlerts.isEmpty &&
+        _viewModel.resolvedGroups.isEmpty &&
         !_viewModel.isLoadingResolved) {
       loadResolved();
     }
@@ -90,88 +99,68 @@ class StockAlertsPresenter {
     _applyFilters();
   }
 
+  void setProductFilter(String? productId, {String? productName}) {
+    _viewModel = _viewModel.copyWith(
+      productFilterId: productId,
+      productFilterName: productName,
+    );
+    _applyFilters();
+  }
+
   // MARK: - Filtragem
 
   void _applyFilters() {
-    var pending = List<StockAlertModel>.from(_viewModel.pendingAlerts);
-    var resolved = List<StockAlertModel>.from(_viewModel.resolvedAlerts);
+    var pending = List<StockAlertGroupModel>.from(_viewModel.pendingGroups);
+    var resolved = List<StockAlertGroupModel>.from(_viewModel.resolvedGroups);
+
+    if (_viewModel.productFilterId != null) {
+      pending = pending
+          .where((group) => group.productId == _viewModel.productFilterId)
+          .toList();
+      resolved = resolved
+          .where((group) => group.productId == _viewModel.productFilterId)
+          .toList();
+    }
 
     if (_viewModel.searchQuery.isNotEmpty) {
       final q = _viewModel.searchQuery.toLowerCase();
-      pending = pending.where((a) {
-        return a.customerName.toLowerCase().contains(q) ||
-            a.customerWhatsapp.contains(q) ||
-            a.productName.toLowerCase().contains(q);
-      }).toList();
-
-      resolved = resolved.where((a) {
-        return a.customerName.toLowerCase().contains(q) ||
-            a.customerWhatsapp.contains(q) ||
-            a.productName.toLowerCase().contains(q);
-      }).toList();
+      pending = pending.where((group) => group.matchesQuery(q)).toList();
+      resolved = resolved.where((group) => group.matchesQuery(q)).toList();
     }
 
     _viewModel = _viewModel.copyWith(
-      filteredPending: pending,
-      filteredResolved: resolved,
+      filteredPendingGroups: pending,
+      filteredResolvedGroups: resolved,
     );
     onUpdate?.call();
   }
 
-  // MARK: - Ranking de Produtos
-
-  List<ProductRanking> _buildProductRanking(List<StockAlertModel> alerts) {
-    final Map<String, _RankingAccumulator> map = {};
-    for (final alert in alerts) {
-      final acc = map.putIfAbsent(
-        alert.productId,
-        () => _RankingAccumulator(alert.productId, alert.productName),
-      );
-      acc.customerIds.add(alert.customerId);
-      acc.totalQuantity += alert.desiredQuantity;
-    }
-
-    final ranking = map.values
-        .map(
-          (acc) => ProductRanking(
-            productId: acc.productId,
-            productName: acc.productName,
-            customerCount: acc.customerIds.length,
-            totalDesiredQuantity: acc.totalQuantity,
-          ),
-        )
-        .toList();
-
-    ranking.sort((a, b) => b.customerCount.compareTo(a.customerCount));
-    return ranking;
-  }
-
   // MARK: - Ações
 
-  /// Encerra um aviso de estoque.
-  Future<bool> dismissAlert(String alertId, {String? notes}) async {
-    _viewModel = _viewModel.copyWith(actionInProgressId: alertId);
+  /// Encerra todos os avisos de estoque de um produto.
+  Future<bool> dismissGroup(String productId, {String? notes}) async {
+    _viewModel = _viewModel.copyWith(actionInProgressProductId: productId);
     onUpdate?.call();
 
-    final success = await _repository.dismissAlert(alertId, notes: notes);
+    final success = await _repository.dismissGroup(productId, notes: notes);
 
-    _viewModel = _viewModel.copyWith(actionInProgressId: null);
+    _viewModel = _viewModel.copyWith(actionInProgressProductId: null);
     onUpdate?.call();
 
     return success;
   }
 
-  /// Marca aviso como notificado.
-  Future<bool> markNotified(String alertId, {String? notes}) async {
-    _viewModel = _viewModel.copyWith(actionInProgressId: alertId);
+  /// Dispara notificações de reposição para todos os clientes do produto.
+  Future<Map<String, dynamic>> notifyGroup(String productId) async {
+    _viewModel = _viewModel.copyWith(actionInProgressProductId: productId);
     onUpdate?.call();
 
-    final success = await _repository.markNotified(alertId, notes: notes);
+    final result = await _repository.notifyCustomersForProduct(productId);
 
-    _viewModel = _viewModel.copyWith(actionInProgressId: null);
+    _viewModel = _viewModel.copyWith(actionInProgressProductId: null);
     onUpdate?.call();
 
-    return success;
+    return result;
   }
 
   // MARK: - Stream para Badge
@@ -187,14 +176,4 @@ class StockAlertsPresenter {
     _pendingSubscription?.cancel();
     _debounceTimer?.cancel();
   }
-}
-
-/// Acumulador interno para montar ranking.
-class _RankingAccumulator {
-  final String productId;
-  final String productName;
-  final Set<String> customerIds = {};
-  int totalQuantity = 0;
-
-  _RankingAccumulator(this.productId, this.productName);
 }

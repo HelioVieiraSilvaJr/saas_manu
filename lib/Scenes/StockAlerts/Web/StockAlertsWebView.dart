@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../Commons/Widgets/DesignSystem/DSColors.dart';
 import '../../../Commons/Widgets/DesignSystem/DSMetricCard.dart';
 import '../../../Commons/Widgets/DesignSystem/DSSpacing.dart';
@@ -14,17 +13,19 @@ import '../Widgets/StockAlertCard.dart';
 class StockAlertsWebView extends StatelessWidget {
   final StockAlertsPresenter presenter;
   final TextEditingController searchController;
-  final void Function(String alertId) onDismiss;
-  final void Function(String alertId) onNotified;
+  final void Function(String productId) onDismiss;
+  final void Function(String productId) onNotify;
   final void Function(StockAlertTab tab) onTabChange;
+  final VoidCallback onClearProductFilter;
 
   const StockAlertsWebView({
     super.key,
     required this.presenter,
     required this.searchController,
     required this.onDismiss,
-    required this.onNotified,
+    required this.onNotify,
     required this.onTabChange,
+    required this.onClearProductFilter,
   });
 
   @override
@@ -51,15 +52,17 @@ class StockAlertsWebView extends StatelessWidget {
           ],
           _buildTabs(vm, colors, textStyles),
           const SizedBox(height: DSSpacing.lg),
-          _buildSearchBar(vm, colors, textStyles),
+          _buildSearchBar(vm),
+          if (vm.hasScopedProductFilter) ...[
+            const SizedBox(height: DSSpacing.base),
+            _buildProductScope(vm, colors, textStyles),
+          ],
           const SizedBox(height: DSSpacing.lg),
-          _buildContent(vm, colors, textStyles),
+          _buildContent(vm),
         ],
       ),
     );
   }
-
-  // ──────────────────── Header ────────────────────
 
   Widget _buildHeader(
     StockAlertsViewModel vm,
@@ -83,7 +86,7 @@ class StockAlertsWebView extends StatelessWidget {
               ),
               const SizedBox(height: DSSpacing.xs),
               Text(
-                'Clientes aguardando reposição de estoque para serem notificados',
+                'Produtos com clientes aguardando reposição para serem notificados',
                 style: textStyles.bodyMedium.copyWith(
                   color: colors.textTertiary,
                 ),
@@ -95,16 +98,14 @@ class StockAlertsWebView extends StatelessWidget {
     );
   }
 
-  // ──────────────────── Metrics ────────────────────
-
   Widget _buildMetricCards(StockAlertsViewModel vm, DSColors colors) {
     return Row(
       children: [
         Expanded(
           child: DSMetricCard(
-            title: 'Avisos Pendentes',
+            title: 'Produtos em Espera',
             value: vm.pendingCount.toString(),
-            comparison: 'aguardando reposição',
+            comparison: 'com alerta pendente',
             icon: Icons.notifications_active_rounded,
             color: vm.pendingCount > 0
                 ? colors.orange
@@ -124,17 +125,15 @@ class StockAlertsWebView extends StatelessWidget {
         const SizedBox(width: DSSpacing.base),
         Expanded(
           child: DSMetricCard(
-            title: 'Produtos Desejados',
-            value: vm.productRanking.length.toString(),
-            comparison: 'produtos sem estoque',
+            title: 'Pedidos em Espera',
+            value: vm.pendingRequestsCount.toString(),
+            comparison: 'solicitações de reposição',
             icon: Icons.inventory_2_rounded,
           ),
         ),
       ],
     );
   }
-
-  // ──────────────────── Product Ranking ────────────────────
 
   Widget _buildProductRanking(
     StockAlertsViewModel vm,
@@ -153,7 +152,7 @@ class StockAlertsWebView extends StatelessWidget {
           BoxShadow(
             color: colors.shadowColor,
             blurRadius: DSSpacing.elevationSmBlur,
-            offset: Offset(0, DSSpacing.elevationSmOffset),
+            offset: const Offset(0, DSSpacing.elevationSmOffset),
           ),
         ],
       ),
@@ -161,20 +160,13 @@ class StockAlertsWebView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '🏆 Ranking de Produtos Mais Desejados',
+            'Ranking de Produtos Mais Desejados',
             style: textStyles.labelLarge,
           ),
           const SizedBox(height: DSSpacing.sm),
           ...top.asMap().entries.map((entry) {
             final idx = entry.key;
             final product = entry.value;
-            final medal = idx == 0
-                ? '🥇'
-                : idx == 1
-                ? '🥈'
-                : idx == 2
-                ? '🥉'
-                : '${idx + 1}º';
 
             return Padding(
               padding: const EdgeInsets.only(bottom: DSSpacing.xs),
@@ -183,7 +175,7 @@ class StockAlertsWebView extends StatelessWidget {
                   SizedBox(
                     width: 32,
                     child: Text(
-                      medal,
+                      '${idx + 1}º',
                       style: textStyles.bodyMedium,
                       textAlign: TextAlign.center,
                     ),
@@ -242,8 +234,6 @@ class StockAlertsWebView extends StatelessWidget {
     );
   }
 
-  // ──────────────────── Tabs ────────────────────
-
   Widget _buildTabs(
     StockAlertsViewModel vm,
     DSColors colors,
@@ -269,18 +259,12 @@ class StockAlertsWebView extends StatelessWidget {
     );
   }
 
-  // ──────────────────── Search ────────────────────
-
-  Widget _buildSearchBar(
-    StockAlertsViewModel vm,
-    DSColors colors,
-    DSTextStyle textStyles,
-  ) {
+  Widget _buildSearchBar(StockAlertsViewModel vm) {
     return TextField(
       controller: searchController,
       onChanged: presenter.search,
       decoration: InputDecoration(
-        hintText: 'Buscar por cliente, WhatsApp ou produto...',
+        hintText: 'Buscar por cliente ou produto...',
         prefixIcon: const Icon(Icons.search_rounded),
         suffixIcon: searchController.text.isNotEmpty
             ? IconButton(
@@ -295,25 +279,53 @@ class StockAlertsWebView extends StatelessWidget {
     );
   }
 
-  // ──────────────────── Content ────────────────────
-
-  Widget _buildContent(
+  Widget _buildProductScope(
     StockAlertsViewModel vm,
     DSColors colors,
     DSTextStyle textStyles,
   ) {
+    return Container(
+      padding: const EdgeInsets.all(DSSpacing.base),
+      decoration: BoxDecoration(
+        color: colors.primarySurface,
+        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        border: Border.all(color: colors.primaryColor.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.filter_alt_rounded, color: colors.primaryColor),
+          const SizedBox(width: DSSpacing.sm),
+          Expanded(
+            child: Text(
+              'Filtrando por produto: ${vm.productFilterName ?? 'produto selecionado'}',
+              style: textStyles.bodyMedium.copyWith(
+                color: colors.primaryColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: onClearProductFilter,
+            child: const Text('Limpar filtro'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContent(StockAlertsViewModel vm) {
     if (vm.isLoading) {
       return const LoadingIndicator(message: 'Carregando avisos de estoque...');
     }
 
     if (vm.currentTab == StockAlertTab.pending) {
-      return _buildPendingList(vm, colors);
-    } else {
-      return _buildResolvedList(vm, colors);
+      return _buildPendingList(vm);
     }
+
+    return _buildResolvedList(vm);
   }
 
-  Widget _buildPendingList(StockAlertsViewModel vm, DSColors colors) {
+  Widget _buildPendingList(StockAlertsViewModel vm) {
     if (vm.filteredPending.isEmpty) {
       return EmptyState(
         icon: Icons.notifications_none_rounded,
@@ -322,7 +334,7 @@ class StockAlertsWebView extends StatelessWidget {
             : 'Nenhum aviso pendente',
         message: vm.hasSearch
             ? 'Tente ajustar a busca'
-            : 'Quando um cliente solicitar aviso de reposição, ele aparecerá aqui',
+            : 'Quando clientes pedirem reposição de um produto, ele aparecerá aqui',
         actionLabel: vm.hasSearch ? 'Limpar Busca' : null,
         onAction: vm.hasSearch ? presenter.clearSearch : null,
       );
@@ -332,19 +344,19 @@ class StockAlertsWebView extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: vm.filteredPending
           .map(
-            (alert) => StockAlertCard(
-              alert: alert,
-              isActionInProgress: vm.actionInProgressId == alert.uid,
-              onDismiss: () => onDismiss(alert.uid),
-              onNotified: () => onNotified(alert.uid),
-              onWhatsApp: () => _openWhatsApp(alert.customerWhatsapp),
+            (group) => StockAlertCard(
+              group: group,
+              isActionInProgress:
+                  vm.actionInProgressProductId == group.productId,
+              onDismiss: () => onDismiss(group.productId),
+              onNotify: () => onNotify(group.productId),
             ),
           )
           .toList(),
     );
   }
 
-  Widget _buildResolvedList(StockAlertsViewModel vm, DSColors colors) {
+  Widget _buildResolvedList(StockAlertsViewModel vm) {
     if (vm.isLoadingResolved) {
       return const LoadingIndicator(message: 'Carregando resolvidos...');
     }
@@ -360,15 +372,9 @@ class StockAlertsWebView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: vm.filteredResolved
-          .map((alert) => StockAlertCard(alert: alert))
+          .map((group) => StockAlertCard(group: group))
           .toList(),
     );
-  }
-
-  void _openWhatsApp(String whatsapp) {
-    final cleanNumber = whatsapp.replaceAll(RegExp(r'[^\d]'), '');
-    final uri = Uri.parse('https://wa.me/55$cleanNumber');
-    launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 }
 

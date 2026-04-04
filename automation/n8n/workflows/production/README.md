@@ -13,8 +13,10 @@ production/
 └── subworkflows/
     ├── cart/
     │   ├── cart-operate.json
+    │   ├── register-sale.json
     │   └── cart-view.json
     ├── catalog/
+    │   ├── register-stock-alert.json
     │   └── search-products.json
     ├── channel/
     │   └── update-whatsapp-status.json
@@ -30,8 +32,10 @@ production/
 - `mcp/firestore-mcp-server.json`: servidor MCP exposto em `mcp-firestore` para ferramentas do agente
 - `subworkflows/customer/update-customer.json`: atualizacao de cadastro do cliente
 - `subworkflows/catalog/search-products.json`: consulta de produtos no Firestore
+- `subworkflows/catalog/register-stock-alert.json`: registra interesse em reposicao para produto sem estoque
 - `subworkflows/cart/cart-operate.json`: operacoes de carrinho
 - `subworkflows/cart/cart-view.json`: leitura e resumo do carrinho
+- `subworkflows/cart/register-sale.json`: registra a venda fechada a partir do carrinho atual
 - `subworkflows/channel/update-whatsapp-status.json`: atualizacao de status no canal
 - `subworkflows/handoff/escalate-human.json`: escalonamento para atendimento humano
 
@@ -42,6 +46,8 @@ production/
 - `Sub - Buscar Produtos`: `SIXIOZ0NM0w1Kp1s`
 - `Sub - Carrinho Operar`: `W9oVFsD5vGMJrnS9`
 - `Sub - Carrinho View`: `gxZhfi6ne4nkSITs`
+- `Sub - Registrar Venda`: `REGISTRAR_VENDA_ID`
+- `Sub - Registrar Aviso de Estoque`: `REGISTRAR_AVISO_ESTOQUE_ID`
 - `Sub - Escalar Humano`: `ESCALAR_HUMANO_ID`
 
 ## Endpoints identificados
@@ -61,3 +67,4 @@ production/
 
 - O arquivo `entrypoints/whatsapp-sales-agent.json` veio sem `name` e sem `id` no export original; o `name` foi preenchido no repositorio para facilitar manutencao.
 - O workflow `Sub - Escalar Humano` ainda usa o identificador `ESCALAR_HUMANO_ID`; isso parece placeholder e deve ser validado no ambiente do `n8n`.
+- O workflow `Sub - Registrar Venda` depende da `webhook_url` oficial do tenant para usar o endpoint `receiveN8nSale` com validacao server-side.

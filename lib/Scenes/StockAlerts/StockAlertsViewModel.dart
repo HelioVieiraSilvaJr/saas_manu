@@ -1,4 +1,4 @@
-import '../../Commons/Models/StockAlertModel.dart';
+import '../../Commons/Models/StockAlertGroupModel.dart';
 
 /// Tab ativa na tela de avisos de estoque.
 enum StockAlertTab {
@@ -15,59 +15,50 @@ enum StockAlertTab {
   }
 }
 
-/// Ranking de produto mais desejado.
-class ProductRanking {
-  final String productId;
-  final String productName;
-  final int customerCount;
-  final int totalDesiredQuantity;
-
-  const ProductRanking({
-    required this.productId,
-    required this.productName,
-    required this.customerCount,
-    required this.totalDesiredQuantity,
-  });
-}
-
 /// ViewModel da listagem de avisos de estoque.
 class StockAlertsViewModel {
   final bool isLoading;
   final StockAlertTab currentTab;
   final String searchQuery;
+  final String? productFilterId;
+  final String? productFilterName;
 
   // Dados vindos do stream real-time (pendentes)
-  final List<StockAlertModel> pendingAlerts;
+  final List<StockAlertGroupModel> pendingGroups;
   // Dados carregados sob demanda (resolvidos)
-  final List<StockAlertModel> resolvedAlerts;
+  final List<StockAlertGroupModel> resolvedGroups;
   final bool isLoadingResolved;
 
   // Listas filtradas para exibição
-  final List<StockAlertModel> filteredPending;
-  final List<StockAlertModel> filteredResolved;
+  final List<StockAlertGroupModel> filteredPendingGroups;
+  final List<StockAlertGroupModel> filteredResolvedGroups;
 
   // Indicadores rápidos
-  final int pendingCount;
+  final int pendingGroupsCount;
+  final int pendingRequestsCount;
   final int uniqueCustomersCount;
-  final List<ProductRanking> productRanking;
+  final List<StockAlertGroupModel> productRanking;
 
   // Estado de ação
-  final String? actionInProgressId;
+  final String? actionInProgressProductId;
   final String? errorMessage;
 
   const StockAlertsViewModel({
     this.isLoading = true,
     this.currentTab = StockAlertTab.pending,
     this.searchQuery = '',
-    this.pendingAlerts = const [],
-    this.resolvedAlerts = const [],
+    this.productFilterId,
+    this.productFilterName,
+    this.pendingGroups = const [],
+    this.resolvedGroups = const [],
     this.isLoadingResolved = false,
-    this.filteredPending = const [],
-    this.filteredResolved = const [],
-    this.pendingCount = 0,
+    this.filteredPendingGroups = const [],
+    this.filteredResolvedGroups = const [],
+    this.pendingGroupsCount = 0,
+    this.pendingRequestsCount = 0,
     this.uniqueCustomersCount = 0,
     this.productRanking = const [],
-    this.actionInProgressId,
+    this.actionInProgressProductId,
     this.errorMessage,
   });
 
@@ -75,38 +66,58 @@ class StockAlertsViewModel {
     bool? isLoading,
     StockAlertTab? currentTab,
     String? searchQuery,
-    List<StockAlertModel>? pendingAlerts,
-    List<StockAlertModel>? resolvedAlerts,
+    Object? productFilterId = _sentinel,
+    Object? productFilterName = _sentinel,
+    List<StockAlertGroupModel>? pendingGroups,
+    List<StockAlertGroupModel>? resolvedGroups,
     bool? isLoadingResolved,
-    List<StockAlertModel>? filteredPending,
-    List<StockAlertModel>? filteredResolved,
-    int? pendingCount,
+    List<StockAlertGroupModel>? filteredPendingGroups,
+    List<StockAlertGroupModel>? filteredResolvedGroups,
+    int? pendingGroupsCount,
+    int? pendingRequestsCount,
     int? uniqueCustomersCount,
-    List<ProductRanking>? productRanking,
-    Object? actionInProgressId = _sentinel,
+    List<StockAlertGroupModel>? productRanking,
+    Object? actionInProgressProductId = _sentinel,
     String? errorMessage,
   }) {
     return StockAlertsViewModel(
       isLoading: isLoading ?? this.isLoading,
       currentTab: currentTab ?? this.currentTab,
       searchQuery: searchQuery ?? this.searchQuery,
-      pendingAlerts: pendingAlerts ?? this.pendingAlerts,
-      resolvedAlerts: resolvedAlerts ?? this.resolvedAlerts,
+      productFilterId: productFilterId == _sentinel
+          ? this.productFilterId
+          : productFilterId as String?,
+      productFilterName: productFilterName == _sentinel
+          ? this.productFilterName
+          : productFilterName as String?,
+      pendingGroups: pendingGroups ?? this.pendingGroups,
+      resolvedGroups: resolvedGroups ?? this.resolvedGroups,
       isLoadingResolved: isLoadingResolved ?? this.isLoadingResolved,
-      filteredPending: filteredPending ?? this.filteredPending,
-      filteredResolved: filteredResolved ?? this.filteredResolved,
-      pendingCount: pendingCount ?? this.pendingCount,
+      filteredPendingGroups:
+          filteredPendingGroups ?? this.filteredPendingGroups,
+      filteredResolvedGroups:
+          filteredResolvedGroups ?? this.filteredResolvedGroups,
+      pendingGroupsCount: pendingGroupsCount ?? this.pendingGroupsCount,
+      pendingRequestsCount: pendingRequestsCount ?? this.pendingRequestsCount,
       uniqueCustomersCount: uniqueCustomersCount ?? this.uniqueCustomersCount,
       productRanking: productRanking ?? this.productRanking,
-      actionInProgressId: actionInProgressId == _sentinel
-          ? this.actionInProgressId
-          : actionInProgressId as String?,
+      actionInProgressProductId: actionInProgressProductId == _sentinel
+          ? this.actionInProgressProductId
+          : actionInProgressProductId as String?,
       errorMessage: errorMessage ?? this.errorMessage,
     );
   }
 
   /// Verifica se há busca ativa.
   bool get hasSearch => searchQuery.isNotEmpty;
+
+  bool get hasScopedProductFilter => productFilterId != null;
+
+  int get pendingCount => pendingGroupsCount;
+
+  List<StockAlertGroupModel> get filteredPending => filteredPendingGroups;
+
+  List<StockAlertGroupModel> get filteredResolved => filteredResolvedGroups;
 }
 
 /// Sentinel para nullable copyWith.

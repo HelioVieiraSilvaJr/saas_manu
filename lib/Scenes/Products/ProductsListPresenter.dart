@@ -196,7 +196,11 @@ class ProductsListPresenter {
       products = products.where((p) {
         return p.name.toLowerCase().contains(query) ||
             p.sku.toLowerCase().contains(query) ||
-            (p.description?.toLowerCase().contains(query) ?? false);
+            (p.description?.toLowerCase().contains(query) ?? false) ||
+            (p.category?.toLowerCase().contains(query) ?? false) ||
+            (p.color?.toLowerCase().contains(query) ?? false) ||
+            (p.size?.toLowerCase().contains(query) ?? false) ||
+            p.tags.any((tag) => tag.toLowerCase().contains(query));
       }).toList();
     }
 

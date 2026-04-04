@@ -8,7 +8,8 @@ import '../Commons/Utils/AppLogger.dart';
 class SeedRunner {
   final _firestore = FirebaseFirestore.instance;
 
-  String _membershipDocId(String tenantId, String userId) => '${tenantId}_$userId';
+  String _membershipDocId(String tenantId, String userId) =>
+      '${tenantId}_$userId';
 
   /// Verifica se o seed já foi executado (existe pelo menos 1 tenant).
   Future<bool> isSeeded() async {
@@ -62,15 +63,15 @@ class SeedRunner {
           .collection('memberships')
           .doc(_membershipDocId(tenantId, firebaseUid))
           .set({
-        'user_id': firebaseUid,
-        'tenant_id': tenantId,
-        'role': 'superAdmin',
-        'is_active': true,
-        'user_name': name,
-        'user_email': email,
-        'added_by': firebaseUid,
-        'created_at': FieldValue.serverTimestamp(),
-      });
+            'user_id': firebaseUid,
+            'tenant_id': tenantId,
+            'role': 'superAdmin',
+            'is_active': true,
+            'user_name': name,
+            'user_email': email,
+            'added_by': firebaseUid,
+            'created_at': FieldValue.serverTimestamp(),
+          });
 
       // 4. Criar um tenant de exemplo para testes
       final sampleTenantRef = _firestore.collection('tenants').doc();
@@ -94,15 +95,15 @@ class SeedRunner {
           .collection('memberships')
           .doc(_membershipDocId(sampleTenantId, firebaseUid))
           .set({
-        'user_id': firebaseUid,
-        'tenant_id': sampleTenantId,
-        'role': 'tenantAdmin',
-        'is_active': true,
-        'user_name': name,
-        'user_email': email,
-        'added_by': firebaseUid,
-        'created_at': FieldValue.serverTimestamp(),
-      });
+            'user_id': firebaseUid,
+            'tenant_id': sampleTenantId,
+            'role': 'tenantAdmin',
+            'is_active': true,
+            'user_name': name,
+            'user_email': email,
+            'added_by': firebaseUid,
+            'created_at': FieldValue.serverTimestamp(),
+          });
 
       // 6. Criar alguns produtos de exemplo no tenant de exemplo
       final productsRef = _firestore

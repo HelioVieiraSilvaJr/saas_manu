@@ -20,6 +20,16 @@ class BackendApi {
         .toString();
   }
 
+  Future<Map<String, dynamic>> notifyRestockCustomers({
+    required String tenantId,
+    required String productId,
+  }) {
+    return postAuthenticated(
+      functionName: 'notifyRestockCustomers',
+      body: {'tenantId': tenantId, 'productId': productId},
+    );
+  }
+
   Future<Map<String, dynamic>> postAuthenticated({
     required String functionName,
     required Map<String, dynamic> body,
