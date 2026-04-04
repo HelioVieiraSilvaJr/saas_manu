@@ -11,6 +11,8 @@ setGlobalOptions({ region: "us-central1", maxInstances: 10 });
 const db = admin.firestore();
 const EVOLUTION_API_URL = defineSecret("EVOLUTION_API_URL");
 const EVOLUTION_API_KEY = defineSecret("EVOLUTION_API_KEY");
+const N8N_WHATSAPP_WEBHOOK_URL = defineSecret("N8N_WHATSAPP_WEBHOOK_URL");
+const MANAGED_WHATSAPP_WEBHOOK_TOKEN = defineSecret("MANAGED_WHATSAPP_WEBHOOK_TOKEN");
 
 function withCors(handler) {
   return async (req, res) => {
@@ -132,6 +134,18 @@ function hasManagedEvolutionSecrets() {
   return Boolean(evolutionApiUrl && apiKey);
 }
 
+function getManagedSalesAgentConfig() {
+  return {
+    n8nWhatsAppWebhookUrl: sanitizeUrl(N8N_WHATSAPP_WEBHOOK_URL.value()),
+    webhookToken: String(MANAGED_WHATSAPP_WEBHOOK_TOKEN.value() || "").trim(),
+  };
+}
+
+function hasManagedSalesAgentConfig() {
+  const { n8nWhatsAppWebhookUrl, webhookToken } = getManagedSalesAgentConfig();
+  return Boolean(n8nWhatsAppWebhookUrl && webhookToken);
+}
+
 function normalizeManagedInstanceName(tenantId, tenantName) {
   const tenantSlug = slugify(tenantName) || "tenant";
   const tenantSuffix = slugify(tenantId).slice(0, 12) || crypto.randomUUID().slice(0, 12);
@@ -240,6 +254,31 @@ function extractEvolutionQrCode(payload) {
   const normalized = String(qrValue).trim();
   if (!normalized) return null;
   return normalized.replace(/^data:image\/png;base64,/, "");
+}
+
+function extractEvolutionInboundInstanceName(payload = {}) {
+  const candidates = [
+    payload.instance,
+    payload.instanceName,
+    payload.instance_name,
+    payload.sender,
+    payload.instance?.instanceName,
+    payload.instance?.name,
+    payload.instance?.instance,
+    payload.data?.instance,
+    payload.data?.instanceName,
+    payload.data?.instance_name,
+    payload.data?.sender,
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = String(candidate || "").trim();
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return "";
 }
 
 async function createEvolutionInstance({
@@ -356,6 +395,79 @@ async function getEvolutionInstanceQrCode({
   };
 }
 
+async function configureEvolutionWebhook({
+  evolutionApiUrl,
+  apiKey,
+  instanceName,
+  webhookUrl,
+}) {
+  const baseBody = {
+    enabled: true,
+    url: webhookUrl,
+    webhookUrl,
+    webhookByEvents: false,
+    events: [
+      "MESSAGES_UPSERT",
+      "MESSAGES_UPDATE",
+      "CONNECTION_UPDATE",
+      "QRCODE_UPDATED",
+    ],
+  };
+
+  const attempts = [
+    {
+      method: "POST",
+      path: `/webhook/set/${instanceName}`,
+      body: baseBody,
+    },
+    {
+      method: "PUT",
+      path: `/webhook/set/${instanceName}`,
+      body: baseBody,
+    },
+    {
+      method: "POST",
+      path: `/webhook/set/${instanceName}`,
+      body: {
+        webhook: {
+          enabled: true,
+          url: webhookUrl,
+          webhookByEvents: false,
+          events: baseBody.events,
+        },
+      },
+    },
+    {
+      method: "POST",
+      path: `/webhook/${instanceName}`,
+      body: baseBody,
+    },
+  ];
+
+  let lastResponse = null;
+  for (const attempt of attempts) {
+    const response = await evolutionRequest({
+      evolutionApiUrl,
+      apiKey,
+      method: attempt.method,
+      path: attempt.path,
+      body: attempt.body,
+    });
+    lastResponse = response;
+
+    if (response.ok) {
+      return response;
+    }
+  }
+
+  return lastResponse || {
+    ok: false,
+    status: 502,
+    rawText: "",
+    data: null,
+  };
+}
+
 async function disconnectEvolutionInstance({
   evolutionApiUrl,
   apiKey,
@@ -452,6 +564,133 @@ function membershipDocId(tenantId, userId) {
 
 function nowTs() {
   return admin.firestore.FieldValue.serverTimestamp();
+}
+
+function buildSalesWebhookUrl(tenantId, token) {
+  const projectId = process.env.GCLOUD_PROJECT || admin.app().options.projectId;
+  if (!projectId || !tenantId || !token) return "";
+  const base = `https://us-central1-${projectId}.cloudfunctions.net/receiveN8nSale`;
+  return `${base}?tenantId=${encodeURIComponent(tenantId)}&token=${encodeURIComponent(token)}`;
+}
+
+async function ensureTenantSalesWebhookToken(tenantId, tenantData = {}) {
+  const existingToken = String(tenantData.webhook_token || "").trim();
+  if (existingToken) {
+    return existingToken;
+  }
+
+  const generatedToken = `wh_${Date.now().toString(36)}_${crypto.randomUUID().slice(0, 10)}`;
+  await db.collection("tenants").doc(tenantId).set(
+    {
+      webhook_token: generatedToken,
+      updated_at: nowTs(),
+    },
+    { merge: true },
+  );
+  tenantData.webhook_token = generatedToken;
+  return generatedToken;
+}
+
+function formatTenantPolicies(tenantData = {}) {
+  const sections = [
+    ["Entrega", tenantData.delivery_policies],
+    ["Pagamento", tenantData.payment_policies],
+    ["Trocas", tenantData.exchange_policies],
+  ]
+    .filter(([, value]) => String(value || "").trim())
+    .map(([label, value]) => `${label}: ${String(value).trim()}`);
+
+  return sections.join(" | ");
+}
+
+async function buildTenantAiContext({ tenantId, tenantData }) {
+  const webhookToken = await ensureTenantSalesWebhookToken(tenantId, tenantData);
+  const segment = BusinessSegmentLabel(tenantData.business_segment);
+  const subsegment = String(tenantData.business_subsegment || "").trim();
+
+  return {
+    tenant_id: tenantId,
+    tenant_name: String(tenantData.name || "").trim(),
+    tenant_segment: subsegment ? `${segment} / ${subsegment}` : segment,
+    business_segment: String(tenantData.business_segment || "").trim(),
+    business_subsegment: subsegment,
+    business_description: String(tenantData.business_description || "").trim(),
+    sales_playbook: String(tenantData.sales_playbook || "").trim(),
+    tone_of_voice: String(tenantData.tone_of_voice || "").trim(),
+    target_audience: String(tenantData.target_audience || "").trim(),
+    business_hours: String(tenantData.business_hours || "").trim(),
+    delivery_policies: String(tenantData.delivery_policies || "").trim(),
+    payment_policies: String(tenantData.payment_policies || "").trim(),
+    exchange_policies: String(tenantData.exchange_policies || "").trim(),
+    policies: formatTenantPolicies(tenantData),
+    sales_webhook_url: buildSalesWebhookUrl(tenantId, webhookToken),
+    whatsapp_instance_id: String(
+      tenantData.whatsapp_instance_id || tenantData.evolution_instance_name || "",
+    ).trim(),
+    evolution_api_instancia: String(
+      tenantData.whatsapp_instance_id || tenantData.evolution_instance_name || "",
+    ).trim(),
+    whatsapp_connected_number: String(tenantData.whatsapp_connected_number || "").trim(),
+  };
+}
+
+function BusinessSegmentLabel(rawSegment) {
+  const normalized = String(rawSegment || "").trim().toLowerCase();
+  switch (normalized) {
+    case "fashion":
+    case "moda":
+    case "roupas":
+      return "Moda";
+    case "food":
+    case "alimentacao":
+    case "comida":
+      return "Alimentacao";
+    case "electronics":
+    case "eletronicos":
+      return "Eletronicos";
+    case "beauty":
+    case "beleza":
+      return "Beleza";
+    case "home_decor":
+    case "casa":
+    case "decoracao":
+      return "Casa e Decoracao";
+    case "services":
+    case "servicos":
+      return "Servicos";
+    case "other":
+    case "outro":
+      return "Outro";
+    default:
+      return "Nao definido";
+  }
+}
+
+function buildManagedIngressUrl() {
+  const projectId = process.env.GCLOUD_PROJECT || admin.app().options.projectId;
+  const { webhookToken } = getManagedSalesAgentConfig();
+  if (!projectId || !webhookToken) return "";
+  return `https://us-central1-${projectId}.cloudfunctions.net/receiveManagedWhatsAppMessage?token=${encodeURIComponent(webhookToken)}`;
+}
+
+async function resolveTenantByWhatsAppInstance(instanceName) {
+  const normalized = String(instanceName || "").trim();
+  if (!normalized) return null;
+
+  const queries = [
+    db.collection("tenants").where("whatsapp_instance_id", "==", normalized).limit(1).get(),
+    db.collection("tenants").where("evolution_instance_name", "==", normalized).limit(1).get(),
+  ];
+
+  for (const queryPromise of queries) {
+    const snapshot = await queryPromise;
+    if (!snapshot.empty) {
+      const doc = snapshot.docs[0];
+      return { tenantId: doc.id, tenantData: doc.data() || {} };
+    }
+  }
+
+  return null;
 }
 
 function generateTemporaryPassword() {
@@ -917,7 +1156,14 @@ exports.testEvolutionConnection = onRequest(
 );
 
 exports.provisionManagedWhatsApp = onRequest(
-  { secrets: [EVOLUTION_API_URL, EVOLUTION_API_KEY] },
+  {
+    secrets: [
+      EVOLUTION_API_URL,
+      EVOLUTION_API_KEY,
+      N8N_WHATSAPP_WEBHOOK_URL,
+      MANAGED_WHATSAPP_WEBHOOK_TOKEN,
+    ],
+  },
   withCors(async (req, res) => {
     if (req.method !== "POST") {
       res.status(405).json({ ok: false, error: "method-not-allowed" });
@@ -947,15 +1193,27 @@ exports.provisionManagedWhatsApp = onRequest(
     }
 
     const tenantData = tenantDoc.data() || {};
+    await ensureTenantSalesWebhookToken(tenantId, tenantData);
     const instanceName =
       String(tenantData.whatsapp_instance_id || tenantData.evolution_instance_name || "").trim() ||
       normalizeManagedInstanceName(tenantId, tenantData.name);
     const { evolutionApiUrl, apiKey } = getManagedEvolutionConfig();
+    const inboundWebhookUrl = buildManagedIngressUrl();
+    if (!inboundWebhookUrl || !hasManagedSalesAgentConfig()) {
+      res.status(501).json({ ok: false, error: "managed-sales-agent-unconfigured" });
+      return;
+    }
 
     const createResponse = await createEvolutionInstance({
       evolutionApiUrl,
       apiKey,
       instanceName,
+    });
+    const webhookResponse = await configureEvolutionWebhook({
+      evolutionApiUrl,
+      apiKey,
+      instanceName,
+      webhookUrl: inboundWebhookUrl,
     });
     const statusResponse = await getEvolutionInstanceStatus({
       evolutionApiUrl,
@@ -972,7 +1230,16 @@ exports.provisionManagedWhatsApp = onRequest(
     const connectionStatus = extractEvolutionState(statusPayload);
     const connectedNumber = extractEvolutionConnectedNumber(statusPayload);
     const qrCodeBase64 = extractEvolutionQrCode(qrResponse.data || createResponse.data);
-    const webhookUrl = String(body.webhookUrl || tenantData.whatsapp_webhook_url || "").trim();
+    const webhookUrl = inboundWebhookUrl;
+
+    if (!webhookResponse.ok) {
+      res.status(webhookResponse.status || 502).json({
+        ok: false,
+        error: "managed-whatsapp-webhook-config-failed",
+        providerResponse: webhookResponse.data,
+      });
+      return;
+    }
 
     await persistManagedWhatsAppState({
       tenantId,
@@ -997,6 +1264,7 @@ exports.provisionManagedWhatsApp = onRequest(
       connectedNumber,
       qrCodeBase64,
       createStatusCode: createResponse?.status || null,
+      webhookStatusCode: webhookResponse?.status || null,
       statusStatusCode: statusResponse?.status || null,
       qrStatusCode: qrResponse?.status || null,
       managed: true,
@@ -1005,7 +1273,14 @@ exports.provisionManagedWhatsApp = onRequest(
 );
 
 exports.getManagedWhatsAppStatus = onRequest(
-  { secrets: [EVOLUTION_API_URL, EVOLUTION_API_KEY] },
+  {
+    secrets: [
+      EVOLUTION_API_URL,
+      EVOLUTION_API_KEY,
+      N8N_WHATSAPP_WEBHOOK_URL,
+      MANAGED_WHATSAPP_WEBHOOK_TOKEN,
+    ],
+  },
   withCors(async (req, res) => {
     if (req.method !== "POST") {
       res.status(405).json({ ok: false, error: "method-not-allowed" });
@@ -1042,6 +1317,16 @@ exports.getManagedWhatsAppStatus = onRequest(
       return;
     }
 
+    const inboundWebhookUrl = buildManagedIngressUrl();
+    if (resolvedConfig.source !== "manual" && inboundWebhookUrl) {
+      await configureEvolutionWebhook({
+        evolutionApiUrl: resolvedConfig.evolutionApiUrl,
+        apiKey: resolvedConfig.apiKey,
+        instanceName: resolvedConfig.instanceName,
+        webhookUrl: inboundWebhookUrl,
+      });
+    }
+
     const statusResponse = await getEvolutionInstanceStatus(resolvedConfig);
     if (!statusResponse.ok) {
       res.status(statusResponse.status || 502).json({
@@ -1069,7 +1354,7 @@ exports.getManagedWhatsAppStatus = onRequest(
           ? "awaiting_qr_scan"
           : connectionStatus,
       connectedNumber,
-      webhookUrl: tenantData.whatsapp_webhook_url,
+      webhookUrl: inboundWebhookUrl || tenantData.whatsapp_webhook_url,
       qrCodeBase64,
     });
 
@@ -1085,6 +1370,80 @@ exports.getManagedWhatsAppStatus = onRequest(
       connectedNumber,
       qrCodeBase64,
       providerResponse: statusResponse.data,
+    });
+  }),
+);
+
+exports.receiveManagedWhatsAppMessage = onRequest(
+  { secrets: [N8N_WHATSAPP_WEBHOOK_URL, MANAGED_WHATSAPP_WEBHOOK_TOKEN] },
+  withCors(async (req, res) => {
+    if (req.method !== "POST") {
+      res.status(405).json({ ok: false, error: "method-not-allowed" });
+      return;
+    }
+
+    if (!hasManagedSalesAgentConfig()) {
+      res.status(501).json({ ok: false, error: "managed-sales-agent-unconfigured" });
+      return;
+    }
+
+    const { webhookToken, n8nWhatsAppWebhookUrl } = getManagedSalesAgentConfig();
+    const providedToken = String(req.query.token || req.headers["x-internal-secret"] || "").trim();
+    if (!providedToken || providedToken !== webhookToken) {
+      res.status(403).json({ ok: false, error: "invalid-webhook-token" });
+      return;
+    }
+
+    const payload = jsonBody(req);
+    const instanceName = extractEvolutionInboundInstanceName(payload);
+    if (!instanceName) {
+      res.status(400).json({ ok: false, error: "missing-instance-name" });
+      return;
+    }
+
+    const resolvedTenant = await resolveTenantByWhatsAppInstance(instanceName);
+    if (!resolvedTenant) {
+      res.status(404).json({ ok: false, error: "tenant-not-found-for-instance" });
+      return;
+    }
+
+    const { tenantId, tenantData } = resolvedTenant;
+    const tenantContext = await buildTenantAiContext({ tenantId, tenantData });
+
+    await db.collection("tenants").doc(tenantId).set(
+      {
+        whatsapp_last_seen_at: nowTs(),
+        updated_at: nowTs(),
+      },
+      { merge: true },
+    );
+
+    const forwardResponse = await fetch(n8nWhatsAppWebhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        ...payload,
+        tenantContext,
+      }),
+    });
+
+    const { rawText, data } = await parseJsonResponse(forwardResponse);
+    if (!forwardResponse.ok) {
+      res.status(forwardResponse.status || 502).json({
+        ok: false,
+        error: "n8n-forward-failed",
+        message: rawText || JSON.stringify(data || {}),
+      });
+      return;
+    }
+
+    res.status(200).json({
+      ok: true,
+      forwarded: true,
+      tenantId,
+      instanceName,
     });
   }),
 );

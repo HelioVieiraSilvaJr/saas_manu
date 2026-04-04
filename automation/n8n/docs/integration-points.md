@@ -67,5 +67,5 @@ Os workflows dependem fortemente destes identificadores:
 
 - referencias de workflow por ID no MCP podem quebrar apos importacao em outro ambiente
 - endpoints externos hardcoded exigem revisao ao trocar dominio ou instancia do `n8n`
-- placeholders como `ESCALAR_HUMANO_ID` precisam ser resolvidos antes de replicar o ambiente
+- os IDs de producao dos subworkflows precisam ser mantidos sincronizados com o ambiente real do `n8n`
 - credenciais de Firestore, OpenAI, Evolution API e Postgres continuam sendo dependencia do ambiente do `n8n`

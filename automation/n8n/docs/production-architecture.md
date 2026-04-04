@@ -81,7 +81,7 @@ O prompt do agente implementa algumas politicas importantes:
 ## Pontos de atencao
 
 - o workflow principal foi exportado sem `id`; o repositorio preserva o conteudo e adiciona apenas `name`
-- o subworkflow de escalacao ainda referencia `ESCALAR_HUMANO_ID`, o que sugere placeholder
-- os novos subworkflows `REGISTRAR_VENDA_ID` e `REGISTRAR_AVISO_ESTOQUE_ID` tambem usam placeholders e devem ser atualizados apos importacao
+- o subworkflow de escalacao em producao usa o ID `QvblWeXM9HTYVXDk`
+- os subworkflows de registrar venda e aviso de estoque em producao usam os IDs `Rpx4VA5kvlMPk7kd` e `47qiiS7zFoTZd3qm`
 - o fluxo de registro de venda depende da `webhook_url` oficial do tenant para reutilizar a validacao server-side do backend
 - parte do comportamento operacional depende de endpoints externos e credenciais do ambiente do `n8n`

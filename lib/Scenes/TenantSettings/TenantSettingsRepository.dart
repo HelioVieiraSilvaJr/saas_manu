@@ -21,12 +21,32 @@ class TenantSettingsRepository {
     required String name,
     required String email,
     required String phone,
+    String? businessSegment,
+    String? businessSubsegment,
+    String? businessDescription,
+    String? salesPlaybook,
+    String? toneOfVoice,
+    String? targetAudience,
+    String? businessHours,
+    String? deliveryPolicies,
+    String? paymentPolicies,
+    String? exchangePolicies,
   }) async {
     try {
       await _tenantDoc(tenantId).update({
         'name': name,
         'contact_email': email,
         'contact_phone': phone,
+        'business_segment': businessSegment,
+        'business_subsegment': businessSubsegment,
+        'business_description': businessDescription,
+        'sales_playbook': salesPlaybook,
+        'tone_of_voice': toneOfVoice,
+        'target_audience': targetAudience,
+        'business_hours': businessHours,
+        'delivery_policies': deliveryPolicies,
+        'payment_policies': paymentPolicies,
+        'exchange_policies': exchangePolicies,
         'updated_at': FieldValue.serverTimestamp(),
       });
       AppLogger.info('Dados da empresa atualizados: $tenantId');
@@ -92,12 +112,10 @@ class TenantSettingsRepository {
 
   Future<Map<String, dynamic>> provisionManagedWhatsApp({
     required String tenantId,
-    String? webhookUrl,
   }) async {
     try {
       return await BackendApi.instance.provisionManagedWhatsApp(
         tenantId: tenantId,
-        webhookUrl: webhookUrl,
       );
     } catch (e) {
       AppLogger.error('Erro ao provisionar WhatsApp gerenciado', error: e);

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../Commons/Utils/AppLogger.dart';
+import '../../Commons/Enums/BusinessSegment.dart';
 import '../../Commons/Enums/WhatsAppConnectionStatus.dart';
 import '../../Commons/Models/TenantModel.dart';
 import '../../Sources/SessionManager.dart';
@@ -17,6 +18,15 @@ class TenantSettingsPresenter {
   final nameController = TextEditingController();
   final emailController = TextEditingController();
   final phoneController = TextEditingController();
+  final businessSubsegmentController = TextEditingController();
+  final businessDescriptionController = TextEditingController();
+  final salesPlaybookController = TextEditingController();
+  final toneOfVoiceController = TextEditingController();
+  final targetAudienceController = TextEditingController();
+  final businessHoursController = TextEditingController();
+  final deliveryPoliciesController = TextEditingController();
+  final paymentPoliciesController = TextEditingController();
+  final exchangePoliciesController = TextEditingController();
 
   // Controllers — WhatsApp
   final evolutionUrlController = TextEditingController();
@@ -51,6 +61,15 @@ class TenantSettingsPresenter {
     nameController.text = tenant.name;
     emailController.text = tenant.contactEmail;
     phoneController.text = tenant.contactPhone;
+    businessSubsegmentController.text = tenant.businessSubsegment ?? '';
+    businessDescriptionController.text = tenant.businessDescription ?? '';
+    salesPlaybookController.text = tenant.salesPlaybook ?? '';
+    toneOfVoiceController.text = tenant.toneOfVoice ?? '';
+    targetAudienceController.text = tenant.targetAudience ?? '';
+    businessHoursController.text = tenant.businessHours ?? '';
+    deliveryPoliciesController.text = tenant.deliveryPolicies ?? '';
+    paymentPoliciesController.text = tenant.paymentPolicies ?? '';
+    exchangePoliciesController.text = tenant.exchangePolicies ?? '';
     evolutionUrlController.text = tenant.evolutionApiUrl ?? '';
     apiKeyController.text = tenant.evolutionApiKey ?? '';
     instanceNameController.text = tenant.evolutionInstanceName ?? '';
@@ -62,6 +81,14 @@ class TenantSettingsPresenter {
       companyPhone: tenant.contactPhone,
       businessSegment: tenant.businessSegment ?? '',
       businessSubsegment: tenant.businessSubsegment ?? '',
+      businessDescription: tenant.businessDescription ?? '',
+      salesPlaybook: tenant.salesPlaybook ?? '',
+      toneOfVoice: tenant.toneOfVoice ?? '',
+      targetAudience: tenant.targetAudience ?? '',
+      businessHours: tenant.businessHours ?? '',
+      deliveryPolicies: tenant.deliveryPolicies ?? '',
+      paymentPolicies: tenant.paymentPolicies ?? '',
+      exchangePolicies: tenant.exchangePolicies ?? '',
       evolutionApiUrl: tenant.evolutionApiUrl ?? '',
       evolutionApiKey: tenant.evolutionApiKey ?? '',
       evolutionInstanceName: tenant.evolutionInstanceName ?? '',
@@ -161,6 +188,13 @@ class TenantSettingsPresenter {
     return null;
   }
 
+  void updateBusinessSegment(BusinessSegment? segment) {
+    viewModel = viewModel.copyWith(
+      businessSegment: (segment ?? BusinessSegment.unassigned).name,
+    );
+    _notify();
+  }
+
   Future<bool> saveCompanyData(GlobalKey<FormState> formKey) async {
     if (!formKey.currentState!.validate()) return false;
 
@@ -175,6 +209,16 @@ class TenantSettingsPresenter {
       name: nameController.text.trim(),
       email: emailController.text.trim(),
       phone: phoneController.text.trim(),
+      businessSegment: viewModel.businessSegment.trim(),
+      businessSubsegment: businessSubsegmentController.text.trim(),
+      businessDescription: businessDescriptionController.text.trim(),
+      salesPlaybook: salesPlaybookController.text.trim(),
+      toneOfVoice: toneOfVoiceController.text.trim(),
+      targetAudience: targetAudienceController.text.trim(),
+      businessHours: businessHoursController.text.trim(),
+      deliveryPolicies: deliveryPoliciesController.text.trim(),
+      paymentPolicies: paymentPoliciesController.text.trim(),
+      exchangePolicies: exchangePoliciesController.text.trim(),
     );
 
     viewModel = viewModel.copyWith(
@@ -279,11 +323,6 @@ class TenantSettingsPresenter {
     final tenant = SessionManager.instance.currentTenant;
     if (tenant == null) return;
 
-    String webhookUrl = viewModel.webhookUrl;
-    if (webhookUrl.isEmpty) {
-      webhookUrl = await generateWebhookUrl();
-    }
-
     viewModel = viewModel.copyWith(
       isProvisioningManagedWhatsApp: true,
       errorMessage: null,
@@ -293,7 +332,6 @@ class TenantSettingsPresenter {
 
     final result = await _repository.provisionManagedWhatsApp(
       tenantId: tenant.uid,
-      webhookUrl: webhookUrl,
     );
 
     final qrCodeBase64 = (result['qrCodeBase64'] ?? '').toString().trim();
@@ -430,6 +468,15 @@ class TenantSettingsPresenter {
     nameController.dispose();
     emailController.dispose();
     phoneController.dispose();
+    businessSubsegmentController.dispose();
+    businessDescriptionController.dispose();
+    salesPlaybookController.dispose();
+    toneOfVoiceController.dispose();
+    targetAudienceController.dispose();
+    businessHoursController.dispose();
+    deliveryPoliciesController.dispose();
+    paymentPoliciesController.dispose();
+    exchangePoliciesController.dispose();
     evolutionUrlController.dispose();
     apiKeyController.dispose();
     instanceNameController.dispose();

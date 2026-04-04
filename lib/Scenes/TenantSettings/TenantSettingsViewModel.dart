@@ -16,6 +16,14 @@ class TenantSettingsViewModel {
   final String companyPhone;
   final String businessSegment;
   final String businessSubsegment;
+  final String businessDescription;
+  final String salesPlaybook;
+  final String toneOfVoice;
+  final String targetAudience;
+  final String businessHours;
+  final String deliveryPolicies;
+  final String paymentPolicies;
+  final String exchangePolicies;
 
   // WhatsApp / Evolution API
   final String evolutionApiUrl;
@@ -55,6 +63,14 @@ class TenantSettingsViewModel {
     this.companyPhone = '',
     this.businessSegment = '',
     this.businessSubsegment = '',
+    this.businessDescription = '',
+    this.salesPlaybook = '',
+    this.toneOfVoice = '',
+    this.targetAudience = '',
+    this.businessHours = '',
+    this.deliveryPolicies = '',
+    this.paymentPolicies = '',
+    this.exchangePolicies = '',
     this.evolutionApiUrl = '',
     this.evolutionApiKey = '',
     this.evolutionInstanceName = '',
@@ -89,6 +105,14 @@ class TenantSettingsViewModel {
     String? companyPhone,
     String? businessSegment,
     String? businessSubsegment,
+    String? businessDescription,
+    String? salesPlaybook,
+    String? toneOfVoice,
+    String? targetAudience,
+    String? businessHours,
+    String? deliveryPolicies,
+    String? paymentPolicies,
+    String? exchangePolicies,
     String? evolutionApiUrl,
     String? evolutionApiKey,
     String? evolutionInstanceName,
@@ -125,6 +149,14 @@ class TenantSettingsViewModel {
       companyPhone: companyPhone ?? this.companyPhone,
       businessSegment: businessSegment ?? this.businessSegment,
       businessSubsegment: businessSubsegment ?? this.businessSubsegment,
+      businessDescription: businessDescription ?? this.businessDescription,
+      salesPlaybook: salesPlaybook ?? this.salesPlaybook,
+      toneOfVoice: toneOfVoice ?? this.toneOfVoice,
+      targetAudience: targetAudience ?? this.targetAudience,
+      businessHours: businessHours ?? this.businessHours,
+      deliveryPolicies: deliveryPolicies ?? this.deliveryPolicies,
+      paymentPolicies: paymentPolicies ?? this.paymentPolicies,
+      exchangePolicies: exchangePolicies ?? this.exchangePolicies,
       evolutionApiUrl: evolutionApiUrl ?? this.evolutionApiUrl,
       evolutionApiKey: evolutionApiKey ?? this.evolutionApiKey,
       evolutionInstanceName:

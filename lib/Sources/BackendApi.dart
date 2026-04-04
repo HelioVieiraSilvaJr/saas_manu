@@ -32,15 +32,10 @@ class BackendApi {
 
   Future<Map<String, dynamic>> provisionManagedWhatsApp({
     required String tenantId,
-    String? webhookUrl,
   }) {
     return postAuthenticated(
       functionName: 'provisionManagedWhatsApp',
-      body: {
-        'tenantId': tenantId,
-        if (webhookUrl != null && webhookUrl.isNotEmpty)
-          'webhookUrl': webhookUrl,
-      },
+      body: {'tenantId': tenantId},
     );
   }
 

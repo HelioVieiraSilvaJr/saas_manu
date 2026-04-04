@@ -14,6 +14,7 @@ Esta pasta concentra o backend server-side da plataforma.
 - `provisionManagedWhatsApp`: provisiona ou reutiliza a instancia gerenciada do tenant e retorna QR Code
 - `getManagedWhatsAppStatus`: consulta o estado atual da conexao gerenciada do tenant
 - `disconnectManagedWhatsApp`: encerra a sessao atual do WhatsApp gerenciado para permitir reconexao com outro numero
+- `receiveManagedWhatsAppMessage`: recebe eventos da Evolution, resolve o tenant pela instancia e encaminha o atendimento ao workflow compartilhado do `n8n`
 
 ## Por que isso existe
 
@@ -33,10 +34,12 @@ As funcoes aceitam operar com configuracao minima, mas para fluxo completo de bi
 - `PAYMENT_WEBHOOK_SECRET`
 - `EVOLUTION_API_URL`
 - `EVOLUTION_API_KEY`
+- `N8N_WHATSAPP_WEBHOOK_URL`
+- `MANAGED_WHATSAPP_WEBHOOK_TOKEN`
 
 Se `DEFAULT_INVITE_PASSWORD` nao for informado, as funcoes passam a gerar uma senha temporaria aleatoria por usuario.
 
-Para a integracao gerenciada do WhatsApp via Evolution API, prefira cadastrar `EVOLUTION_API_URL` e `EVOLUTION_API_KEY` no Secret Manager e vincular esses secrets as functions que provisionam instancia, consultam status e enviam notificacoes de reposicao.
+Para a integracao gerenciada do WhatsApp via Evolution API, prefira cadastrar `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`, `N8N_WHATSAPP_WEBHOOK_URL` e `MANAGED_WHATSAPP_WEBHOOK_TOKEN` no Secret Manager e vincular esses secrets as functions que provisionam instancia, consultam status, recebem eventos do canal e enviam notificacoes de reposicao.
 
 ## Deploy sugerido
 

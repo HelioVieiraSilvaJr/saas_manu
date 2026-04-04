@@ -263,8 +263,8 @@ Retorno esperado:
 - `reason`
 
 Ponto de atencao:
-- o ID atual do workflow aparece como `ESCALAR_HUMANO_ID`, sugerindo que a referencia final ainda precisa ser confirmada
+- o subworkflow `Sub - Escalar Humano` usa o ID de producao `QvblWeXM9HTYVXDk`
 
 Pontos de atencao gerais:
 - `register-sale` depende da `webhook_url` oficial do tenant estar configurada no ambiente do agente
-- os novos IDs `REGISTRAR_VENDA_ID` e `REGISTRAR_AVISO_ESTOQUE_ID` devem ser substituidos pelos IDs reais apos importacao
+- os subworkflows `Sub - Registrar Venda` e `Sub - Registrar Aviso de Estoque` usam os IDs de producao `Rpx4VA5kvlMPk7kd` e `47qiiS7zFoTZd3qm`

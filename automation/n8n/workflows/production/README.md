@@ -46,9 +46,9 @@ production/
 - `Sub - Buscar Produtos`: `SIXIOZ0NM0w1Kp1s`
 - `Sub - Carrinho Operar`: `W9oVFsD5vGMJrnS9`
 - `Sub - Carrinho View`: `gxZhfi6ne4nkSITs`
-- `Sub - Registrar Venda`: `REGISTRAR_VENDA_ID`
-- `Sub - Registrar Aviso de Estoque`: `REGISTRAR_AVISO_ESTOQUE_ID`
-- `Sub - Escalar Humano`: `ESCALAR_HUMANO_ID`
+- `Sub - Registrar Venda`: `Rpx4VA5kvlMPk7kd`
+- `Sub - Registrar Aviso de Estoque`: `47qiiS7zFoTZd3qm`
+- `Sub - Escalar Humano`: `QvblWeXM9HTYVXDk`
 
 ## Endpoints identificados
 
@@ -66,5 +66,4 @@ production/
 ## Observacoes
 
 - O arquivo `entrypoints/whatsapp-sales-agent.json` veio sem `name` e sem `id` no export original; o `name` foi preenchido no repositorio para facilitar manutencao.
-- O workflow `Sub - Escalar Humano` ainda usa o identificador `ESCALAR_HUMANO_ID`; isso parece placeholder e deve ser validado no ambiente do `n8n`.
 - O workflow `Sub - Registrar Venda` depende da `webhook_url` oficial do tenant para usar o endpoint `receiveN8nSale` com validacao server-side.

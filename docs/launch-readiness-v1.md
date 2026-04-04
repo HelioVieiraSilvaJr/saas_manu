@@ -28,7 +28,7 @@ Checklist objetivo para acelerar a plataforma rumo a uma v1 comercial com menor 
    - gerar checkout PIX
    - receber confirmacao de pagamento
    - atualizar plano do tenant
-7. Resolver placeholders restantes do `n8n`, especialmente `ESCALAR_HUMANO_ID`.
+7. Manter os IDs reais dos subworkflows do `n8n` sincronizados no repositorio.
 8. Configurar credenciais reais da Evolution API e do `n8n` por tenant.
 
 ## Gaps ainda relevantes para a v1

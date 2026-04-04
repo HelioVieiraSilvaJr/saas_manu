@@ -355,9 +355,9 @@
         "description": "Escala o atendimento para um atendente humano. Use quando o cliente pedir para falar com uma pessoa ou quando voce perceber que nao esta conseguindo atender a necessidade do cliente. Informe o motivo: user_requested (cliente pediu) ou ai_unable (IA nao conseguiu resolver). Inclua um resumo breve do que foi conversado ate o momento.",
         "workflowId": {
           "__rl": true,
-          "value": "ESCALAR_HUMANO_ID",
+          "value": "QvblWeXM9HTYVXDk",
           "mode": "list",
-          "cachedResultUrl": "/workflow/ESCALAR_HUMANO_ID",
+          "cachedResultUrl": "/workflow/QvblWeXM9HTYVXDk",
           "cachedResultName": "Sub - Escalar Humano"
         },
         "workflowInputs": {
@@ -446,9 +446,9 @@
         "description": "Registra que o cliente quer ser avisado quando um produto sem estoque voltar. Use somente quando o cliente confirmar que quer aguardar reposicao. Exige product_id e customer_id.",
         "workflowId": {
           "__rl": true,
-          "value": "REGISTRAR_AVISO_ESTOQUE_ID",
+          "value": "47qiiS7zFoTZd3qm",
           "mode": "list",
-          "cachedResultUrl": "/workflow/REGISTRAR_AVISO_ESTOQUE_ID",
+          "cachedResultUrl": "/workflow/47qiiS7zFoTZd3qm",
           "cachedResultName": "Sub - Registrar Aviso de Estoque"
         },
         "workflowInputs": {
@@ -547,9 +547,9 @@
         "description": "Fecha a venda usando o carrinho atual do cliente e registra no CRM. Use quando o cliente confirmar fechamento ou quando o pagamento for confirmado. Exige webhook_url do tenant, customer_id e phone.",
         "workflowId": {
           "__rl": true,
-          "value": "REGISTRAR_VENDA_ID",
+          "value": "Rpx4VA5kvlMPk7kd",
           "mode": "list",
-          "cachedResultUrl": "/workflow/REGISTRAR_VENDA_ID",
+          "cachedResultUrl": "/workflow/Rpx4VA5kvlMPk7kd",
           "cachedResultName": "Sub - Registrar Venda"
         },
         "workflowInputs": {

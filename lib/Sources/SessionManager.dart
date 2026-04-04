@@ -72,6 +72,7 @@ class SessionManager {
     allMemberships = membershipsSnapshot.docs
         .map((doc) => MembershipModel.fromDocumentSnapshot(doc))
         .toList();
+    _dedupeMemberships();
 
     if (allMemberships.isEmpty) {
       throw Exception('Usuário sem acesso a nenhum tenant');
@@ -208,6 +209,38 @@ class SessionManager {
         }
       }),
     );
+  }
+
+  void _dedupeMemberships() {
+    if (allMemberships.length <= 1) return;
+
+    final deduped = <String, MembershipModel>{};
+
+    for (final membership in allMemberships) {
+      final current = deduped[membership.tenantId];
+      if (current == null) {
+        deduped[membership.tenantId] = membership;
+        continue;
+      }
+
+      final expectedDeterministicId =
+          '${membership.tenantId}_${membership.userId}';
+      final currentIsDeterministic = current.uid == expectedDeterministicId;
+      final nextIsDeterministic = membership.uid == expectedDeterministicId;
+
+      if (nextIsDeterministic && !currentIsDeterministic) {
+        deduped[membership.tenantId] = membership;
+        continue;
+      }
+
+      if (nextIsDeterministic == currentIsDeterministic &&
+          membership.createdAt.isAfter(current.createdAt)) {
+        deduped[membership.tenantId] = membership;
+      }
+    }
+
+    allMemberships = deduped.values.toList()
+      ..sort((a, b) => a.tenantName?.compareTo(b.tenantName ?? '') ?? 0);
   }
 
   Future<void> _loadTenantData(String tenantId) async {
