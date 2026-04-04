@@ -1029,6 +1029,7 @@ class _ProductFormPageState extends State<ProductFormPage> {
                 'Essas orientações ajudam o agente a vender este produto do jeito certo.',
             maxLength: 500,
             maxLines: 4,
+            keyboardType: TextInputType.multiline,
             textInputAction: TextInputAction.newline,
             labelTrailing: _buildHelpIconButton(
               onTap: _showProductAiInstructionsHelp,
