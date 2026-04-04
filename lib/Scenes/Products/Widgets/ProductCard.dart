@@ -10,16 +10,12 @@ import '../../../Commons/Extensions/String+Extensions.dart';
 /// Card de produto para grid (Web e Mobile).
 class ProductCard extends StatefulWidget {
   final ProductModel product;
-  final VoidCallback? onEdit;
-  final VoidCallback? onDelete;
   final VoidCallback? onTap;
   final bool isWeb;
 
   const ProductCard({
     super.key,
     required this.product,
-    this.onEdit,
-    this.onDelete,
     this.onTap,
     this.isWeb = false,
   });
@@ -56,8 +52,15 @@ class _ProductCardState extends State<ProductCard> {
                 color: _isHovered
                     ? colors.primaryColor.withValues(alpha: 0.08)
                     : colors.shadowColor,
-                blurRadius: _isHovered ? DSSpacing.elevationMdBlur : DSSpacing.elevationSmBlur,
-                offset: Offset(0, _isHovered ? DSSpacing.elevationMdOffset : DSSpacing.elevationSmOffset),
+                blurRadius: _isHovered
+                    ? DSSpacing.elevationMdBlur
+                    : DSSpacing.elevationSmBlur,
+                offset: Offset(
+                  0,
+                  _isHovered
+                      ? DSSpacing.elevationMdOffset
+                      : DSSpacing.elevationSmOffset,
+                ),
               ),
             ],
           ),
@@ -75,55 +78,52 @@ class _ProductCardState extends State<ProductCard> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                    // Nome
-                    Text(
-                      widget.product.name,
-                      style: textStyles.labelLarge,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: DSSpacing.xs),
-
-                    // Preço
-                    Text(
-                      widget.product.price.formatToBRL(),
-                      style: textStyles.headline3.copyWith(
-                        color: colors.primaryColor,
-                        fontSize: 18,
+                      // Nome
+                      Text(
+                        widget.product.name,
+                        style: textStyles.labelLarge,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    const SizedBox(height: DSSpacing.sm),
+                      const SizedBox(height: DSSpacing.xs),
 
-                    // SKU
-                    Text(
-                      'SKU: ${widget.product.sku}',
-                      style: textStyles.caption.copyWith(
-                        color: colors.textTertiary,
+                      // Preço
+                      Text(
+                        widget.product.price.formatToBRL(),
+                        style: textStyles.headline3.copyWith(
+                          color: colors.primaryColor,
+                          fontSize: 18,
+                        ),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: DSSpacing.xxs),
+                      const SizedBox(height: DSSpacing.sm),
 
-                    // Estoque
-                    _buildStockText(colors, textStyles),
-                    const SizedBox(height: DSSpacing.sm),
+                      // SKU
+                      Text(
+                        'SKU: ${widget.product.sku}',
+                        style: textStyles.caption.copyWith(
+                          color: colors.textTertiary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: DSSpacing.xxs),
 
-                    // Badge Status
-                    DSBadge(
-                      label: widget.product.isActive ? 'Ativo' : 'Inativo',
-                      type: widget.product.isActive
-                          ? DSBadgeType.success
-                          : DSBadgeType.error,
-                      size: DSBadgeSize.small,
-                    ),
-                    const SizedBox(height: DSSpacing.sm),
+                      // Estoque
+                      _buildStockText(colors, textStyles),
+                      const SizedBox(height: DSSpacing.sm),
 
-                    // Botões
-                    _buildActions(colors),
-                  ],
+                      // Badge Status
+                      DSBadge(
+                        label: widget.product.isActive ? 'Ativo' : 'Inativo',
+                        type: widget.product.isActive
+                            ? DSBadgeType.success
+                            : DSBadgeType.error,
+                        size: DSBadgeSize.small,
+                      ),
+                      const SizedBox(height: DSSpacing.sm),
+                    ],
+                  ),
                 ),
-              ),
               ),
             ],
           ),
@@ -168,109 +168,5 @@ class _ProductCardState extends State<ProductCard> {
         fontWeight: FontWeight.w600,
       ),
     );
-  }
-
-  Widget _buildActions(DSColors colors) {
-    if (widget.isWeb) {
-      // Web: apenas ícones com tooltip
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          if (widget.onEdit != null)
-            Tooltip(
-              message: 'Editar',
-              child: InkWell(
-                onTap: widget.onEdit,
-                borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
-                child: Padding(
-                  padding: const EdgeInsets.all(DSSpacing.xs),
-                  child: Icon(
-                    Icons.edit_outlined,
-                    size: DSSpacing.iconMd,
-                    color: colors.primaryColor,
-                  ),
-                ),
-              ),
-            ),
-          const SizedBox(width: DSSpacing.xs),
-          if (widget.onDelete != null)
-            Tooltip(
-              message: 'Excluir',
-              child: InkWell(
-                onTap: widget.onDelete,
-                borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
-                child: Padding(
-                  padding: const EdgeInsets.all(DSSpacing.xs),
-                  child: Icon(
-                    Icons.delete_outline,
-                    size: DSSpacing.iconMd,
-                    color: colors.red,
-                  ),
-                ),
-              ),
-            ),
-        ],
-      );
-    } else {
-      // Mobile: ícone + texto
-      return Row(
-        children: [
-          if (widget.onEdit != null)
-            Expanded(
-              child: InkWell(
-                onTap: widget.onEdit,
-                borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: DSSpacing.xs),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.edit_outlined,
-                        size: 14,
-                        color: colors.primaryColor,
-                      ),
-                      const SizedBox(width: DSSpacing.xxs),
-                      Text(
-                        'Editar',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: colors.primaryColor,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          if (widget.onDelete != null)
-            Expanded(
-              child: InkWell(
-                onTap: widget.onDelete,
-                borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: DSSpacing.xs),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.delete_outline, size: 14, color: colors.red),
-                      const SizedBox(width: DSSpacing.xxs),
-                      Text(
-                        'Excluir',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: colors.red,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-        ],
-      );
-    }
   }
 }

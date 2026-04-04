@@ -15,6 +15,7 @@ class ProductModel {
   String? size;
   List<String> tags;
   String? description;
+  String? aiInstructions;
   String? imageUrl;
   List<String> imageUrls;
   int mainImageIndex;
@@ -33,6 +34,7 @@ class ProductModel {
     this.size,
     this.tags = const [],
     this.description,
+    this.aiInstructions,
     this.imageUrl,
     this.imageUrls = const [],
     this.mainImageIndex = 0,
@@ -104,6 +106,7 @@ class ProductModel {
       size: _asNullableString(data['size']),
       tags: _normalizeTags(data['tags']),
       description: _asNullableString(data['description']),
+      aiInstructions: _asNullableString(data['ai_instructions']),
       imageUrl: urls.isNotEmpty ? urls.first : null,
       imageUrls: urls,
       mainImageIndex: (data['main_image_index'] as num? ?? 0).toInt(),
@@ -130,6 +133,7 @@ class ProductModel {
       'size': size,
       'tags': tags,
       'description': description,
+      'ai_instructions': aiInstructions,
       'image_url': mainImageUrl,
       'image_urls': imageUrls,
       'main_image_index': mainImageIndex,
@@ -165,6 +169,7 @@ class ProductModel {
     String? size,
     List<String>? tags,
     String? description,
+    String? aiInstructions,
     String? imageUrl,
     List<String>? imageUrls,
     int? mainImageIndex,
@@ -183,6 +188,7 @@ class ProductModel {
       size: size ?? this.size,
       tags: tags ?? this.tags,
       description: description ?? this.description,
+      aiInstructions: aiInstructions ?? this.aiInstructions,
       imageUrl: imageUrl ?? this.imageUrl,
       imageUrls: imageUrls ?? this.imageUrls,
       mainImageIndex: mainImageIndex ?? this.mainImageIndex,

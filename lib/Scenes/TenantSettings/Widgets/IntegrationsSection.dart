@@ -127,6 +127,8 @@ class _IntegrationsSectionState extends State<IntegrationsSection> {
   }
 
   Widget _buildWhatsAppSection(DSColors colors, DSTextStyle textStyles) {
+    final isSuperAdmin = SessionManager.instance.isSuperAdmin;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -181,23 +183,24 @@ class _IntegrationsSectionState extends State<IntegrationsSection> {
         const SizedBox(height: DSSpacing.md),
 
         _buildManagedWhatsAppPanel(colors, textStyles),
-        const SizedBox(height: DSSpacing.lg),
-
-        ExpansionTile(
-          tilePadding: EdgeInsets.zero,
-          childrenPadding: EdgeInsets.zero,
-          iconColor: colors.textSecondary,
-          collapsedIconColor: colors.textSecondary,
-          title: Text(
-            'Configuração avançada',
-            style: textStyles.bodyLarge.copyWith(fontWeight: FontWeight.w600),
+        if (isSuperAdmin) ...[
+          const SizedBox(height: DSSpacing.lg),
+          ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: EdgeInsets.zero,
+            iconColor: colors.textSecondary,
+            collapsedIconColor: colors.textSecondary,
+            title: Text(
+              'Configuração avançada',
+              style: textStyles.bodyLarge.copyWith(fontWeight: FontWeight.w600),
+            ),
+            subtitle: Text(
+              'Use apenas como fallback manual da Evolution API.',
+              style: textStyles.bodySmall.copyWith(color: colors.textTertiary),
+            ),
+            children: [_buildAdvancedWhatsAppForm(colors, textStyles)],
           ),
-          subtitle: Text(
-            'Use apenas como fallback manual da Evolution API.',
-            style: textStyles.bodySmall.copyWith(color: colors.textTertiary),
-          ),
-          children: [_buildAdvancedWhatsAppForm(colors, textStyles)],
-        ),
+        ],
       ],
     );
   }

@@ -6,6 +6,7 @@ import '../../Commons/Utils/ScreenResponsive.dart';
 import '../../Commons/Widgets/DesignSystem/DSColors.dart';
 import '../../Commons/Widgets/DesignSystem/DSTextStyle.dart';
 import '../../Commons/Widgets/DesignSystem/DSSpacing.dart';
+import '../../Commons/Widgets/DesignSystem/DSAlertDialog.dart';
 import '../../Commons/Widgets/DesignSystem/DSButton.dart';
 import '../../Commons/Widgets/DesignSystem/FormTextField.dart';
 import '../../Commons/Widgets/DesignSystem/LoadingIndicator.dart';
@@ -41,6 +42,7 @@ class _ProductFormPageState extends State<ProductFormPage> {
   final _sizeController = TextEditingController();
   final _tagsController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _aiInstructionsController = TextEditingController();
   bool _isActive = true;
   bool _isRestockNotificationSending = false;
 
@@ -66,7 +68,12 @@ class _ProductFormPageState extends State<ProductFormPage> {
     if (!_initialized) {
       _initialized = true;
       final args = ModalRoute.of(context)?.settings.arguments;
-      if (args is String) {
+      if (args is ProductFormRouteArgs && args.isEdit) {
+        _presenter.initForEdit(args.productId!).then((_) => _populateFields());
+      } else if (args is ProductFormRouteArgs && args.isDuplicate) {
+        _presenter.initForCreate(duplicateFrom: args.duplicateFrom);
+        _populateFields();
+      } else if (args is String) {
         _presenter.initForEdit(args).then((_) => _populateFields());
       } else {
         _presenter.initForCreate();
@@ -89,6 +96,7 @@ class _ProductFormPageState extends State<ProductFormPage> {
       _sizeController.text = product.size ?? '';
       _tagsController.text = product.tags.join(', ');
       _descriptionController.text = product.description ?? '';
+      _aiInstructionsController.text = product.aiInstructions ?? '';
       _isActive = product.isActive;
     }
   }
@@ -104,6 +112,7 @@ class _ProductFormPageState extends State<ProductFormPage> {
     _sizeController.dispose();
     _tagsController.dispose();
     _descriptionController.dispose();
+    _aiInstructionsController.dispose();
     super.dispose();
   }
 
@@ -158,6 +167,10 @@ class _ProductFormPageState extends State<ProductFormPage> {
                     ],
                     const SizedBox(height: DSSpacing.xl),
                     _buildImageCard(colors, textStyles),
+                    if (_shouldShowProductActions) ...[
+                      const SizedBox(height: DSSpacing.xl),
+                      _buildProductActionsCard(colors, textStyles),
+                    ],
                     const SizedBox(height: DSSpacing.huge),
                   ],
                 ),
@@ -326,6 +339,8 @@ class _ProductFormPageState extends State<ProductFormPage> {
                         label: 'SKU',
                         controller: _skuController,
                         hintText: 'Ex: SUP-CEL-001',
+                        helperText:
+                            'Se ficar vazio, será gerado automaticamente ao salvar.',
                         validator: _validateSku,
                         textInputAction: TextInputAction.next,
                       ),
@@ -392,6 +407,22 @@ class _ProductFormPageState extends State<ProductFormPage> {
                   maxLines: 4,
                   keyboardType: TextInputType.multiline,
                   textInputAction: TextInputAction.newline,
+                ),
+                const SizedBox(height: DSSpacing.lg),
+                FormTextField(
+                  label: 'Instruções de IA para atendimento',
+                  controller: _aiInstructionsController,
+                  hintText:
+                      'Oriente o agente sobre este produto: combinações, restrições e como vender melhor.',
+                  helperText:
+                      'Essas instruções acompanham o produto no atendimento do agente.',
+                  maxLength: 500,
+                  maxLines: 4,
+                  keyboardType: TextInputType.multiline,
+                  textInputAction: TextInputAction.newline,
+                  labelTrailing: _buildHelpIconButton(
+                    onTap: _showProductAiInstructionsHelp,
+                  ),
                 ),
                 const SizedBox(height: DSSpacing.lg),
 
@@ -912,10 +943,12 @@ class _ProductFormPageState extends State<ProductFormPage> {
           ),
           const SizedBox(height: DSSpacing.lg),
           FormTextField(
-            label: 'SKU *',
+            label: 'SKU',
             controller: _skuController,
             hintText: 'Ex: CAM-001',
             prefixIcon: Icons.qr_code_rounded,
+            helperText:
+                'Se ficar vazio, será gerado automaticamente ao salvar.',
             validator: _validateSku,
             textInputAction: TextInputAction.next,
           ),
@@ -987,11 +1020,30 @@ class _ProductFormPageState extends State<ProductFormPage> {
             textInputAction: TextInputAction.done,
           ),
           const SizedBox(height: DSSpacing.lg),
+          FormTextField(
+            label: 'Instruções de IA para atendimento',
+            controller: _aiInstructionsController,
+            hintText:
+                'Ex: se zerar o estoque, ofereça modelos semelhantes no mesmo tamanho.',
+            helperText:
+                'Essas orientações ajudam o agente a vender este produto do jeito certo.',
+            maxLength: 500,
+            maxLines: 4,
+            textInputAction: TextInputAction.newline,
+            labelTrailing: _buildHelpIconButton(
+              onTap: _showProductAiInstructionsHelp,
+            ),
+          ),
+          const SizedBox(height: DSSpacing.lg),
 
           _buildStatusToggle(colors, textStyles),
           const SizedBox(height: DSSpacing.xl),
 
           _buildMobileActionButtons(colors),
+          if (_shouldShowProductActions) ...[
+            const SizedBox(height: DSSpacing.lg),
+            _buildProductActionsCard(colors, textStyles),
+          ],
           const SizedBox(height: DSSpacing.xl),
         ],
       ),
@@ -1244,6 +1296,66 @@ class _ProductFormPageState extends State<ProductFormPage> {
     );
   }
 
+  Widget _buildProductActionsCard(DSColors colors, DSTextStyle textStyles) {
+    final product = _viewModel.product;
+    if (product == null) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(DSSpacing.cardPaddingLg),
+      decoration: BoxDecoration(
+        color: colors.cardBackground,
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
+        border: Border.all(color: colors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Ações do Produto', style: textStyles.headline3),
+          const SizedBox(height: DSSpacing.xs),
+          Text(
+            'Use a cópia para acelerar novos cadastros e deixe a exclusão apenas quando realmente não precisar mais deste item.',
+            style: textStyles.bodySmall.copyWith(color: colors.textTertiary),
+          ),
+          const SizedBox(height: DSSpacing.lg),
+          Wrap(
+            spacing: DSSpacing.sm,
+            runSpacing: DSSpacing.sm,
+            children: [
+              DSButton.secondary(
+                label: 'Copiar Produto',
+                icon: Icons.content_copy_rounded,
+                onTap: _viewModel.isSaving ? null : _handleDuplicateProduct,
+              ),
+              if (_viewModel.isEditing)
+                DSButton.danger(
+                  label: 'Excluir esse produto',
+                  icon: Icons.delete_outline_rounded,
+                  onTap: _viewModel.isSaving ? null : _handleDeleteProduct,
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHelpIconButton({required VoidCallback onTap}) {
+    final colors = DSColors();
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
+      child: Padding(
+        padding: const EdgeInsets.all(2),
+        child: Icon(
+          Icons.help_outline_rounded,
+          size: 18,
+          color: colors.textTertiary,
+        ),
+      ),
+    );
+  }
+
   // MARK: - Actions
 
   Future<void> _handleNotifyRestock(ProductModel product) async {
@@ -1352,6 +1464,9 @@ class _ProductFormPageState extends State<ProductFormPage> {
       description: _descriptionController.text.trim().isEmpty
           ? null
           : _descriptionController.text.trim(),
+      aiInstructions: _aiInstructionsController.text.trim().isEmpty
+          ? null
+          : _aiInstructionsController.text.trim(),
       isActive: _isActive,
     );
 
@@ -1370,8 +1485,40 @@ class _ProductFormPageState extends State<ProductFormPage> {
   }
 
   String? _validateSku(String? value) {
-    if (value == null || value.trim().isEmpty) return 'SKU é obrigatório';
     return null;
+  }
+
+  Future<void> _handleDuplicateProduct() async {
+    final product = _viewModel.product;
+    if (product == null) return;
+
+    await ProductsCoordinator.navigateToCreate(context, duplicateFrom: product);
+  }
+
+  Future<void> _handleDeleteProduct() async {
+    final product = _viewModel.product;
+    if (product == null || !_viewModel.isEditing) return;
+
+    final deletedOrInactivated = await _presenter.deleteProduct(product);
+    if (deletedOrInactivated && mounted) {
+      ProductsCoordinator.navigateBack(context, result: true);
+    }
+  }
+
+  Future<void> _showProductAiInstructionsHelp() async {
+    await DSAlertDialog.showInfo(
+      context: context,
+      title: 'Como usar essas instruções',
+      message:
+          'Esse campo orienta o agente sobre como vender este produto especificamente durante o atendimento.',
+      content: const _InlineHelpExamples(
+        examples: [
+          'Se o estoque estiver zerado, não ofereça outros tamanhos; ofereça modelos semelhantes no mesmo tamanho.',
+          'Se o cliente se interessar por essa peça, ofereça também a SKU que compõe o look publicado no Instagram.',
+          'Se houver dúvida comum sobre material, destaque conforto, caimento e forma antes de sugerir a compra.',
+        ],
+      ),
+    );
   }
 
   String? _validatePrice(String? value) {
@@ -1388,5 +1535,51 @@ class _ProductFormPageState extends State<ProductFormPage> {
     final parsed = int.tryParse(value);
     if (parsed == null || parsed < 0) return 'Informe um valor válido (≥ 0)';
     return null;
+  }
+
+  bool get _shouldShowProductActions {
+    final product = _viewModel.product;
+    if (product == null) return false;
+    return _viewModel.isEditing ||
+        product.name.trim().isNotEmpty ||
+        product.description?.trim().isNotEmpty == true ||
+        product.imageUrls.isNotEmpty;
+  }
+}
+
+class _InlineHelpExamples extends StatelessWidget {
+  final List<String> examples;
+
+  const _InlineHelpExamples({required this.examples});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = DSColors();
+    final textStyles = DSTextStyle();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(DSSpacing.md),
+      decoration: BoxDecoration(
+        color: colors.scaffoldBackground,
+        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        border: Border.all(color: colors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Exemplos práticos', style: textStyles.labelLarge),
+          const SizedBox(height: DSSpacing.sm),
+          for (final example in examples) ...[
+            Text(
+              '• $example',
+              textAlign: TextAlign.left,
+              style: textStyles.bodySmall.copyWith(color: colors.textSecondary),
+            ),
+            if (example != examples.last) const SizedBox(height: DSSpacing.xs),
+          ],
+        ],
+      ),
+    );
   }
 }

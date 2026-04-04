@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import '../../../Commons/Enums/BusinessSegment.dart';
+import '../../../Commons/Widgets/DesignSystem/DSAlertDialog.dart';
 import '../../../Commons/Widgets/DesignSystem/DSButton.dart';
 import '../../../Commons/Widgets/DesignSystem/DSColors.dart';
 import '../../../Commons/Widgets/DesignSystem/DSSpacing.dart';
@@ -194,6 +195,11 @@ class CompanyDataSection extends StatelessWidget {
                   'Argumentos de venda, objeções comuns, gatilhos e ofertas que convertem melhor.',
               maxLines: 4,
               textInputAction: TextInputAction.next,
+              labelTrailing: _buildHelpIcon(
+                context,
+                colors,
+                onTap: () => _showSalesPlaybookHelp(context),
+              ),
             ),
             const SizedBox(height: DSSpacing.md),
 
@@ -239,6 +245,77 @@ class CompanyDataSection extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildHelpIcon(
+    BuildContext context,
+    DSColors colors, {
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
+      child: Padding(
+        padding: const EdgeInsets.all(2),
+        child: Icon(
+          Icons.help_outline_rounded,
+          size: 18,
+          color: colors.textTertiary,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showSalesPlaybookHelp(BuildContext context) async {
+    await DSAlertDialog.showInfo(
+      context: context,
+      title: 'Como orientar o agente',
+      message:
+          'Use esse campo para ensinar o agente a vender do jeito da sua operação, com objeções, diferenciais e regras comerciais.',
+      content: const _CompanyDataHelpExamples(
+        examples: [
+          'Quando o cliente hesitar no preço, destaque durabilidade, acabamento e custo-benefício antes de falar em desconto.',
+          'Em pedidos acima de determinado valor, incentive a fechar no mesmo atendimento e reforce a condição de pagamento disponível.',
+          'Sempre sugira um complemento natural quando o cliente demonstrar intenção clara de compra.',
+        ],
+      ),
+    );
+  }
+}
+
+class _CompanyDataHelpExamples extends StatelessWidget {
+  final List<String> examples;
+
+  const _CompanyDataHelpExamples({required this.examples});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = DSColors();
+    final textStyles = DSTextStyle();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(DSSpacing.md),
+      decoration: BoxDecoration(
+        color: colors.scaffoldBackground,
+        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+        border: Border.all(color: colors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Exemplos', style: textStyles.labelLarge),
+          const SizedBox(height: DSSpacing.sm),
+          for (final example in examples) ...[
+            Text(
+              '• $example',
+              style: textStyles.bodySmall.copyWith(color: colors.textSecondary),
+            ),
+            if (example != examples.last) const SizedBox(height: DSSpacing.xs),
+          ],
+        ],
       ),
     );
   }

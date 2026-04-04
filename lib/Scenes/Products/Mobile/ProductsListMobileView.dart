@@ -312,11 +312,6 @@ class ProductsListMobileView extends StatelessWidget {
               await ProductsCoordinator.navigateToDetail(context, product);
               presenter.refresh();
             },
-            onEdit: () async {
-              await ProductsCoordinator.navigateToEdit(context, product);
-              presenter.refresh();
-            },
-            onDelete: () => presenter.deleteProduct(product),
           );
         },
       ),

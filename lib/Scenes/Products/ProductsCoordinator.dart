@@ -1,6 +1,22 @@
 import 'package:flutter/material.dart';
 import '../../Commons/Models/ProductModel.dart';
 
+class ProductFormRouteArgs {
+  final String? productId;
+  final ProductModel? duplicateFrom;
+
+  const ProductFormRouteArgs._({this.productId, this.duplicateFrom});
+
+  const ProductFormRouteArgs.edit(String productId)
+    : this._(productId: productId);
+
+  const ProductFormRouteArgs.duplicate(ProductModel product)
+    : this._(duplicateFrom: product);
+
+  bool get isEdit => productId != null && productId!.isNotEmpty;
+  bool get isDuplicate => duplicateFrom != null;
+}
+
 /// Coordinator de navegação para Produtos.
 class ProductsCoordinator {
   /// Navega para a lista de produtos.
@@ -9,8 +25,17 @@ class ProductsCoordinator {
   }
 
   /// Navega para criar novo produto.
-  static Future<dynamic> navigateToCreate(BuildContext context) {
-    return Navigator.pushNamed(context, '/products/new');
+  static Future<dynamic> navigateToCreate(
+    BuildContext context, {
+    ProductModel? duplicateFrom,
+  }) {
+    return Navigator.pushNamed(
+      context,
+      '/products/new',
+      arguments: duplicateFrom != null
+          ? ProductFormRouteArgs.duplicate(duplicateFrom)
+          : null,
+    );
   }
 
   /// Navega para editar produto.
@@ -21,7 +46,7 @@ class ProductsCoordinator {
     return Navigator.pushNamed(
       context,
       '/products/edit',
-      arguments: product.uid,
+      arguments: ProductFormRouteArgs.edit(product.uid),
     );
   }
 

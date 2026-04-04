@@ -21,9 +21,31 @@ class ProductFormPresenter {
   // MARK: - Init
 
   /// Inicializa para criar novo produto.
-  void initForCreate() {
+  void initForCreate({ProductModel? duplicateFrom}) {
+    final product = duplicateFrom != null
+        ? duplicateFrom.copyWith(
+            uid: '',
+            sku: '',
+            createdAt: DateTime.now(),
+            updatedAt: null,
+          )
+        : ProductModel.newModel();
+    final existingImages = duplicateFrom != null
+        ? duplicateFrom.imageUrls.asMap().entries.map((entry) {
+            return ProductImageItem(
+              url: entry.value,
+              isMain: entry.key == duplicateFrom.mainImageIndex,
+            );
+          }).toList()
+        : const <ProductImageItem>[];
+
     _update(
-      _viewModel.copyWith(product: ProductModel.newModel(), isEditing: false),
+      _viewModel.copyWith(
+        product: product,
+        isEditing: false,
+        images: existingImages,
+        removedImageUrls: const [],
+      ),
     );
   }
 
@@ -138,6 +160,7 @@ class ProductFormPresenter {
     String? size,
     List<String> tags = const [],
     String? description,
+    String? aiInstructions,
     required bool isActive,
   }) async {
     if (context == null) return false;
@@ -145,17 +168,33 @@ class ProductFormPresenter {
     _update(_viewModel.copyWith(isSaving: true));
 
     try {
+      final resolvedSku = _resolveSku(
+        requestedSku: sku,
+        name: name,
+        category: category,
+        color: color,
+        size: size,
+      );
+
       // Validar SKU único
       final skuExists = await _repository.skuExists(
-        sku,
+        resolvedSku,
         excludeId: _viewModel.isEditing ? _viewModel.product?.uid : null,
       );
 
       if (skuExists) {
+        final duplicateMessage = sku.trim().isEmpty
+            ? 'O SKU gerado automaticamente "$resolvedSku" já existe. Ajuste nome, categoria, cor, tamanho ou informe um SKU diferente.'
+            : 'O SKU "$resolvedSku" já existe. Informe um valor diferente.';
+        await DSAlertDialog.showError(
+          context: context!,
+          title: 'SKU já cadastrado',
+          message: duplicateMessage,
+        );
         _update(
           _viewModel.copyWith(
             isSaving: false,
-            errorMessage: 'Este SKU já está em uso.',
+            errorMessage: duplicateMessage,
             clearError: false,
           ),
         );
@@ -165,7 +204,7 @@ class ProductFormPresenter {
       if (_viewModel.isEditing) {
         return await _saveEdit(
           name: name,
-          sku: sku,
+          sku: resolvedSku,
           price: price,
           stock: stock,
           category: category,
@@ -173,12 +212,13 @@ class ProductFormPresenter {
           size: size,
           tags: tags,
           description: description,
+          aiInstructions: aiInstructions,
           isActive: isActive,
         );
       } else {
         return await _saveCreate(
           name: name,
-          sku: sku,
+          sku: resolvedSku,
           price: price,
           stock: stock,
           category: category,
@@ -186,6 +226,7 @@ class ProductFormPresenter {
           size: size,
           tags: tags,
           description: description,
+          aiInstructions: aiInstructions,
           isActive: isActive,
         );
       }
@@ -214,6 +255,7 @@ class ProductFormPresenter {
     String? size,
     required List<String> tags,
     String? description,
+    String? aiInstructions,
     required bool isActive,
   }) async {
     final product = _viewModel.product!.copyWith(
@@ -226,6 +268,7 @@ class ProductFormPresenter {
       size: size,
       tags: tags,
       description: description,
+      aiInstructions: aiInstructions,
       isActive: isActive,
       updatedAt: DateTime.now(),
     );
@@ -297,6 +340,7 @@ class ProductFormPresenter {
     String? size,
     required List<String> tags,
     String? description,
+    String? aiInstructions,
     required bool isActive,
   }) async {
     final product = ProductModel(
@@ -310,6 +354,7 @@ class ProductFormPresenter {
       size: size,
       tags: tags,
       description: description,
+      aiInstructions: aiInstructions,
       isActive: isActive,
       createdAt: DateTime.now(),
     );
@@ -334,7 +379,9 @@ class ProductFormPresenter {
       final item = _viewModel.images[i];
       if (item.isMain) mainIdx = i;
 
-      if (item.isLocal) {
+      if (item.isRemote) {
+        finalUrls.add(item.url!);
+      } else if (item.isLocal) {
         final url = await _repository.uploadImage(
           productId: productId,
           imageBytes: item.bytes!,
@@ -368,10 +415,118 @@ class ProductFormPresenter {
     return true;
   }
 
+  Future<bool> deleteProduct(ProductModel product) async {
+    if (context == null) return false;
+
+    final hasSales = await _repository.productHasSales(product.uid);
+
+    if (hasSales) {
+      final confirm = await DSAlertDialog.showWarning(
+        context: context!,
+        title: 'Produto com Vendas',
+        message:
+            'Este produto possui vendas registradas e será inativado, sem perder o histórico.',
+        confirmLabel: 'Inativar produto',
+      );
+
+      if (confirm != true) return false;
+
+      final success = await _repository.update(
+        product.copyWith(isActive: false),
+      );
+      if (success) {
+        await DSAlertDialog.showSuccess(
+          context: context!,
+          title: 'Produto Inativado',
+          message: '${product.name} foi inativado com sucesso.',
+        );
+      }
+      return success;
+    }
+
+    final confirm = await DSAlertDialog.showDelete(
+      context: context!,
+      title: 'Excluir produto',
+      message: 'Este produto será removido permanentemente.',
+      content: DSAlertContentCard(
+        icon: Icons.shopping_bag_outlined,
+        title: product.name,
+        subtitle: 'SKU: ${product.sku}',
+      ),
+    );
+
+    if (confirm != true) return false;
+
+    if (product.imageUrls.isNotEmpty) {
+      await _repository.deleteImages(product.imageUrls);
+    }
+
+    final success = await _repository.delete(product.uid);
+    if (success) {
+      await DSAlertDialog.showSuccess(
+        context: context!,
+        title: 'Produto Excluído',
+        message: '${product.name} foi removido permanentemente.',
+      );
+    }
+    return success;
+  }
+
   // MARK: - Private
 
   void _update(ProductFormViewModel viewModel) {
     _viewModel = viewModel;
     onViewModelUpdated(viewModel);
+  }
+
+  String _resolveSku({
+    required String requestedSku,
+    required String name,
+    String? category,
+    String? color,
+    String? size,
+  }) {
+    final trimmed = requestedSku.trim();
+    if (trimmed.isNotEmpty) return trimmed;
+    return _generateSku(
+      name: name,
+      category: category,
+      color: color,
+      size: size,
+    );
+  }
+
+  String _generateSku({
+    required String name,
+    String? category,
+    String? color,
+    String? size,
+  }) {
+    final parts = [
+      name,
+      category,
+      color,
+      size,
+    ].map(_slugifyPart).where((part) => part.isNotEmpty).toList();
+
+    if (parts.isEmpty) return 'produto';
+    return parts.join('-');
+  }
+
+  String _slugifyPart(String? value) {
+    if (value == null) return '';
+    final normalized = value
+        .toLowerCase()
+        .trim()
+        .replaceAll(RegExp(r'[àáâãä]'), 'a')
+        .replaceAll(RegExp(r'[èéêë]'), 'e')
+        .replaceAll(RegExp(r'[ìíîï]'), 'i')
+        .replaceAll(RegExp(r'[òóôõö]'), 'o')
+        .replaceAll(RegExp(r'[ùúûü]'), 'u')
+        .replaceAll(RegExp(r'[ç]'), 'c')
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'-+'), '-')
+        .replaceAll(RegExp(r'^-|-$'), '');
+    return normalized;
   }
 }

@@ -18,6 +18,7 @@ class FormTextField extends StatelessWidget {
   final String? hintText;
   final String? helperText;
   final Widget? helperWidget;
+  final Widget? labelTrailing;
   final IconData? prefixIcon;
   final Widget? suffix;
   final List<TextInputFormatter>? inputFormatters;
@@ -42,6 +43,7 @@ class FormTextField extends StatelessWidget {
     this.hintText,
     this.helperText,
     this.helperWidget,
+    this.labelTrailing,
     this.prefixIcon,
     this.suffix,
     this.inputFormatters,
@@ -63,7 +65,15 @@ class FormTextField extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         // Label
-        Text(label, style: textStyles.textFieldLabel),
+        Row(
+          children: [
+            Expanded(child: Text(label, style: textStyles.textFieldLabel)),
+            if (labelTrailing != null) ...[
+              const SizedBox(width: DSSpacing.xs),
+              labelTrailing!,
+            ],
+          ],
+        ),
         const SizedBox(height: 6),
 
         // TextField

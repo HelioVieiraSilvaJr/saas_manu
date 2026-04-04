@@ -440,11 +440,6 @@ class ProductsListWebView extends StatelessWidget {
                     );
                     presenter.refresh();
                   },
-                  onEdit: () async {
-                    await ProductsCoordinator.navigateToEdit(context, product);
-                    presenter.refresh();
-                  },
-                  onDelete: () => presenter.deleteProduct(product),
                 ),
                 if (!isLast) Divider(height: 1, color: colors.divider),
               ],
@@ -474,7 +469,6 @@ class ProductsListWebView extends StatelessWidget {
           Expanded(flex: 2, child: Text('Preço', style: headerStyle)),
           Expanded(flex: 2, child: Text('Estoque', style: headerStyle)),
           Expanded(flex: 2, child: Text('Status', style: headerStyle)),
-          const SizedBox(width: 80, child: Text('')),
         ],
       ),
     );
@@ -487,16 +481,12 @@ class _ProductTableRow extends StatefulWidget {
   final DSColors colors;
   final DSTextStyle textStyles;
   final VoidCallback? onTap;
-  final VoidCallback? onEdit;
-  final VoidCallback? onDelete;
 
   const _ProductTableRow({
     required this.product,
     required this.colors,
     required this.textStyles,
     this.onTap,
-    this.onEdit,
-    this.onDelete,
   });
 
   @override
@@ -645,31 +635,6 @@ class _ProductTableRowState extends State<_ProductTableRow> {
                   ),
                 ),
               ),
-
-              // Ações
-              SizedBox(
-                width: 80,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    _ActionIcon(
-                      icon: Icons.edit_outlined,
-                      tooltip: 'Editar',
-                      color: colors.textSecondary,
-                      hoverColor: colors.primaryColor,
-                      onTap: widget.onEdit,
-                    ),
-                    const SizedBox(width: DSSpacing.xs),
-                    _ActionIcon(
-                      icon: Icons.delete_outline_rounded,
-                      tooltip: 'Excluir',
-                      color: colors.textTertiary,
-                      hoverColor: colors.red,
-                      onTap: widget.onDelete,
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
         ),
@@ -681,55 +646,5 @@ class _ProductTableRowState extends State<_ProductTableRow> {
     if (stock == 0) return colors.red;
     if (stock < 10) return colors.orange;
     return colors.green;
-  }
-}
-
-/// Ícone de ação com hover animado.
-class _ActionIcon extends StatefulWidget {
-  final IconData icon;
-  final String tooltip;
-  final Color color;
-  final Color hoverColor;
-  final VoidCallback? onTap;
-
-  const _ActionIcon({
-    required this.icon,
-    required this.tooltip,
-    required this.color,
-    required this.hoverColor,
-    this.onTap,
-  });
-
-  @override
-  State<_ActionIcon> createState() => _ActionIconState();
-}
-
-class _ActionIconState extends State<_ActionIcon> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: Tooltip(
-        message: widget.tooltip,
-        child: InkWell(
-          onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
-          child: Padding(
-            padding: const EdgeInsets.all(DSSpacing.xs),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              child: Icon(
-                widget.icon,
-                size: DSSpacing.iconMd,
-                color: _hovered ? widget.hoverColor : widget.color,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }
