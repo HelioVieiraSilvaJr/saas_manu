@@ -17,7 +17,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const body = $input.first().json.body ?? $input.first().json;\n\n// Ignora se não for mensagem válida\nif (!body.data || !body.data.message) {\n  return [];\n}\n\nconst message = body.data;\nconst isFromMe = message.key?.fromMe === true;\nconst isGroup = message.key?.remoteJid?.includes('@g.us');\nconst isStatus = message.key?.remoteJid === 'status@broadcast';\n\nif (isFromMe || isGroup || isStatus) {\n  return [];\n}\n\n// Extrai dados relevantes\nconst telefone = message.key.remoteJid.replace('@s.whatsapp.net', '');\nconst messageType = message.messageType || '';\nconst isAudio = messageType === 'audioMessage';\nconst texto = message.message?.conversation\n  || message.message?.extendedTextMessage?.text\n  || '';\nconst pushName = message.pushName || '';\n\n// Permite áudio mesmo sem texto\nif (!texto.trim() && !isAudio) {\n  return [];\n}\n\nreturn [{\n  json: {\n    telefone,\n    texto,\n    pushName,\n    messageId: message.key.id,\n    messageType,\n    timestamp: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const body = $input.first().json.body ?? $input.first().json;\nconst info = $('Info').first().json;\nconst normalizePhone = (value = '') => String(value).replace(/\\D/g, '');\n\n// Ignora se não for mensagem válida\nif (!body.data || !body.data.message) {\n  return [];\n}\n\nconst message = body.data;\nconst isFromMe = message.key?.fromMe === true;\nconst isGroup = message.key?.remoteJid?.includes('@g.us');\nconst isStatus = message.key?.remoteJid === 'status@broadcast';\n\nif (isFromMe || isGroup || isStatus) {\n  return [];\n}\n\n// Extrai dados relevantes\nconst telefone = normalizePhone(message.key?.remoteJid || '');\nconst messageType = message.messageType || '';\nconst isAudio = messageType === 'audioMessage';\nconst texto = message.message?.conversation\n  || message.message?.extendedTextMessage?.text\n  || '';\nconst pushName = message.pushName || '';\nconst whitelistEnabled = info.test_sender_whitelist_enabled === true;\nconst whitelist = String(info.test_sender_whitelist_numbers || '')\n  .split(',')\n  .map((item) => normalizePhone(item))\n  .filter(Boolean);\n\nif (whitelistEnabled && !whitelist.includes(telefone)) {\n  return [];\n}\n\n// Permite áudio mesmo sem texto\nif (!texto.trim() && !isAudio) {\n  return [];\n}\n\nreturn [{\n  json: {\n    telefone,\n    texto,\n    pushName,\n    messageId: message.key.id,\n    messageType,\n    timestamp: new Date().toISOString()\n  }\n}];"
       },
       "id": "4a6529d5-bae0-493f-b7ba-1c57ede069e4",
       "name": "Filtrar Mensagens",
@@ -82,14 +82,29 @@
     },
     {
       "parameters": {
-        "resource": "messages-api",
-        "instanceName": "={{ $('Info').first().json['evolution-api_instancia'] }}",
-        "remoteJid": "={{ $('Filtrar Mensagens').item.json.telefone }}",
-        "messageText": "={{ $('AI Agent Vendas').first().json.output }}",
-        "options_message": {}
+        "method": "POST",
+        "url": "={{ ($('Info').first().json.body?.server_url || 'https://chatwoot.htech-servidor.space') + '/message/sendText/' + $('Info').first().json['evolution-api_instancia'] }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $('Info').first().json['EvolutionAPI-Key'] }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $('Filtrar Mensagens').item.json.telefone, text: $('AI Agent Vendas').first().json.output }) }}",
+        "options": {}
       },
-      "type": "n8n-nodes-evolution-api.evolutionApi",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         -1840,
         848
@@ -98,12 +113,6 @@
       "name": "Enviar texto",
       "alwaysOutputData": true,
       "retryOnFail": false,
-      "credentials": {
-        "evolutionApi": {
-          "id": "M6bGmFNfvOgZac2f",
-          "name": "Loja-Exemplo-1"
-        }
-      },
       "onError": "continueErrorOutput"
     },
     {
@@ -125,91 +134,103 @@
             {
               "id": "7060f916-398e-4020-8f92-f01eac22159e",
               "name": "evolution-api_instancia",
-              "value": "={{ $json.tenantContext?.evolution_api_instancia || $json.tenantContext?.whatsapp_instance_id || $json.instance || $json.instanceName || $json.sender || '' }}",
+              "value": "={{ $json.body?.tenantContext?.evolution_api_instancia || $json.body?.tenantContext?.whatsapp_instance_id || $json.tenantContext?.evolution_api_instancia || $json.tenantContext?.whatsapp_instance_id || $json.body?.instance || $json.instance || $json.instanceName || $json.sender || '' }}",
               "type": "string"
             },
             {
               "id": "97ef5b93-c24e-444d-9a43-ac26ffde70eb",
               "name": "tenant_name",
-              "value": "={{ $json.tenantContext?.tenant_name || 'Loja' }}",
+              "value": "={{ $json.body?.tenantContext?.tenant_name || $json.tenantContext?.tenant_name || 'Loja' }}",
               "type": "string"
             },
             {
               "id": "dd78b377-1f84-45ae-a098-938295a47d46",
               "name": "tenant_id",
-              "value": "={{ $json.tenantContext?.tenant_id || '' }}",
+              "value": "={{ $json.body?.tenantContext?.tenant_id || $json.tenantContext?.tenant_id || '' }}",
               "type": "string"
             },
             {
               "id": "18181818-1818-4181-8181-181818181818",
               "name": "sales_webhook_url",
-              "value": "={{ $json.tenantContext?.sales_webhook_url || '' }}",
+              "value": "={{ $json.body?.tenantContext?.sales_webhook_url || $json.tenantContext?.sales_webhook_url || '' }}",
               "type": "string"
             },
             {
               "id": "f56f3bbd-60c4-4504-8117-4b9bc4cfa1c9",
               "name": "tenant_segment",
-              "value": "={{ $json.tenantContext?.tenant_segment || 'Nao definido' }}",
+              "value": "={{ $json.body?.tenantContext?.tenant_segment || $json.tenantContext?.tenant_segment || 'Nao definido' }}",
               "type": "string"
             },
             {
               "id": "2c3f45db-0ef7-43ab-af18-c8bb1e9ff001",
               "name": "business_description",
-              "value": "={{ $json.tenantContext?.business_description || '' }}",
+              "value": "={{ $json.body?.tenantContext?.business_description || $json.tenantContext?.business_description || '' }}",
               "type": "string"
             },
             {
               "id": "d17e842c-53f1-4d90-8a26-952cd338d502",
               "name": "sales_playbook",
-              "value": "={{ $json.tenantContext?.sales_playbook || '' }}",
+              "value": "={{ $json.body?.tenantContext?.sales_playbook || $json.tenantContext?.sales_playbook || '' }}",
               "type": "string"
             },
             {
               "id": "04d2d5df-0eb5-4cb8-8d2a-3daa28f03d80",
               "name": "tone_of_voice",
-              "value": "={{ $json.tenantContext?.tone_of_voice || '' }}",
+              "value": "={{ $json.body?.tenantContext?.tone_of_voice || $json.tenantContext?.tone_of_voice || '' }}",
               "type": "string"
             },
             {
               "id": "92a66d91-f9f6-4c4f-b0fb-380ceba1e40b",
               "name": "target_audience",
-              "value": "={{ $json.tenantContext?.target_audience || '' }}",
+              "value": "={{ $json.body?.tenantContext?.target_audience || $json.tenantContext?.target_audience || '' }}",
               "type": "string"
             },
             {
               "id": "84dcfa88-3019-444b-a301-df7e056438dd",
               "name": "business_hours",
-              "value": "={{ $json.tenantContext?.business_hours || '' }}",
+              "value": "={{ $json.body?.tenantContext?.business_hours || $json.tenantContext?.business_hours || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "2d3e8ef6-9b2e-4ee7-9e0f-6f6cdb3d1c01",
+              "name": "test_sender_whitelist_enabled",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "e0a32b7f-4ff1-4986-a3d4-8724a3db2b02",
+              "name": "test_sender_whitelist_numbers",
+              "value": "5511966191991,5511966220880",
               "type": "string"
             },
             {
               "id": "866651e6-fb1e-4f83-b6b8-2775341aa56a",
               "name": "delivery_policies",
-              "value": "={{ $json.tenantContext?.delivery_policies || '' }}",
+              "value": "={{ $json.body?.tenantContext?.delivery_policies || $json.tenantContext?.delivery_policies || '' }}",
               "type": "string"
             },
             {
               "id": "8f3e6913-5243-451d-a912-e25ae73fc848",
               "name": "payment_policies",
-              "value": "={{ $json.tenantContext?.payment_policies || '' }}",
+              "value": "={{ $json.body?.tenantContext?.payment_policies || $json.tenantContext?.payment_policies || '' }}",
               "type": "string"
             },
             {
               "id": "53d7e92d-9479-49c0-a1b2-cc2a6d359c07",
               "name": "exchange_policies",
-              "value": "={{ $json.tenantContext?.exchange_policies || '' }}",
+              "value": "={{ $json.body?.tenantContext?.exchange_policies || $json.tenantContext?.exchange_policies || '' }}",
               "type": "string"
             },
             {
               "id": "69f580b7-bc13-4cc2-a38b-c05d783d24d5",
               "name": "policies",
-              "value": "={{ $json.tenantContext?.policies || '' }}",
+              "value": "={{ $json.body?.tenantContext?.policies || $json.tenantContext?.policies || '' }}",
               "type": "string"
             },
             {
               "id": "0032e2de-027a-49b9-981d-fcd6850a896d",
               "name": "EvolutionAPI-Key",
-              "value": "824B4411A044-4FB8-855B-607757D629F1",
+              "value": "ZehoPdTXWqhdf46u8xX3R5xery6lPTaV",
               "type": "string"
             },
             {
@@ -915,14 +936,8 @@
       "alwaysOutputData": true
     },
     {
-      "parameters": {
-        "resource": "chat-api",
-        "operation": "read-messages",
-        "instanceName": "={{ $('Info').item.json['evolution-api_instancia'] }}",
-        "remoteJid": "={{ $('Dados do Cliente').item.json.Numero }}",
-        "messageId": "={{ $('Webhook').item.json.body.data.key.id }}"
-      },
-      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
         -384,
@@ -932,12 +947,6 @@
       "name": "Enviar - Default1",
       "alwaysOutputData": false,
       "retryOnFail": false,
-      "credentials": {
-        "evolutionApi": {
-          "id": "M6bGmFNfvOgZac2f",
-          "name": "Loja-Exemplo-1"
-        }
-      },
       "onError": "continueRegularOutput"
     },
     {
@@ -1004,28 +1013,15 @@
       "name": "Convert to File1"
     },
     {
-      "parameters": {
-        "resource": "chat-api",
-        "operation": "read-messages",
-        "instanceName": "={{ $('Info').item.json['evolution-api_instancia'] }}",
-        "remoteJid": "={{ $('Dados do Cliente').item.json.Numero }}",
-        "messageId": "={{ $('Webhook').item.json.body.data.key.id }}",
-        "fromMe": "={{ $('Webhook').first().json.body.data.key.fromMe }}"
-      },
-      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
         -384,
         2096
       ],
       "id": "b5335970-ebee-40af-a32d-989ec37b4564",
-      "name": "Marcar como lida",
-      "credentials": {
-        "evolutionApi": {
-          "id": "M6bGmFNfvOgZac2f",
-          "name": "Loja-Exemplo-1"
-        }
-      }
+      "name": "Marcar como lida"
     },
     {
       "parameters": {
@@ -1166,78 +1162,31 @@
       "onError": "continueErrorOutput"
     },
     {
-      "parameters": {
-        "resource": "chat-api",
-        "operation": "send-presence",
-        "instanceName": "={{ $('Info').item.json['evolution-api_instancia'] }}",
-        "remoteJid": "={{ $('Dados do Cliente').item.json.Numero }}",
-        "presence": "=paused",
-        "delay": 0
-      },
-      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
         -2080,
         608
       ],
       "id": "4c4db96b-4bf6-41d4-9d17-611c41dc5d6e",
-      "name": "Resetar status",
-      "credentials": {
-        "evolutionApi": {
-          "id": "M6bGmFNfvOgZac2f",
-          "name": "Loja-Exemplo-1"
-        }
-      }
+      "name": "Resetar status"
     },
     {
-      "parameters": {
-        "resource": "chat-api",
-        "operation": "send-presence",
-        "instanceName": "={{ $('Info').item.json['evolution-api_instancia'] }}",
-        "remoteJid": "={{ $('Dados do Cliente').item.json.Numero }}",
-        "presence": "=paused",
-        "delay": 0
-      },
-      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
         -2080,
         848
       ],
       "id": "8f31ff5e-ca7c-4a66-b2f4-15b167c5e16f",
-      "name": "Resetar status1",
-      "credentials": {
-        "evolutionApi": {
-          "id": "M6bGmFNfvOgZac2f",
-          "name": "Loja-Exemplo-1"
-        }
-      }
+      "name": "Resetar status1"
     },
     {
-      "parameters": {
-        "method": "POST",
-        "url": "https://n8n.htech-servidor.space/webhook/e56e25c6-d00e-40aa-83b6-4985aea910f1",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "instancia",
-              "value": "={{ $('Info').item.json['evolution-api_instancia'] }}"
-            },
-            {
-              "name": "telefone",
-              "value": "={{ $('Dados do Cliente').item.json.Numero }}"
-            },
-            {
-              "name": "status",
-              "value": "composing"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
       "position": [
         -192,
         1632
@@ -1246,30 +1195,9 @@
       "name": "Gravando async"
     },
     {
-      "parameters": {
-        "method": "POST",
-        "url": "https://n8n.htech-servidor.space/webhook/e56e25c6-d00e-40aa-83b6-4985aea910f1",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "instancia",
-              "value": "={{ $('Info').item.json['evolution-api_instancia'] }}"
-            },
-            {
-              "name": "telefone",
-              "value": "={{ $('Dados do Cliente').item.json.Numero }}"
-            },
-            {
-              "name": "status",
-              "value": "recording"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
       "position": [
         -176,
         2096
