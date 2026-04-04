@@ -74,6 +74,9 @@ class CustomersRepository {
   Future<String?> create(CustomerModel customer) async {
     try {
       final docRef = await _collection.add(customer.toMap());
+      if (customersCache.hasData) {
+        customersCache.add(customer.copyWith(uid: docRef.id));
+      }
       AppLogger.info('Cliente criado: ${docRef.id}');
       return docRef.id;
     } catch (e) {
@@ -86,6 +89,12 @@ class CustomersRepository {
   Future<bool> update(CustomerModel customer) async {
     try {
       await _collection.doc(customer.uid).update(customer.toMap());
+      if (customersCache.hasData) {
+        customersCache.updateWhere(
+          (cached) => cached.uid == customer.uid,
+          customer,
+        );
+      }
       AppLogger.info('Cliente atualizado: ${customer.uid}');
       return true;
     } catch (e) {
@@ -98,6 +107,9 @@ class CustomersRepository {
   Future<bool> delete(String customerId) async {
     try {
       await _collection.doc(customerId).delete();
+      if (customersCache.hasData) {
+        customersCache.removeWhere((customer) => customer.uid == customerId);
+      }
       AppLogger.info('Cliente deletado: $customerId');
       return true;
     } catch (e) {
@@ -148,12 +160,29 @@ class CustomersRepository {
   /// Atualiza estatísticas de compra do cliente (após nova venda).
   Future<void> updatePurchaseStats(String customerId, double saleTotal) async {
     try {
+      final now = DateTime.now();
       await _collection.doc(customerId).update({
         'purchase_count': FieldValue.increment(1),
         'total_spent': FieldValue.increment(saleTotal),
         'last_purchase_at': FieldValue.serverTimestamp(),
         'updated_at': FieldValue.serverTimestamp(),
       });
+      if (customersCache.hasData) {
+        final current = customersCache.data
+            .where((customer) => customer.uid == customerId)
+            .firstOrNull;
+        if (current != null) {
+          customersCache.updateWhere(
+            (customer) => customer.uid == customerId,
+            current.copyWith(
+              purchaseCount: (current.purchaseCount ?? 0) + 1,
+              totalSpent: (current.totalSpent ?? 0) + saleTotal,
+              lastPurchaseAt: now,
+              updatedAt: now,
+            ),
+          );
+        }
+      }
       AppLogger.info('Purchase stats atualizadas: $customerId');
     } catch (e) {
       AppLogger.error('Erro ao atualizar purchase stats', error: e);
@@ -166,11 +195,33 @@ class CustomersRepository {
     double saleTotal,
   ) async {
     try {
+      final now = DateTime.now();
       await _collection.doc(customerId).update({
         'purchase_count': FieldValue.increment(-1),
         'total_spent': FieldValue.increment(-saleTotal),
         'updated_at': FieldValue.serverTimestamp(),
       });
+      if (customersCache.hasData) {
+        final current = customersCache.data
+            .where((customer) => customer.uid == customerId)
+            .firstOrNull;
+        if (current != null) {
+          customersCache.updateWhere(
+            (customer) => customer.uid == customerId,
+            current.copyWith(
+              purchaseCount: ((current.purchaseCount ?? 0) - 1).clamp(
+                0,
+                1 << 31,
+              ),
+              totalSpent: ((current.totalSpent ?? 0) - saleTotal).clamp(
+                0,
+                double.infinity,
+              ),
+              updatedAt: now,
+            ),
+          );
+        }
+      }
       AppLogger.info('Purchase stats decrementadas: $customerId');
     } catch (e) {
       AppLogger.error('Erro ao decrementar purchase stats', error: e);

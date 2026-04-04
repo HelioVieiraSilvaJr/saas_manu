@@ -3,8 +3,8 @@ import '../../Commons/Models/CustomerModel.dart';
 /// Enum para filtro de status dos clientes.
 enum CustomerStatusFilter {
   all, // Todos
-  active, // Já compraram
-  inactive, // Nunca compraram
+  active, // Cadastro ativo
+  inactive, // Cadastro inativo
 }
 
 /// Enum para filtro de período da última compra.
@@ -57,9 +57,8 @@ class CustomersListViewModel {
   /// Total de clientes filtrados.
   int get filteredCount => filteredCustomers.length;
 
-  /// Clientes ativos (já compraram).
-  int get activeCount =>
-      allCustomers.where((c) => (c.purchaseCount ?? 0) > 0).length;
+  /// Clientes com cadastro ativo.
+  int get activeCount => allCustomers.where((c) => c.isActive).length;
 
   /// Total gasto por todos os clientes.
   double get totalSpentAll =>

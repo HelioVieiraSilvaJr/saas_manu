@@ -76,6 +76,9 @@ class ProductsRepository {
   Future<String?> create(ProductModel product) async {
     try {
       final docRef = await _collection.add(product.toMap());
+      if (productsCache.hasData) {
+        productsCache.add(product.copyWith(uid: docRef.id));
+      }
       AppLogger.info('Produto criado: ${docRef.id}');
       return docRef.id;
     } catch (e) {
@@ -90,6 +93,12 @@ class ProductsRepository {
       final data = product.toMap();
       data['updated_at'] = Timestamp.fromDate(DateTime.now());
       await _collection.doc(product.uid).update(data);
+      if (productsCache.hasData) {
+        productsCache.updateWhere(
+          (cached) => cached.uid == product.uid,
+          product.copyWith(updatedAt: DateTime.now()),
+        );
+      }
       AppLogger.info('Produto atualizado: ${product.uid}');
       return true;
     } catch (e) {
@@ -102,6 +111,9 @@ class ProductsRepository {
   Future<bool> delete(String productId) async {
     try {
       await _collection.doc(productId).delete();
+      if (productsCache.hasData) {
+        productsCache.removeWhere((product) => product.uid == productId);
+      }
       AppLogger.info('Produto deletado: $productId');
       return true;
     } catch (e) {
@@ -135,10 +147,25 @@ class ProductsRepository {
   /// Decrementa o estoque de um produto.
   Future<bool> decrementStock(String productId, int quantity) async {
     try {
+      final now = DateTime.now();
       await _collection.doc(productId).update({
         'stock': FieldValue.increment(-quantity),
-        'updated_at': Timestamp.fromDate(DateTime.now()),
+        'updated_at': Timestamp.fromDate(now),
       });
+      if (productsCache.hasData) {
+        final current = productsCache.data
+            .where((product) => product.uid == productId)
+            .firstOrNull;
+        if (current != null) {
+          productsCache.updateWhere(
+            (product) => product.uid == productId,
+            current.copyWith(
+              stock: (current.stock - quantity).clamp(0, current.stock),
+              updatedAt: now,
+            ),
+          );
+        }
+      }
       return true;
     } catch (e) {
       AppLogger.error('Erro ao decrementar estoque', error: e);
@@ -149,10 +176,22 @@ class ProductsRepository {
   /// Incrementa o estoque de um produto.
   Future<bool> incrementStock(String productId, int quantity) async {
     try {
+      final now = DateTime.now();
       await _collection.doc(productId).update({
         'stock': FieldValue.increment(quantity),
-        'updated_at': Timestamp.fromDate(DateTime.now()),
+        'updated_at': Timestamp.fromDate(now),
       });
+      if (productsCache.hasData) {
+        final current = productsCache.data
+            .where((product) => product.uid == productId)
+            .firstOrNull;
+        if (current != null) {
+          productsCache.updateWhere(
+            (product) => product.uid == productId,
+            current.copyWith(stock: current.stock + quantity, updatedAt: now),
+          );
+        }
+      }
       return true;
     } catch (e) {
       AppLogger.error('Erro ao incrementar estoque', error: e);

@@ -37,7 +37,7 @@ class DataCache<T> {
   /// Substitui todo o cache por novos dados.
   void set(List<T> items) {
     _data = List<T>.from(items);
-    _lastFetchAt = DateTime.now();
+    _touch();
     _notify();
   }
 
@@ -46,6 +46,7 @@ class DataCache<T> {
     final idx = _data.indexWhere(test);
     if (idx != -1) {
       _data[idx] = newItem;
+      _touch();
       _notify();
     }
   }
@@ -53,6 +54,7 @@ class DataCache<T> {
   /// Remove itens que satisfaçam o predicate.
   void removeWhere(bool Function(T) test) {
     _data.removeWhere(test);
+    _touch();
     _notify();
   }
 
@@ -63,6 +65,7 @@ class DataCache<T> {
     } else {
       _data.add(item);
     }
+    _touch();
     _notify();
   }
 
@@ -74,6 +77,11 @@ class DataCache<T> {
   void clear() {
     _data.clear();
     _lastFetchAt = null;
+    _notify();
+  }
+
+  void _touch() {
+    _lastFetchAt = DateTime.now();
   }
 
   void _notify() {

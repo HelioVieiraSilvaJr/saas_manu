@@ -40,6 +40,7 @@ class _AppShellState extends State<AppShell> {
 
   // Static para evitar subscriptions duplicadas entre instâncias de AppShell.
   static StreamSubscription? _automatedSalesSub;
+  static String? _automatedSalesTenantId;
   static int _lastKnownSalesCount = -1;
 
   @override
@@ -80,7 +81,18 @@ class _AppShellState extends State<AppShell> {
   }
 
   void _setupGlobalSalesListener() {
-    if (_automatedSalesSub != null) return;
+    final tenantId = SessionManager.instance.currentTenant?.uid;
+    if (tenantId == null) return;
+
+    if (_automatedSalesSub != null && _automatedSalesTenantId == tenantId) {
+      return;
+    }
+
+    _automatedSalesSub?.cancel();
+    _automatedSalesSub = null;
+    _automatedSalesTenantId = tenantId;
+    _lastKnownSalesCount = -1;
+
     _automatedSalesSub = SalesRepository().watchNewAutomatedSales().listen((
       newSales,
     ) {
@@ -110,6 +122,7 @@ class _AppShellState extends State<AppShell> {
   static void cancelGlobalListeners() {
     _automatedSalesSub?.cancel();
     _automatedSalesSub = null;
+    _automatedSalesTenantId = null;
     _lastKnownSalesCount = -1;
   }
 
@@ -474,9 +487,7 @@ class _AppShellState extends State<AppShell> {
             // Header com gradiente
             Container(
               padding: const EdgeInsets.all(DSSpacing.lg),
-              decoration: BoxDecoration(
-                gradient: colors.primaryGradient,
-              ),
+              decoration: BoxDecoration(gradient: colors.primaryGradient),
               child: Row(
                 children: [
                   DSAvatar(
@@ -652,9 +663,7 @@ class _AppShellState extends State<AppShell> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'TROCAR TENANT', style: textStyles.overline,
-                    ),
+                    Text('TROCAR TENANT', style: textStyles.overline),
                     const SizedBox(height: DSSpacing.sm),
                     ...session.allMemberships.map((m) {
                       final isSelected =
@@ -736,10 +745,7 @@ class _AppShellState extends State<AppShell> {
         DSSpacing.lg,
         DSSpacing.sm,
       ),
-      child: Text(
-        title.toUpperCase(),
-        style: textStyles.overline,
-      ),
+      child: Text(title.toUpperCase(), style: textStyles.overline),
     );
   }
 
@@ -760,9 +766,7 @@ class _AppShellState extends State<AppShell> {
         vertical: 2,
       ),
       child: Material(
-        color: isSelected
-            ? colors.primarySurface
-            : Colors.transparent,
+        color: isSelected ? colors.primarySurface : Colors.transparent,
         borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
         child: InkWell(
           borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
@@ -846,10 +850,7 @@ class _AppShellState extends State<AppShell> {
         DSSpacing.lg,
         DSSpacing.xs,
       ),
-      child: Text(
-        title.toUpperCase(),
-        style: textStyles.overline,
-      ),
+      child: Text(title.toUpperCase(), style: textStyles.overline),
     );
   }
 
@@ -918,6 +919,7 @@ class _AppShellState extends State<AppShell> {
 
   Future<void> _switchTenant(String tenantId) async {
     try {
+      cancelGlobalListeners();
       await SessionManager.instance.switchTenant(tenantId);
       if (mounted) {
         final route = SessionManager.instance.isSuperAdmin
@@ -946,7 +948,7 @@ class _AppShellState extends State<AppShell> {
 
     if (confirm == true && mounted) {
       _pendingCountSub?.cancel();
-      _stockAlertCountSub?.cancel(); 
+      _stockAlertCountSub?.cancel();
       _salesPendingCountSub?.cancel();
       _orderActiveCountSub?.cancel();
       cancelGlobalListeners();

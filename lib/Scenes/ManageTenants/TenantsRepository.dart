@@ -268,7 +268,7 @@ class TenantsRepository {
       double total = 0;
       for (final doc in snapshot.docs) {
         final data = doc.data();
-        total += (data['total_value'] ?? 0).toDouble();
+        total += ((data['total'] ?? data['total_value']) ?? 0).toDouble();
       }
       return total;
     } catch (e) {

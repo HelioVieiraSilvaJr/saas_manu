@@ -13,12 +13,11 @@ class BackendApi {
     return 'https://us-central1-$_projectId.cloudfunctions.net/$functionName';
   }
 
-  String n8nSaleWebhookUrl({
-    required String tenantId,
-    required String token,
-  }) {
+  String n8nSaleWebhookUrl({required String tenantId, required String token}) {
     final base = functionUrl('receiveN8nSale');
-    return '$base?tenantId=$tenantId&token=$token';
+    return Uri.parse(base)
+        .replace(queryParameters: {'tenantId': tenantId, 'token': token})
+        .toString();
   }
 
   Future<Map<String, dynamic>> postAuthenticated({
@@ -31,14 +30,16 @@ class BackendApi {
     }
 
     final idToken = await user.getIdToken();
-    final response = await http.post(
-      Uri.parse(functionUrl(functionName)),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $idToken',
-      },
-      body: jsonEncode(body),
-    );
+    final response = await http
+        .post(
+          Uri.parse(functionUrl(functionName)),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $idToken',
+          },
+          body: jsonEncode(body),
+        )
+        .timeout(const Duration(seconds: 20));
 
     final decoded = response.body.isNotEmpty
         ? jsonDecode(response.body) as Map<String, dynamic>

@@ -1,10 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../Commons/Enums/SaleStatus.dart';
 import '../../Commons/Enums/OrderStatus.dart';
+import '../../Commons/Models/CustomerModel.dart';
+import '../../Commons/Models/ProductModel.dart';
 import '../../Commons/Models/SaleModel.dart';
 import '../../Commons/Utils/AppLogger.dart';
 import '../../Commons/Utils/DataCache.dart';
 import '../../Sources/SessionManager.dart';
+import '../Customers/CustomersRepository.dart';
+import '../Products/ProductsRepository.dart';
 
 /// Repository do módulo Vendas.
 ///
@@ -33,6 +37,16 @@ class SalesRepository {
   CollectionReference<Map<String, dynamic>> get _collection {
     final tenantId = SessionManager.instance.currentTenant!.uid;
     return _firestore.collection('tenants/$tenantId/sales');
+  }
+
+  CollectionReference<Map<String, dynamic>> get _customersCollection {
+    final tenantId = SessionManager.instance.currentTenant!.uid;
+    return _firestore.collection('tenants/$tenantId/customers');
+  }
+
+  CollectionReference<Map<String, dynamic>> get _productsCollection {
+    final tenantId = SessionManager.instance.currentTenant!.uid;
+    return _firestore.collection('tenants/$tenantId/products');
   }
 
   // MARK: - CRUD
@@ -78,6 +92,9 @@ class SalesRepository {
   Future<String?> create(SaleModel sale) async {
     try {
       final docRef = await _collection.add(sale.toMap());
+      if (salesCache.hasData) {
+        salesCache.add(sale.copyWith(uid: docRef.id));
+      }
       AppLogger.info('Venda criada: ${docRef.id}');
       return docRef.id;
     } catch (e) {
@@ -86,10 +103,132 @@ class SalesRepository {
     }
   }
 
+  /// Cria uma venda manual e aplica todos os efeitos colaterais em transação.
+  Future<String> createConfirmedManualSaleTransaction(SaleModel sale) async {
+    final saleRef = _collection.doc();
+    final now = DateTime.now();
+    final createdSale = sale.copyWith(uid: saleRef.id);
+
+    final quantitiesByProduct = <String, int>{};
+    final namesByProduct = <String, String>{};
+    for (final item in sale.items) {
+      quantitiesByProduct.update(
+        item.productId,
+        (current) => current + item.quantity,
+        ifAbsent: () => item.quantity,
+      );
+      namesByProduct[item.productId] = item.productName;
+    }
+
+    final updatedProducts = <String, ProductModel>{};
+    CustomerModel? updatedCustomer;
+
+    try {
+      await _firestore.runTransaction((transaction) async {
+        final customerRef = _customersCollection.doc(sale.customerId);
+        final customerSnapshot = await transaction.get(customerRef);
+
+        if (!customerSnapshot.exists) {
+          throw Exception('Cliente não encontrado.');
+        }
+
+        final currentCustomer = CustomerModel.fromDocumentSnapshot(
+          customerSnapshot,
+        );
+        updatedCustomer = currentCustomer.copyWith(
+          purchaseCount: (currentCustomer.purchaseCount ?? 0) + 1,
+          totalSpent: (currentCustomer.totalSpent ?? 0) + sale.total,
+          lastPurchaseAt: now,
+          updatedAt: now,
+        );
+
+        for (final entry in quantitiesByProduct.entries) {
+          final productId = entry.key;
+          final quantity = entry.value;
+          final productRef = _productsCollection.doc(productId);
+          final productSnapshot = await transaction.get(productRef);
+
+          if (!productSnapshot.exists) {
+            throw Exception(
+              'Produto não encontrado: ${namesByProduct[productId] ?? productId}.',
+            );
+          }
+
+          final currentProduct = ProductModel.fromDocumentSnapshot(
+            productSnapshot,
+          );
+
+          if (!currentProduct.isActive) {
+            throw Exception('Produto inativo: ${currentProduct.name}.');
+          }
+
+          if (currentProduct.stock < quantity) {
+            throw Exception(
+              'Estoque insuficiente para ${currentProduct.name}. Disponível: ${currentProduct.stock} un.',
+            );
+          }
+
+          final updatedProduct = currentProduct.copyWith(
+            stock: currentProduct.stock - quantity,
+            updatedAt: now,
+          );
+          updatedProducts[productId] = updatedProduct;
+
+          transaction.update(productRef, {
+            'stock': updatedProduct.stock,
+            'updated_at': Timestamp.fromDate(now),
+          });
+        }
+
+        transaction.set(saleRef, createdSale.toMap());
+        transaction.update(customerRef, {
+          'purchase_count': updatedCustomer!.purchaseCount,
+          'total_spent': updatedCustomer!.totalSpent,
+          'last_purchase_at': Timestamp.fromDate(now),
+          'updated_at': Timestamp.fromDate(now),
+        });
+      });
+
+      if (salesCache.hasData) {
+        salesCache.add(createdSale);
+      }
+
+      if (CustomersRepository.customersCache.hasData &&
+          updatedCustomer != null) {
+        CustomersRepository.customersCache.updateWhere(
+          (customer) => customer.uid == updatedCustomer!.uid,
+          updatedCustomer!,
+        );
+      }
+
+      if (ProductsRepository.productsCache.hasData) {
+        for (final updatedProduct in updatedProducts.values) {
+          ProductsRepository.productsCache.updateWhere(
+            (product) => product.uid == updatedProduct.uid,
+            updatedProduct,
+          );
+        }
+      }
+
+      AppLogger.info('Venda manual transacional criada: ${saleRef.id}');
+      return saleRef.id;
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'Erro ao criar venda manual transacional',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      rethrow;
+    }
+  }
+
   /// Atualiza uma venda existente.
   Future<bool> update(SaleModel sale) async {
     try {
       await _collection.doc(sale.uid).update(sale.toMap());
+      if (salesCache.hasData) {
+        salesCache.updateWhere((cached) => cached.uid == sale.uid, sale);
+      }
       AppLogger.info('Venda atualizada: ${sale.uid}');
       return true;
     } catch (e) {
@@ -102,6 +241,9 @@ class SalesRepository {
   Future<bool> delete(String saleId) async {
     try {
       await _collection.doc(saleId).delete();
+      if (salesCache.hasData) {
+        salesCache.removeWhere((sale) => sale.uid == saleId);
+      }
       AppLogger.info('Venda deletada: $saleId');
       return true;
     } catch (e) {
@@ -115,10 +257,22 @@ class SalesRepository {
   /// Atualiza o status de uma venda.
   Future<bool> updateStatus(String saleId, SaleStatus newStatus) async {
     try {
+      final now = DateTime.now();
       await _collection.doc(saleId).update({
         'status': newStatus.name,
-        'updated_at': Timestamp.fromDate(DateTime.now()),
+        'updated_at': Timestamp.fromDate(now),
       });
+      if (salesCache.hasData) {
+        final current = salesCache.data
+            .where((sale) => sale.uid == saleId)
+            .firstOrNull;
+        if (current != null) {
+          salesCache.updateWhere(
+            (sale) => sale.uid == saleId,
+            current.copyWith(status: newStatus, updatedAt: now),
+          );
+        }
+      }
       AppLogger.info('Status venda $saleId alterado para ${newStatus.name}');
       return true;
     } catch (e) {
@@ -132,11 +286,27 @@ class SalesRepository {
   /// Marca cobrança como enviada.
   Future<bool> sendPaymentRequest(String saleId) async {
     try {
+      final now = DateTime.now();
       await _collection.doc(saleId).update({
         'status': SaleStatus.payment_sent.name,
-        'payment_requested_at': Timestamp.fromDate(DateTime.now()),
-        'updated_at': Timestamp.fromDate(DateTime.now()),
+        'payment_requested_at': Timestamp.fromDate(now),
+        'updated_at': Timestamp.fromDate(now),
       });
+      if (salesCache.hasData) {
+        final current = salesCache.data
+            .where((sale) => sale.uid == saleId)
+            .firstOrNull;
+        if (current != null) {
+          salesCache.updateWhere(
+            (sale) => sale.uid == saleId,
+            current.copyWith(
+              status: SaleStatus.payment_sent,
+              paymentRequestedAt: now,
+              updatedAt: now,
+            ),
+          );
+        }
+      }
       AppLogger.info('Cobrança enviada para venda $saleId');
       return true;
     } catch (e) {
@@ -148,12 +318,29 @@ class SalesRepository {
   /// Confirma pagamento e inicia esteira de pedidos.
   Future<bool> confirmPayment(String saleId) async {
     try {
+      final now = DateTime.now();
       await _collection.doc(saleId).update({
         'status': SaleStatus.confirmed.name,
         'order_status': OrderStatus.awaiting_processing.name,
-        'payment_confirmed_at': Timestamp.fromDate(DateTime.now()),
-        'updated_at': Timestamp.fromDate(DateTime.now()),
+        'payment_confirmed_at': Timestamp.fromDate(now),
+        'updated_at': Timestamp.fromDate(now),
       });
+      if (salesCache.hasData) {
+        final current = salesCache.data
+            .where((sale) => sale.uid == saleId)
+            .firstOrNull;
+        if (current != null) {
+          salesCache.updateWhere(
+            (sale) => sale.uid == saleId,
+            current.copyWith(
+              status: SaleStatus.confirmed,
+              orderStatus: OrderStatus.awaiting_processing,
+              paymentConfirmedAt: now,
+              updatedAt: now,
+            ),
+          );
+        }
+      }
       AppLogger.info('Pagamento confirmado para venda $saleId');
       return true;
     } catch (e) {
@@ -165,10 +352,22 @@ class SalesRepository {
   /// Cancela venda.
   Future<bool> cancelSale(String saleId) async {
     try {
+      final now = DateTime.now();
       await _collection.doc(saleId).update({
         'status': SaleStatus.cancelled.name,
-        'updated_at': Timestamp.fromDate(DateTime.now()),
+        'updated_at': Timestamp.fromDate(now),
       });
+      if (salesCache.hasData) {
+        final current = salesCache.data
+            .where((sale) => sale.uid == saleId)
+            .firstOrNull;
+        if (current != null) {
+          salesCache.updateWhere(
+            (sale) => sale.uid == saleId,
+            current.copyWith(status: SaleStatus.cancelled, updatedAt: now),
+          );
+        }
+      }
       AppLogger.info('Venda $saleId cancelada');
       return true;
     } catch (e) {
@@ -182,10 +381,22 @@ class SalesRepository {
   /// Atualiza o status do pedido na esteira.
   Future<bool> updateOrderStatus(String saleId, OrderStatus newStatus) async {
     try {
+      final now = DateTime.now();
       await _collection.doc(saleId).update({
         'order_status': newStatus.name,
-        'updated_at': Timestamp.fromDate(DateTime.now()),
+        'updated_at': Timestamp.fromDate(now),
       });
+      if (salesCache.hasData) {
+        final current = salesCache.data
+            .where((sale) => sale.uid == saleId)
+            .firstOrNull;
+        if (current != null) {
+          salesCache.updateWhere(
+            (sale) => sale.uid == saleId,
+            current.copyWith(orderStatus: newStatus, updatedAt: now),
+          );
+        }
+      }
       AppLogger.info('Pedido $saleId movido para ${newStatus.name}');
       return true;
     } catch (e) {

@@ -111,6 +111,7 @@ class SessionManager {
     currentTenant = tenant;
     AppLogger.info('Sess\u00e3o atualizada: tenant ${tenant.name}');
   }
+
   /// Trocar de tenant (quando user pertence a múltiplos).
   Future<void> switchTenant(String tenantId) async {
     AppLogger.info('Trocando para tenant: $tenantId');
@@ -185,21 +186,28 @@ class SessionManager {
 
     // Buscar tenants em batch
     final tenantIds = missingNames.map((m) => m.tenantId).toSet();
-    for (final tenantId in tenantIds) {
-      try {
-        final doc = await _firestore.collection('tenants').doc(tenantId).get();
-        if (doc.exists) {
-          final name = (doc.data() as Map<String, dynamic>)['name'] ?? '';
-          for (final m in allMemberships.where((m) => m.tenantId == tenantId)) {
-            m.tenantName = name;
+    await Future.wait(
+      tenantIds.map((tenantId) async {
+        try {
+          final doc = await _firestore
+              .collection('tenants')
+              .doc(tenantId)
+              .get();
+          if (doc.exists) {
+            final name = (doc.data() as Map<String, dynamic>)['name'] ?? '';
+            for (final m in allMemberships.where(
+              (m) => m.tenantId == tenantId,
+            )) {
+              m.tenantName = name;
+            }
           }
+        } catch (e) {
+          AppLogger.warning(
+            'Não foi possível carregar nome do tenant: $tenantId',
+          );
         }
-      } catch (e) {
-        AppLogger.warning(
-          'Não foi possível carregar nome do tenant: $tenantId',
-        );
-      }
-    }
+      }),
+    );
   }
 
   Future<void> _loadTenantData(String tenantId) async {

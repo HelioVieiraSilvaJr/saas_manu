@@ -210,15 +210,19 @@ class _LoginPageState extends State<LoginPage> {
                                     Navigator.of(dialogContext).pop();
                                   }
 
-                                  if (mounted) {
-                                    await DSAlertDialog.showSuccess(
-                                      context: context,
-                                      title: 'Senha Alterada',
-                                      message:
-                                          'Sua senha foi alterada com sucesso!',
-                                    );
-                                    _coordinator.navigateToDashboard(context);
-                                  }
+                                  if (!mounted) return;
+
+                                  await DSAlertDialog.showSuccess(
+                                    context: this.context,
+                                    title: 'Senha Alterada',
+                                    message:
+                                        'Sua senha foi alterada com sucesso!',
+                                  );
+
+                                  if (!mounted) return;
+                                  _coordinator.navigateToDashboard(
+                                    this.context,
+                                  );
                                 } else {
                                   setDialogState(() {
                                     isLoading = false;

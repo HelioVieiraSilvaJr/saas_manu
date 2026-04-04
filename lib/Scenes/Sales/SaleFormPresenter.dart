@@ -180,26 +180,36 @@ class SaleFormPresenter {
         createdAt: DateTime.now(),
       );
 
-      // 1. Criar venda
-      final saleId = await _salesRepository.create(sale);
-      if (saleId == null) {
-        throw Exception('Falha ao criar venda');
-      }
+      // 1. Criar venda + baixar estoque + atualizar cliente em transação
+      await _salesRepository.createConfirmedManualSaleTransaction(sale);
 
-      // 2. Decrementar estoque
-      for (var cartItem in _viewModel.cartItems) {
-        await _productsRepository.decrementStock(
-          cartItem.product.uid,
-          cartItem.quantity,
+      final now = DateTime.now();
+      final updatedProducts = _viewModel.products.map((product) {
+        final cartItem = _viewModel.cartItems
+            .where((item) => item.product.uid == product.uid)
+            .firstOrNull;
+        if (cartItem == null) return product;
+        return product.copyWith(
+          stock: (product.stock - cartItem.quantity).clamp(0, product.stock),
+          updatedAt: now,
         );
-      }
+      }).toList();
 
-      // 3. Atualizar stats do cliente (denormalização)
-      await _customersRepository.updatePurchaseStats(customer.uid, sale.total);
+      final updatedCustomers = _viewModel.customers.map((existingCustomer) {
+        if (existingCustomer.uid != customer.uid) return existingCustomer;
+        return existingCustomer.copyWith(
+          purchaseCount: (existingCustomer.purchaseCount ?? 0) + 1,
+          totalSpent: (existingCustomer.totalSpent ?? 0) + sale.total,
+          lastPurchaseAt: now,
+          updatedAt: now,
+        );
+      }).toList();
 
       _viewModel = _viewModel.copyWith(
         isSaving: false,
         successMessage: 'Venda registrada com sucesso!',
+        products: updatedProducts,
+        customers: updatedCustomers,
       );
       onUpdate?.call();
 
@@ -208,7 +218,8 @@ class SaleFormPresenter {
       AppLogger.error('Erro ao confirmar venda', error: e);
       _viewModel = _viewModel.copyWith(
         isSaving: false,
-        errorMessage: 'Erro ao registrar venda: ${e.toString()}',
+        errorMessage:
+            'Erro ao registrar venda: ${e.toString().replaceAll('Exception: ', '')}',
       );
       onUpdate?.call();
       return false;

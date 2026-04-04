@@ -26,8 +26,8 @@ class RecentSaleDTO {
     return RecentSaleDTO(
       uid: uid,
       customerName: data['customer_name'] ?? 'Cliente',
-      itemCount: (data['item_count'] ?? 0) as int,
-      totalValue: (data['total_value'] ?? 0).toDouble(),
+      itemCount: DashboardTenantRepository.saleItemCountFromMap(data),
+      totalValue: DashboardTenantRepository.saleTotalFromMap(data),
       source: data['source'] ?? 'manual',
       createdAt: data['created_at'] != null
           ? (data['created_at'] as Timestamp).toDate()
@@ -67,6 +67,33 @@ class DashboardTenantRepository {
   CollectionReference get _stockAlertsCollection =>
       _firestore.collection('tenants').doc(_tenantId).collection('stockAlerts');
 
+  static double saleTotalFromMap(Map<String, dynamic> data) {
+    final rawValue = data['total'] ?? data['total_value'] ?? 0;
+    return (rawValue as num).toDouble();
+  }
+
+  static int saleItemCountFromMap(Map<String, dynamic> data) {
+    final explicitCount = data['item_count'];
+    if (explicitCount is num) {
+      return explicitCount.toInt();
+    }
+
+    final items = data['items'];
+    if (items is List) {
+      int total = 0;
+      for (final item in items) {
+        if (item is Map<String, dynamic>) {
+          total += ((item['quantity'] ?? 0) as num).toInt();
+        } else if (item is Map) {
+          total += ((item['quantity'] ?? 0) as num).toInt();
+        }
+      }
+      return total;
+    }
+
+    return 0;
+  }
+
   // MARK: - Vendas Hoje
 
   /// Retorna o total em R$ das vendas do dia atual.
@@ -76,14 +103,17 @@ class DashboardTenantRepository {
       final startOfDay = DateTime(now.year, now.month, now.day);
 
       final snapshot = await _salesCollection
-          .where('created_at', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+          .where(
+            'created_at',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
+          )
           .where('status', isNotEqualTo: 'cancelled')
           .get();
 
       double total = 0;
       for (final doc in snapshot.docs) {
         final data = doc.data() as Map<String, dynamic>;
-        total += (data['total_value'] ?? 0).toDouble();
+        total += saleTotalFromMap(data);
       }
 
       AppLogger.debug('Vendas hoje: R\$ $total');
@@ -102,7 +132,10 @@ class DashboardTenantRepository {
       final endOfYesterday = DateTime(now.year, now.month, now.day);
 
       final snapshot = await _salesCollection
-          .where('created_at', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfYesterday))
+          .where(
+            'created_at',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfYesterday),
+          )
           .where('created_at', isLessThan: Timestamp.fromDate(endOfYesterday))
           .where('status', isNotEqualTo: 'cancelled')
           .get();
@@ -110,7 +143,7 @@ class DashboardTenantRepository {
       double total = 0;
       for (final doc in snapshot.docs) {
         final data = doc.data() as Map<String, dynamic>;
-        total += (data['total_value'] ?? 0).toDouble();
+        total += saleTotalFromMap(data);
       }
 
       return total;
@@ -129,14 +162,17 @@ class DashboardTenantRepository {
       final startOfMonth = DateTime(now.year, now.month, 1);
 
       final snapshot = await _salesCollection
-          .where('created_at', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfMonth))
+          .where(
+            'created_at',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfMonth),
+          )
           .where('status', isNotEqualTo: 'cancelled')
           .get();
 
       double total = 0;
       for (final doc in snapshot.docs) {
         final data = doc.data() as Map<String, dynamic>;
-        total += (data['total_value'] ?? 0).toDouble();
+        total += saleTotalFromMap(data);
       }
 
       return (total: total, count: snapshot.docs.length);
@@ -154,15 +190,21 @@ class DashboardTenantRepository {
       final sameDayLastMonth = DateTime(now.year, now.month - 1, now.day);
 
       final snapshot = await _salesCollection
-          .where('created_at', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfLastMonth))
-          .where('created_at', isLessThanOrEqualTo: Timestamp.fromDate(sameDayLastMonth))
+          .where(
+            'created_at',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfLastMonth),
+          )
+          .where(
+            'created_at',
+            isLessThanOrEqualTo: Timestamp.fromDate(sameDayLastMonth),
+          )
           .where('status', isNotEqualTo: 'cancelled')
           .get();
 
       double total = 0;
       for (final doc in snapshot.docs) {
         final data = doc.data() as Map<String, dynamic>;
-        total += (data['total_value'] ?? 0).toDouble();
+        total += saleTotalFromMap(data);
       }
 
       return (total: total, count: snapshot.docs.length);
@@ -192,7 +234,10 @@ class DashboardTenantRepository {
       final startOfMonth = DateTime(now.year, now.month, 1);
 
       final snapshot = await _customersCollection
-          .where('created_at', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfMonth))
+          .where(
+            'created_at',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfMonth),
+          )
           .count()
           .get();
 
@@ -212,7 +257,10 @@ class DashboardTenantRepository {
       final sevenDaysAgo = DateTime(now.year, now.month, now.day - 6);
 
       final snapshot = await _salesCollection
-          .where('created_at', isGreaterThanOrEqualTo: Timestamp.fromDate(sevenDaysAgo))
+          .where(
+            'created_at',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(sevenDaysAgo),
+          )
           .where('status', isNotEqualTo: 'cancelled')
           .orderBy('created_at')
           .get();
@@ -230,7 +278,7 @@ class DashboardTenantRepository {
         final createdAt = (data['created_at'] as Timestamp).toDate();
         final key = '${createdAt.year}-${createdAt.month}-${createdAt.day}';
         if (dailyTotals.containsKey(key)) {
-          dailyTotals[key] = dailyTotals[key]! + (data['total_value'] ?? 0).toDouble();
+          dailyTotals[key] = dailyTotals[key]! + saleTotalFromMap(data);
         }
       }
 
@@ -239,7 +287,9 @@ class DashboardTenantRepository {
       for (int i = 0; i < 7; i++) {
         final date = DateTime(now.year, now.month, now.day - 6 + i);
         final key = '${date.year}-${date.month}-${date.day}';
-        result.add(DailySalesDTO(date: date, totalValue: dailyTotals[key] ?? 0));
+        result.add(
+          DailySalesDTO(date: date, totalValue: dailyTotals[key] ?? 0),
+        );
       }
 
       return result;

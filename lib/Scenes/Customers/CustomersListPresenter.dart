@@ -200,10 +200,10 @@ class CustomersListPresenter {
     // 2. Filtro de status
     switch (_viewModel.statusFilter) {
       case CustomerStatusFilter.active:
-        customers = customers.where((c) => c.hasPurchases).toList();
+        customers = customers.where((c) => c.isActive).toList();
         break;
       case CustomerStatusFilter.inactive:
-        customers = customers.where((c) => !c.hasPurchases).toList();
+        customers = customers.where((c) => !c.isActive).toList();
         break;
       case CustomerStatusFilter.all:
         break;
