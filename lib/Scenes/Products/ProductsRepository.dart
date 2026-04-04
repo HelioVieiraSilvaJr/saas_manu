@@ -60,6 +60,19 @@ class ProductsRepository {
     }
   }
 
+  /// Observa todos os produtos em tempo real.
+  Stream<List<ProductModel>> watchAll() {
+    return _collection.orderBy('created_at', descending: true).snapshots().map((
+      snapshot,
+    ) {
+      final products = snapshot.docs
+          .map((doc) => ProductModel.fromDocumentSnapshot(doc))
+          .toList();
+      productsCache.set(products);
+      return products;
+    });
+  }
+
   /// Busca um produto pelo ID.
   Future<ProductModel?> getById(String productId) async {
     try {

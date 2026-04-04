@@ -42,6 +42,20 @@ class StockAlertModel {
 
   // MARK: - Factory
 
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    return null;
+  }
+
+  static int _parseInt(dynamic value, {int fallback = 1}) {
+    if (value == null) return fallback;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString()) ?? fallback;
+  }
+
   static StockAlertModel fromDocumentSnapshot(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return StockAlertModel(
@@ -51,18 +65,12 @@ class StockAlertModel {
       customerWhatsapp: data['customer_whatsapp'] ?? '',
       productId: data['product_id'] ?? '',
       productName: data['product_name'] ?? '',
-      desiredQuantity: (data['desired_quantity'] ?? 1) as int,
+      desiredQuantity: _parseInt(data['desired_quantity']),
       status: StockAlertStatus.fromString(data['status'] ?? 'pending'),
       notes: data['notes'],
-      createdAt: data['created_at'] != null
-          ? (data['created_at'] as Timestamp).toDate()
-          : DateTime.now(),
-      updatedAt: data['updated_at'] != null
-          ? (data['updated_at'] as Timestamp).toDate()
-          : null,
-      resolvedAt: data['resolved_at'] != null
-          ? (data['resolved_at'] as Timestamp).toDate()
-          : null,
+      createdAt: _parseDateTime(data['created_at']) ?? DateTime.now(),
+      updatedAt: _parseDateTime(data['updated_at']),
+      resolvedAt: _parseDateTime(data['resolved_at']),
     );
   }
 

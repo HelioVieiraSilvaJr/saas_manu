@@ -38,12 +38,12 @@
     {
       "parameters": {
         "method": "PATCH",
-        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $json.tenant_id }}/customers/{{ $json.document_id }}?updateMask.fieldPaths=name&updateMask.fieldPaths=phone&updateMask.fieldPaths=email&updateMask.fieldPaths=address&updateMask.fieldPaths=updated_at",
+        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $json.tenant_id }}/customers/{{ $json.document_id }}?updateMask.fieldPaths=name&updateMask.fieldPaths=phone&updateMask.fieldPaths=whatsapp&updateMask.fieldPaths=email&updateMask.fieldPaths=address&updateMask.fieldPaths=updated_at",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleFirebaseCloudFirestoreOAuth2Api",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"fields\": {\n    \"name\": { \"stringValue\": \"{{ $json.name }}\" },\n    \"phone\": { \"stringValue\": \"{{ $json.phone }}\" },\n    \"email\": { \"stringValue\": \"{{ $json.email }}\" },\n    \"address\": { \"stringValue\": \"{{ $json.address }}\" },\n    \"updated_at\": { \"stringValue\": \"{{ $now.toISO() }}\" }\n  }\n}",
+        "jsonBody": "={\n  \"fields\": {\n    \"name\": { \"stringValue\": \"{{ $json.name }}\" },\n    \"phone\": { \"stringValue\": \"{{ $json.phone }}\" },\n    \"whatsapp\": { \"stringValue\": \"{{ $json.phone }}\" },\n    \"email\": { \"stringValue\": \"{{ $json.email }}\" },\n    \"address\": { \"stringValue\": \"{{ $json.address }}\" },\n    \"updated_at\": { \"stringValue\": \"{{ $now.toISO() }}\" }\n  }\n}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",

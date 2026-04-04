@@ -56,6 +56,19 @@ class CustomersRepository {
     }
   }
 
+  /// Observa todos os clientes em tempo real.
+  Stream<List<CustomerModel>> watchAll() {
+    return _collection.orderBy('created_at', descending: true).snapshots().map((
+      snapshot,
+    ) {
+      final customers = snapshot.docs
+          .map((doc) => CustomerModel.fromDocumentSnapshot(doc))
+          .toList();
+      customersCache.set(customers);
+      return customers;
+    });
+  }
+
   /// Busca um cliente por ID.
   Future<CustomerModel?> getById(String customerId) async {
     try {

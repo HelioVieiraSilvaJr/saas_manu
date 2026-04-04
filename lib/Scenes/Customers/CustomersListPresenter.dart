@@ -16,6 +16,7 @@ class CustomersListPresenter {
 
   BuildContext? context;
   Timer? _debounceTimer;
+  StreamSubscription<List<CustomerModel>>? _customersSubscription;
 
   CustomersListPresenter({required this.onViewModelUpdated});
 
@@ -53,6 +54,14 @@ class CustomersListPresenter {
   /// Recarregar clientes (forçando refresh do Firestore).
   Future<void> refresh() async {
     await loadCustomers(forceRefresh: true);
+  }
+
+  void watchCustomers() {
+    _customersSubscription?.cancel();
+    _customersSubscription = _repository.watchAll().listen((customers) {
+      _update(_viewModel.copyWith(isLoading: false, allCustomers: customers));
+      _applyFiltersAndSort();
+    });
   }
 
   // MARK: - Search
@@ -174,6 +183,7 @@ class CustomersListPresenter {
 
   void dispose() {
     _debounceTimer?.cancel();
+    _customersSubscription?.cancel();
   }
 
   // MARK: - Private

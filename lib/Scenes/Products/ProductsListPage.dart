@@ -33,6 +33,7 @@ class _ProductsListPageState extends State<ProductsListPage> {
     );
     _presenter.context = context;
     _presenter.loadProducts();
+    _presenter.watchProducts();
   }
 
   @override

@@ -16,6 +16,7 @@ class ProductsListPresenter {
 
   BuildContext? context;
   Timer? _debounceTimer;
+  StreamSubscription<List<ProductModel>>? _productsSubscription;
 
   ProductsListPresenter({required this.onViewModelUpdated});
 
@@ -53,6 +54,14 @@ class ProductsListPresenter {
   /// Recarregar produtos (forçando refresh do Firestore).
   Future<void> refresh() async {
     await loadProducts(forceRefresh: true);
+  }
+
+  void watchProducts() {
+    _productsSubscription?.cancel();
+    _productsSubscription = _repository.watchAll().listen((products) {
+      _update(_viewModel.copyWith(isLoading: false, allProducts: products));
+      _applyFiltersAndSort();
+    });
   }
 
   // MARK: - Search
@@ -186,6 +195,11 @@ class ProductsListPresenter {
     onViewModelUpdated(viewModel);
   }
 
+  void dispose() {
+    _debounceTimer?.cancel();
+    _productsSubscription?.cancel();
+  }
+
   /// Aplica busca, filtros e ordenação sobre allProducts.
   void _applyFiltersAndSort() {
     var products = List<ProductModel>.from(_viewModel.allProducts);
@@ -264,10 +278,5 @@ class ProductsListPresenter {
     }
 
     _update(_viewModel.copyWith(filteredProducts: products));
-  }
-
-  /// Dispose do timer.
-  void dispose() {
-    _debounceTimer?.cancel();
   }
 }

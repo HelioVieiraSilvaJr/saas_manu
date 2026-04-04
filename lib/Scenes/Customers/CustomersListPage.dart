@@ -33,6 +33,7 @@ class _CustomersListPageState extends State<CustomersListPage> {
     );
     _presenter.context = context;
     _presenter.loadCustomers();
+    _presenter.watchCustomers();
   }
 
   @override
