@@ -16,6 +16,7 @@ class TenantModel {
   String plan; // 'trial' | 'monthly' | 'quarterly'
   String planTier; // 'standard' | 'pro'
   bool isActive;
+  bool aiAgentEnabled;
   bool isExpired; // Flag para o agente n8n validar rapidamente
   DateTime createdAt;
   DateTime? expirationDate; // Data de expiração genérica (qualquer plano)
@@ -63,6 +64,7 @@ class TenantModel {
     required this.plan,
     this.planTier = 'standard',
     required this.isActive,
+    this.aiAgentEnabled = true,
     this.isExpired = false,
     required this.createdAt,
     this.expirationDate,
@@ -137,6 +139,7 @@ class TenantModel {
       plan: _asString(data['plan'], fallback: 'trial'),
       planTier: _asString(data['plan_tier'], fallback: 'standard'),
       isActive: data['is_active'] ?? true,
+      aiAgentEnabled: data['ai_agent_enabled'] != false,
       isExpired: data['is_expired'] ?? false,
       createdAt: _asDateTime(data['created_at']) ?? DateTime.now(),
       expirationDate: _asDateTime(data['expiration_date']),
@@ -204,6 +207,7 @@ class TenantModel {
       'plan': plan,
       'plan_tier': planTier,
       'is_active': isActive,
+      'ai_agent_enabled': aiAgentEnabled,
       'is_expired': isExpired,
       'created_at': Timestamp.fromDate(createdAt),
       'expiration_date': expirationDate != null
@@ -263,6 +267,7 @@ class TenantModel {
       plan: 'trial',
       planTier: 'standard',
       isActive: true,
+      aiAgentEnabled: true,
       isExpired: false,
       createdAt: now,
       expirationDate: now.add(const Duration(days: 30)),
@@ -278,6 +283,7 @@ class TenantModel {
     String? plan,
     String? planTier,
     bool? isActive,
+    bool? aiAgentEnabled,
     bool? isExpired,
     DateTime? createdAt,
     DateTime? expirationDate,
@@ -321,6 +327,7 @@ class TenantModel {
       plan: plan ?? this.plan,
       planTier: planTier ?? this.planTier,
       isActive: isActive ?? this.isActive,
+      aiAgentEnabled: aiAgentEnabled ?? this.aiAgentEnabled,
       isExpired: isExpired ?? this.isExpired,
       createdAt: createdAt ?? this.createdAt,
       expirationDate: expirationDate ?? this.expirationDate,

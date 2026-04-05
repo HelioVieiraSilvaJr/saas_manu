@@ -166,6 +166,25 @@ class TenantSettingsRepository {
     }
   }
 
+  Future<bool> updateAiAgentEnabled({
+    required String tenantId,
+    required bool enabled,
+  }) async {
+    try {
+      await _tenantDoc(tenantId).update({
+        'ai_agent_enabled': enabled,
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+      AppLogger.info(
+        'Atendimento automatico ${enabled ? "ativado" : "desativado"}: $tenantId',
+      );
+      return true;
+    } catch (e) {
+      AppLogger.error('Erro ao atualizar atendimento automatico', error: e);
+      return false;
+    }
+  }
+
   // MARK: - Webhook
 
   /// Salva/gera o webhook token e retorna a URL completa.

@@ -116,6 +116,64 @@ class CustomersRepository {
     }
   }
 
+  Future<bool> pauseAutomaticAgent(String customerId) async {
+    try {
+      final now = DateTime.now();
+      await _collection.doc(customerId).update({
+        'agent_off': true,
+        'time_agent_off': FieldValue.serverTimestamp(),
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+      if (customersCache.hasData) {
+        final current = customersCache.data
+            .where((customer) => customer.uid == customerId)
+            .firstOrNull;
+        if (current != null) {
+          customersCache.updateWhere(
+            (customer) => customer.uid == customerId,
+            current.copyWith(agentOff: true, updatedAt: now),
+          );
+        }
+      }
+      AppLogger.info(
+        'Atendimento automatico pausado para cliente: $customerId',
+      );
+      return true;
+    } catch (e) {
+      AppLogger.error('Erro ao pausar atendimento automatico', error: e);
+      return false;
+    }
+  }
+
+  Future<bool> resumeAutomaticAgent(String customerId) async {
+    try {
+      final now = DateTime.now();
+      await _collection.doc(customerId).update({
+        'agent_off': false,
+        'time_agent_off': '',
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+      if (customersCache.hasData) {
+        final current = customersCache.data
+            .where((customer) => customer.uid == customerId)
+            .firstOrNull;
+        if (current != null) {
+          customersCache.updateWhere(
+            (customer) => customer.uid == customerId,
+            current.copyWith(agentOff: false, updatedAt: now),
+          );
+        }
+      }
+      AppLogger.info(
+        'Atendimento automatico reativado para cliente: $customerId',
+      );
+      return true;
+    } catch (e) {
+      AppLogger.error('Erro ao reativar atendimento automatico', error: e);
+      return false;
+    }
+  }
+
   /// Deleta um cliente permanentemente.
   Future<bool> delete(String customerId) async {
     try {

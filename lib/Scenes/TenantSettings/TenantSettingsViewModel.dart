@@ -7,6 +7,7 @@ class TenantSettingsViewModel {
   final bool isProvisioningManagedWhatsApp;
   final bool isRefreshingManagedWhatsApp;
   final bool isDisconnectingManagedWhatsApp;
+  final bool isUpdatingAiAgentEnabled;
   final String? errorMessage;
   final String? successMessage;
 
@@ -31,6 +32,7 @@ class TenantSettingsViewModel {
   final String evolutionInstanceName;
   final bool isWhatsAppConnected;
   final bool hasManagedWhatsAppSetup;
+  final bool aiAgentEnabled;
   final String whatsappProvider;
   final String whatsappConnectionStatus;
   final String whatsappConnectedNumber;
@@ -56,6 +58,7 @@ class TenantSettingsViewModel {
     this.isProvisioningManagedWhatsApp = false,
     this.isRefreshingManagedWhatsApp = false,
     this.isDisconnectingManagedWhatsApp = false,
+    this.isUpdatingAiAgentEnabled = false,
     this.errorMessage,
     this.successMessage,
     this.companyName = '',
@@ -76,6 +79,7 @@ class TenantSettingsViewModel {
     this.evolutionInstanceName = '',
     this.isWhatsAppConnected = false,
     this.hasManagedWhatsAppSetup = false,
+    this.aiAgentEnabled = true,
     this.whatsappProvider = '',
     this.whatsappConnectionStatus = '',
     this.whatsappConnectedNumber = '',
@@ -98,6 +102,7 @@ class TenantSettingsViewModel {
     bool? isProvisioningManagedWhatsApp,
     bool? isRefreshingManagedWhatsApp,
     bool? isDisconnectingManagedWhatsApp,
+    bool? isUpdatingAiAgentEnabled,
     String? errorMessage,
     String? successMessage,
     String? companyName,
@@ -118,6 +123,7 @@ class TenantSettingsViewModel {
     String? evolutionInstanceName,
     bool? isWhatsAppConnected,
     bool? hasManagedWhatsAppSetup,
+    bool? aiAgentEnabled,
     String? whatsappProvider,
     String? whatsappConnectionStatus,
     String? whatsappConnectedNumber,
@@ -142,6 +148,8 @@ class TenantSettingsViewModel {
           isRefreshingManagedWhatsApp ?? this.isRefreshingManagedWhatsApp,
       isDisconnectingManagedWhatsApp:
           isDisconnectingManagedWhatsApp ?? this.isDisconnectingManagedWhatsApp,
+      isUpdatingAiAgentEnabled:
+          isUpdatingAiAgentEnabled ?? this.isUpdatingAiAgentEnabled,
       errorMessage: errorMessage,
       successMessage: successMessage,
       companyName: companyName ?? this.companyName,
@@ -164,6 +172,7 @@ class TenantSettingsViewModel {
       isWhatsAppConnected: isWhatsAppConnected ?? this.isWhatsAppConnected,
       hasManagedWhatsAppSetup:
           hasManagedWhatsAppSetup ?? this.hasManagedWhatsAppSetup,
+      aiAgentEnabled: aiAgentEnabled ?? this.aiAgentEnabled,
       whatsappProvider: whatsappProvider ?? this.whatsappProvider,
       whatsappConnectionStatus:
           whatsappConnectionStatus ?? this.whatsappConnectionStatus,

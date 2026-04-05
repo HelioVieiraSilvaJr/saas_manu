@@ -31,6 +31,8 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
   final _customersRepository = CustomersRepository();
   SaleModel? _sale;
   bool _isLoading = true;
+  bool? _customerAgentOff;
+  bool _isUpdatingCustomerAutomation = false;
 
   @override
   void didChangeDependencies() {
@@ -40,6 +42,7 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
       if (args is SaleModel) {
         _sale = args;
         _isLoading = false;
+        _loadCustomerStatus(args.customerId);
       } else if (args is String) {
         _loadSale(args);
       }
@@ -53,7 +56,17 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
         _sale = sale;
         _isLoading = false;
       });
+      if (sale != null) {
+        _loadCustomerStatus(sale.customerId);
+      }
     }
+  }
+
+  Future<void> _loadCustomerStatus(String customerId) async {
+    if (customerId.isEmpty) return;
+    final customer = await _customersRepository.getById(customerId);
+    if (!mounted || customer == null) return;
+    setState(() => _customerAgentOff = customer.agentOff);
   }
 
   Future<void> _changeStatus(SaleStatus newStatus) async {
@@ -130,10 +143,62 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
     }
   }
 
-  void _openWhatsApp() {
+  Future<void> _openWhatsApp() async {
     if (_sale == null) return;
+
+    final customerId = _sale!.customerId;
+    if (customerId.isNotEmpty) {
+      setState(() => _isUpdatingCustomerAutomation = true);
+      final paused = await _customersRepository.pauseAutomaticAgent(customerId);
+      if (!mounted) return;
+      setState(() {
+        _isUpdatingCustomerAutomation = false;
+        if (paused) _customerAgentOff = true;
+      });
+
+      if (!paused) {
+        await DSAlertDialog.showError(
+          context: context,
+          title: 'Nao foi possivel abrir o atendimento manual',
+          message:
+              'Falhou ao desligar o atendimento automatico deste cliente. Tente novamente para evitar que o agente entre na conversa.',
+        );
+        return;
+      }
+    }
+
     final url = 'https://wa.me/55${_sale!.customerWhatsapp}';
-    launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _resumeAutomaticAgent() async {
+    if (_sale == null || _sale!.customerId.isEmpty) return;
+
+    setState(() => _isUpdatingCustomerAutomation = true);
+    final resumed = await _customersRepository.resumeAutomaticAgent(
+      _sale!.customerId,
+    );
+    if (!mounted) return;
+
+    setState(() {
+      _isUpdatingCustomerAutomation = false;
+      if (resumed) _customerAgentOff = false;
+    });
+
+    if (resumed) {
+      await DSAlertDialog.showSuccess(
+        context: context,
+        title: 'Atendimento automatico reativado',
+        message: 'O agente pode voltar a atender este cliente automaticamente.',
+      );
+      return;
+    }
+
+    await DSAlertDialog.showError(
+      context: context,
+      title: 'Erro ao religar atendimento',
+      message: 'Nao foi possivel reativar o atendimento automatico.',
+    );
   }
 
   @override
@@ -338,10 +403,46 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
                   ],
                 ),
               ),
+              if (_customerAgentOff != null)
+                DSBadge(
+                  label: _customerAgentOff!
+                      ? 'Atendimento manual'
+                      : 'Atendimento automatico',
+                  type: _customerAgentOff!
+                      ? DSBadgeType.warning
+                      : DSBadgeType.success,
+                  size: DSBadgeSize.small,
+                ),
               IconButton(
                 icon: const Icon(Icons.chat, color: Color(0xFF25D366)),
-                tooltip: 'WhatsApp',
-                onPressed: _openWhatsApp,
+                tooltip: 'Falar com cliente no WhatsApp',
+                onPressed: _isUpdatingCustomerAutomation ? null : _openWhatsApp,
+              ),
+            ],
+          ),
+          const SizedBox(height: DSSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  (_customerAgentOff ?? false)
+                      ? 'O atendimento automatico esta pausado para este cliente. A regra do timer continua valendo caso voce nao religue manualmente.'
+                      : 'Ao abrir o WhatsApp por aqui, o atendimento automatico deste cliente sera pausado para evitar interferencia do agente.',
+                  style: textStyles.bodySmall.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: DSSpacing.sm),
+              DSButton.secondary(
+                label: 'Religar agente',
+                icon: Icons.autorenew_rounded,
+                isLoading: _isUpdatingCustomerAutomation,
+                onTap:
+                    (_customerAgentOff ?? false) &&
+                        !_isUpdatingCustomerAutomation
+                    ? _resumeAutomaticAgent
+                    : null,
               ),
             ],
           ),

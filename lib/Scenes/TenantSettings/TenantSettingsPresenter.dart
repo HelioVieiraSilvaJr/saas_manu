@@ -94,6 +94,7 @@ class TenantSettingsPresenter {
       evolutionInstanceName: tenant.evolutionInstanceName ?? '',
       isWhatsAppConnected: isManagedConnected || hasManualConnectionFallback,
       hasManagedWhatsAppSetup: tenant.hasManagedWhatsAppSetup,
+      aiAgentEnabled: tenant.aiAgentEnabled,
       whatsappProvider: tenant.whatsappProviderEnum.label,
       whatsappConnectionStatus: tenant.whatsappConnectionStatusEnum.label,
       whatsappConnectedNumber: tenant.whatsappConnectedNumber ?? '',
@@ -434,6 +435,44 @@ class TenantSettingsPresenter {
                     result['error'] ??
                     'Nao foi possivel desconectar o WhatsApp.')
                 .toString(),
+    );
+    _notify();
+  }
+
+  Future<void> updateAiAgentEnabled(bool enabled) async {
+    final tenantId = SessionManager.instance.currentTenant?.uid;
+    if (tenantId == null) return;
+
+    viewModel = viewModel.copyWith(
+      isUpdatingAiAgentEnabled: true,
+      errorMessage: null,
+      successMessage: null,
+      aiAgentEnabled: enabled,
+    );
+    _notify();
+
+    final success = await _repository.updateAiAgentEnabled(
+      tenantId: tenantId,
+      enabled: enabled,
+    );
+
+    final reloaded = await _reloadTenantIntoSession(tenantId);
+    if (reloaded != null) {
+      _applyTenantToState(reloaded);
+    } else {
+      viewModel = viewModel.copyWith(aiAgentEnabled: !enabled);
+    }
+
+    viewModel = viewModel.copyWith(
+      isUpdatingAiAgentEnabled: false,
+      successMessage: success
+          ? (enabled
+                ? 'Atendimento automatico ligado.'
+                : 'Atendimento automatico desligado. Seus clientes ficam em atendimento manual ate voce reativar.')
+          : null,
+      errorMessage: success
+          ? null
+          : 'Nao foi possivel atualizar o atendimento automatico.',
     );
     _notify();
   }

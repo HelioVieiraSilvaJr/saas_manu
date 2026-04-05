@@ -402,6 +402,24 @@ function extractEvolutionInboundInstanceName(payload = {}) {
   return "";
 }
 
+function extractEvolutionInboundMessageId(payload = {}) {
+  const candidates = [
+    payload.data?.key?.id,
+    payload.body?.data?.key?.id,
+    payload.key?.id,
+    payload.messageId,
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = String(candidate || "").trim();
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return "";
+}
+
 async function createEvolutionInstance({
   evolutionApiUrl,
   apiKey,
@@ -732,6 +750,7 @@ async function buildTenantAiContext({ tenantId, tenantData }) {
   return {
     tenant_id: tenantId,
     tenant_name: String(tenantData.name || "").trim(),
+    ai_agent_enabled: tenantData.ai_agent_enabled !== false,
     tenant_segment: subsegment ? `${segment} / ${subsegment}` : segment,
     business_segment: String(tenantData.business_segment || "").trim(),
     business_subsegment: subsegment,
@@ -944,6 +963,7 @@ async function buildTenantData(payload) {
     plan,
     plan_tier: planTier,
     is_active: payload.isActive !== false,
+    ai_agent_enabled: payload.aiAgentEnabled !== false,
     is_expired: false,
     expiration_date: expirationDate,
     ...buildContractSnapshotFromPlan(planConfig),
@@ -1089,6 +1109,41 @@ function normalizeSalePayload(body) {
     conversationId: sale.conversation_id || sale.conversationId || null,
     decrementStock: sale.decrement_stock === true || sale.reserve_stock === true,
   };
+}
+
+function normalizeSaleRegistrationError(error) {
+  const rawMessage = String(error?.message || error || "").trim();
+  const [rawCode = "", ...detailParts] = rawMessage.split(":");
+  const detail = detailParts.join(":").trim();
+  const code = rawCode.trim() || "sale-registration-failed";
+
+  switch (code) {
+    case "product-not-found":
+    case "product-not-found-by-sku":
+      return {
+        code,
+        message: "Um dos produtos do carrinho nao foi encontrado para registrar a venda.",
+        detail,
+      };
+    case "product-inactive":
+      return {
+        code,
+        message: "Um dos produtos do carrinho esta inativo e nao pode ser vendido agora.",
+        detail,
+      };
+    case "insufficient-stock":
+      return {
+        code,
+        message: "Nao ha estoque suficiente para concluir essa venda agora.",
+        detail,
+      };
+    default:
+      return {
+        code: "sale-registration-failed",
+        message: rawMessage || "Nao foi possivel registrar a venda.",
+        detail,
+      };
+  }
 }
 
 exports.createTenantWithAdmin = onRequest(
@@ -1521,6 +1576,7 @@ exports.receiveManagedWhatsAppMessage = onRequest(
 
     const payload = jsonBody(req);
     const instanceName = extractEvolutionInboundInstanceName(payload);
+    const messageId = extractEvolutionInboundMessageId(payload);
     if (!instanceName) {
       res.status(400).json({ ok: false, error: "missing-instance-name" });
       return;
@@ -1533,6 +1589,50 @@ exports.receiveManagedWhatsAppMessage = onRequest(
     }
 
     const { tenantId, tenantData } = resolvedTenant;
+    if (tenantData.ai_agent_enabled === false) {
+      res.status(200).json({
+        ok: true,
+        ignored: true,
+        reason: "ai-agent-disabled",
+        tenantId,
+        instanceName,
+      });
+      return;
+    }
+
+    if (messageId) {
+      try {
+        await db
+          .collection("tenants")
+          .doc(tenantId)
+          .collection("message_ingress")
+          .doc(messageId)
+          .create({
+            created_at: nowTs(),
+            instance_name: instanceName,
+            source: "evolution",
+          });
+      } catch (error) {
+        const errorMessage = String(error?.message || "").toLowerCase();
+        const errorCode = String(error?.code || "").toLowerCase();
+        if (
+          errorMessage.includes("already exists") ||
+          errorCode === "6" ||
+          errorCode === "already-exists"
+        ) {
+          res.status(200).json({
+            ok: true,
+            deduplicated: true,
+            tenantId,
+            instanceName,
+            messageId,
+          });
+          return;
+        }
+        throw error;
+      }
+    }
+
     const tenantContext = await buildTenantAiContext({ tenantId, tenantData });
 
     await db.collection("tenants").doc(tenantId).set(
@@ -1680,212 +1780,242 @@ exports.receiveN8nSale = onRequest(
     const customersCol = tenantRef.collection("customers");
     const productsCol = tenantRef.collection("products");
 
-    const result = await db.runTransaction(async (transaction) => {
-      if (payload.externalId) {
-        const existingSnapshot = await transaction.get(
-          salesCol.where("external_id", "==", payload.externalId).limit(1),
-        );
-        if (!existingSnapshot.empty) {
-          const existingDoc = existingSnapshot.docs[0];
-          return {
-            saleId: existingDoc.id,
-            customerId: existingDoc.data().customer_id,
-            created: false,
-          };
+    let result;
+    try {
+      result = await db.runTransaction(async (transaction) => {
+        if (payload.externalId) {
+          const existingSnapshot = await transaction.get(
+            salesCol.where("external_id", "==", payload.externalId).limit(1),
+          );
+          if (!existingSnapshot.empty) {
+            const existingDoc = existingSnapshot.docs[0];
+            return {
+              saleId: existingDoc.id,
+              customerId: existingDoc.data().customer_id,
+              created: false,
+            };
+          }
         }
-      }
 
-      let customerId = payload.customer.id;
-      let customerDocRef;
+        let customerId = payload.customer.id;
+        let customerDocRef;
 
-      if (!customerId) {
-        const existingCustomer = await transaction.get(
-          customersCol.where("whatsapp", "==", payload.customer.whatsapp).limit(1),
-        );
+        if (!customerId) {
+          const existingCustomer = await transaction.get(
+            customersCol.where("whatsapp", "==", payload.customer.whatsapp).limit(1),
+          );
 
-        if (!existingCustomer.empty) {
-          customerDocRef = existingCustomer.docs[0].ref;
+          if (!existingCustomer.empty) {
+            customerDocRef = existingCustomer.docs[0].ref;
+            customerId = customerDocRef.id;
+          }
+        } else {
+          customerDocRef = customersCol.doc(customerId);
+        }
+
+        if (!customerDocRef) {
+          customerDocRef = customersCol.doc();
           customerId = customerDocRef.id;
-        }
-      } else {
-        customerDocRef = customersCol.doc(customerId);
-      }
-
-      if (!customerDocRef) {
-        customerDocRef = customersCol.doc();
-        customerId = customerDocRef.id;
-        transaction.set(customerDocRef, {
-          name: payload.customer.name || payload.customer.whatsapp,
-          whatsapp: payload.customer.whatsapp,
-          email: payload.customer.email || "",
-          address: payload.customer.address || "",
-          notes: "",
-          is_active: true,
-          agent_off: false,
-          purchase_count: 0,
-          total_spent: 0,
-          created_at: nowTs(),
-          updated_at: nowTs(),
-        });
-      } else {
-        transaction.set(
-          customerDocRef,
-          {
+          transaction.set(customerDocRef, {
             name: payload.customer.name || payload.customer.whatsapp,
             whatsapp: payload.customer.whatsapp,
             email: payload.customer.email || "",
             address: payload.customer.address || "",
+            notes: "",
+            is_active: true,
+            agent_off: false,
+            purchase_count: 0,
+            total_spent: 0,
+            created_at: nowTs(),
             updated_at: nowTs(),
-          },
-          { merge: true },
-        );
-      }
-
-      const saleRef = salesCol.doc();
-      const orderStatus = payload.status === "confirmed" ? "awaiting_processing" : null;
-      const paymentRequestedAt =
-        payload.status === "payment_sent" || payload.status === "confirmed"
-          ? nowTs()
-          : null;
-      const paymentConfirmedAt =
-        payload.status === "confirmed" ? nowTs() : null;
-
-      const quantityByProduct = new Map();
-      const productsById = new Map();
-      const productLookupCache = new Map();
-      const resolvedItems = [];
-
-      for (const item of payload.items) {
-        const lookupKey = item.product_id ? `id:${item.product_id}` : `sku:${item.sku}`;
-        let resolvedProduct = productLookupCache.get(lookupKey);
-
-        if (!resolvedProduct) {
-          let productDoc;
-
-          if (item.product_id) {
-            productDoc = await transaction.get(productsCol.doc(item.product_id));
-            if (!productDoc.exists) {
-              throw new Error(`product-not-found:${item.product_id}`);
-            }
-          } else {
-            const skuSnapshot = await transaction.get(
-              productsCol.where("sku", "==", item.sku).limit(1),
-            );
-            if (skuSnapshot.empty) {
-              throw new Error(`product-not-found-by-sku:${item.sku}`);
-            }
-            productDoc = skuSnapshot.docs[0];
-          }
-
-          const productData = productDoc.data() || {};
-          if (productData.is_active === false) {
-            throw new Error(`product-inactive:${productDoc.id}`);
-          }
-
-          resolvedProduct = {
-            id: productDoc.id,
-            ref: productDoc.ref,
-            data: productData,
-          };
-          productLookupCache.set(lookupKey, resolvedProduct);
-          if (item.product_id && item.product_id !== productDoc.id) {
-            productLookupCache.set(`id:${item.product_id}`, resolvedProduct);
-          }
-          if (item.sku) {
-            productLookupCache.set(`sku:${item.sku}`, resolvedProduct);
-          }
-          const productSku = String(productData.sku || "").trim();
-          if (productSku) {
-            productLookupCache.set(`sku:${productSku}`, resolvedProduct);
-          }
-        }
-
-        quantityByProduct.set(
-          resolvedProduct.id,
-          (quantityByProduct.get(resolvedProduct.id) || 0) + item.quantity,
-        );
-        productsById.set(resolvedProduct.id, resolvedProduct);
-        resolvedItems.push({
-          product_id: resolvedProduct.id,
-          sku: String(resolvedProduct.data.sku || item.sku || "").trim(),
-          product_name: String(resolvedProduct.data.name || item.product_name || "").trim(),
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          subtotal: item.subtotal,
-        });
-      }
-
-      for (const [productId, requestedQuantity] of quantityByProduct.entries()) {
-        const product = productsById.get(productId);
-        const currentStock = Number(product?.data?.stock || 0);
-        if (payload.decrementStock && currentStock < requestedQuantity) {
-          throw new Error(`insufficient-stock:${productId}`);
-        }
-      }
-
-      const normalizedItems = resolvedItems.map((item) => ({
-        product_id: item.product_id,
-        sku: item.sku,
-        product_name: item.product_name,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        subtotal: item.subtotal,
-      }));
-
-      transaction.set(saleRef, {
-        external_id: payload.externalId || null,
-        customer_id: customerId,
-        customer_name: payload.customer.name || payload.customer.whatsapp,
-        customer_whatsapp: payload.customer.whatsapp,
-        customer_email: payload.customer.email || "",
-        customer_address: payload.customer.address || "",
-        items: normalizedItems,
-        item_product_ids: normalizedItems.map((item) => item.product_id),
-        item_count: normalizedItems.reduce((sum, item) => sum + item.quantity, 0),
-        total: payload.total,
-        status: payload.status,
-        source: payload.source,
-        order_status: orderStatus,
-        notes: payload.notes,
-        conversation_id: payload.conversationId,
-        created_at: nowTs(),
-        updated_at: nowTs(),
-        payment_requested_at: paymentRequestedAt,
-        payment_confirmed_at: paymentConfirmedAt,
-      });
-
-      if (payload.decrementStock) {
-        for (const [productId, requestedQuantity] of quantityByProduct.entries()) {
+          });
+        } else {
           transaction.set(
-            productsCol.doc(productId),
+            customerDocRef,
             {
-              stock: admin.firestore.FieldValue.increment(-requestedQuantity),
+              name: payload.customer.name || payload.customer.whatsapp,
+              whatsapp: payload.customer.whatsapp,
+              email: payload.customer.email || "",
+              address: payload.customer.address || "",
               updated_at: nowTs(),
             },
             { merge: true },
           );
         }
-      }
 
-      if (payload.status === "confirmed") {
-        transaction.set(
-          customerDocRef,
-          {
-            purchase_count: admin.firestore.FieldValue.increment(1),
-            total_spent: admin.firestore.FieldValue.increment(payload.total),
-            last_purchase_at: nowTs(),
-            updated_at: nowTs(),
-          },
-          { merge: true },
-        );
-      }
+        const saleRef = salesCol.doc();
+        const orderStatus = payload.status === "confirmed" ? "awaiting_processing" : null;
+        const paymentRequestedAt =
+          payload.status === "payment_sent" || payload.status === "confirmed"
+            ? nowTs()
+            : null;
+        const paymentConfirmedAt =
+          payload.status === "confirmed" ? nowTs() : null;
 
-      return {
-        saleId: saleRef.id,
-        customerId,
-        created: true,
-      };
-    });
+        const quantityByProduct = new Map();
+        const productsById = new Map();
+        const productLookupCache = new Map();
+        const resolvedItems = [];
+
+        for (const item of payload.items) {
+          const lookupKey = item.product_id ? `id:${item.product_id}` : `sku:${item.sku}`;
+          let resolvedProduct = productLookupCache.get(lookupKey);
+
+          if (!resolvedProduct) {
+            let productDoc;
+
+            if (item.product_id) {
+              productDoc = await transaction.get(productsCol.doc(item.product_id));
+              if (!productDoc.exists) {
+                throw new Error(`product-not-found:${item.product_id}`);
+              }
+            } else {
+              const skuSnapshot = await transaction.get(
+                productsCol.where("sku", "==", item.sku).limit(1),
+              );
+              if (skuSnapshot.empty) {
+                throw new Error(`product-not-found-by-sku:${item.sku}`);
+              }
+              productDoc = skuSnapshot.docs[0];
+            }
+
+            const productData = productDoc.data() || {};
+            if (productData.is_active === false) {
+              throw new Error(`product-inactive:${productDoc.id}`);
+            }
+
+            resolvedProduct = {
+              id: productDoc.id,
+              ref: productDoc.ref,
+              data: productData,
+            };
+            productLookupCache.set(lookupKey, resolvedProduct);
+            if (item.product_id && item.product_id !== productDoc.id) {
+              productLookupCache.set(`id:${item.product_id}`, resolvedProduct);
+            }
+            if (item.sku) {
+              productLookupCache.set(`sku:${item.sku}`, resolvedProduct);
+            }
+            const productSku = String(productData.sku || "").trim();
+            if (productSku) {
+              productLookupCache.set(`sku:${productSku}`, resolvedProduct);
+            }
+          }
+
+          quantityByProduct.set(
+            resolvedProduct.id,
+            (quantityByProduct.get(resolvedProduct.id) || 0) + item.quantity,
+          );
+          productsById.set(resolvedProduct.id, resolvedProduct);
+          resolvedItems.push({
+            product_id: resolvedProduct.id,
+            sku: String(resolvedProduct.data.sku || item.sku || "").trim(),
+            product_name: String(resolvedProduct.data.name || item.product_name || "").trim(),
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            subtotal: item.subtotal,
+          });
+        }
+
+        for (const [productId, requestedQuantity] of quantityByProduct.entries()) {
+          const product = productsById.get(productId);
+          const currentStock = Number(product?.data?.stock || 0);
+          if (payload.decrementStock && currentStock < requestedQuantity) {
+            throw new Error(`insufficient-stock:${productId}`);
+          }
+        }
+
+        const normalizedItems = resolvedItems.map((item) => ({
+          product_id: item.product_id,
+          sku: item.sku,
+          product_name: item.product_name,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          subtotal: item.subtotal,
+        }));
+
+        transaction.set(saleRef, {
+          external_id: payload.externalId || null,
+          customer_id: customerId,
+          customer_name: payload.customer.name || payload.customer.whatsapp,
+          customer_whatsapp: payload.customer.whatsapp,
+          customer_email: payload.customer.email || "",
+          customer_address: payload.customer.address || "",
+          items: normalizedItems,
+          item_product_ids: normalizedItems.map((item) => item.product_id),
+          item_count: normalizedItems.reduce((sum, item) => sum + item.quantity, 0),
+          total: payload.total,
+          status: payload.status,
+          source: payload.source,
+          order_status: orderStatus,
+          notes: payload.notes,
+          conversation_id: payload.conversationId,
+          created_at: nowTs(),
+          updated_at: nowTs(),
+          payment_requested_at: paymentRequestedAt,
+          payment_confirmed_at: paymentConfirmedAt,
+        });
+
+        if (payload.decrementStock) {
+          for (const [productId, requestedQuantity] of quantityByProduct.entries()) {
+            transaction.set(
+              productsCol.doc(productId),
+              {
+                stock: admin.firestore.FieldValue.increment(-requestedQuantity),
+                updated_at: nowTs(),
+              },
+              { merge: true },
+            );
+          }
+        }
+
+        if (payload.status === "confirmed") {
+          transaction.set(
+            customerDocRef,
+            {
+              purchase_count: admin.firestore.FieldValue.increment(1),
+              total_spent: admin.firestore.FieldValue.increment(payload.total),
+              last_purchase_at: nowTs(),
+              updated_at: nowTs(),
+            },
+            { merge: true },
+          );
+        }
+
+        return {
+          saleId: saleRef.id,
+          customerId,
+          created: true,
+        };
+      });
+    } catch (error) {
+      logger.error("Erro ao registrar venda recebida do n8n", error);
+      const normalizedError = normalizeSaleRegistrationError(error);
+      res.status(200).json({
+        ok: false,
+        error: normalizedError.code,
+        message: normalizedError.message,
+        detail: normalizedError.detail || null,
+      });
+      return;
+    }
+
+    try {
+      const cartsSnapshot = await tenantRef
+        .collection("carts")
+        .where("phone", "==", payload.customer.whatsapp)
+        .get();
+
+      if (!cartsSnapshot.empty) {
+        const batch = db.batch();
+        for (const cartDoc of cartsSnapshot.docs) {
+          batch.delete(cartDoc.ref);
+        }
+        await batch.commit();
+      }
+    } catch (error) {
+      logger.warn("Venda registrada, mas houve falha ao limpar carrinho", error);
+    }
 
     res.status(200).json({
       ok: true,

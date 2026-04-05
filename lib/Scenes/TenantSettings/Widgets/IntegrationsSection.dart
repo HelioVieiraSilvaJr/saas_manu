@@ -319,6 +319,48 @@ class _IntegrationsSectionState extends State<IntegrationsSection> {
             ],
           ),
           const SizedBox(height: DSSpacing.md),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(DSSpacing.sm),
+            decoration: BoxDecoration(
+              color: colors.white.withValues(alpha: 0.78),
+              borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+              border: Border.all(color: colors.divider),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Atendimento automático',
+                        style: textStyles.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: DSSpacing.xxs),
+                      Text(
+                        viewModel.aiAgentEnabled
+                            ? 'Ligado. O mestre de vendas responde novos contatos automaticamente.'
+                            : 'Desligado. Novas conversas ficam para atendimento manual do tenant.',
+                        style: textStyles.bodySmall.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: viewModel.aiAgentEnabled,
+                  onChanged: viewModel.isUpdatingAiAgentEnabled
+                      ? null
+                      : presenter.updateAiAgentEnabled,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: DSSpacing.md),
           Text(
             viewModel.isWhatsAppConnected
                 ? 'Tudo certo. Esse número já está apto para receber os contatos e alimentar o mestre de vendas.'
