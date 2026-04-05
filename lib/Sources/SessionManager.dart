@@ -21,6 +21,9 @@ class SessionManager {
   TenantModel? currentTenant;
   MembershipModel? currentMembership;
   List<MembershipModel> allMemberships = [];
+  bool _isInspectingTenantAsAdmin = false;
+  TenantModel? _preInspectionTenant;
+  MembershipModel? _preInspectionMembership;
 
   // MARK: - Session State
 
@@ -28,10 +31,17 @@ class SessionManager {
   bool hasSession() => currentUser != null && currentTenant != null;
 
   /// Verifica se o usuário é SuperAdmin.
-  bool get isSuperAdmin => currentMembership?.role == UserRole.superAdmin;
+  bool get isSuperAdmin =>
+      !_isInspectingTenantAsAdmin &&
+      currentMembership?.role == UserRole.superAdmin;
+
+  /// Verifica se o super admin está inspecionando um tenant.
+  bool get isInspectingTenantAsAdmin => _isInspectingTenantAsAdmin;
 
   /// Verifica se o usuário é TenantAdmin.
-  bool get isTenantAdmin => currentMembership?.role == UserRole.tenantAdmin;
+  bool get isTenantAdmin =>
+      _isInspectingTenantAsAdmin ||
+      currentMembership?.role == UserRole.tenantAdmin;
 
   /// Verifica se o usuário é User comum.
   bool get isUser => currentMembership?.role == UserRole.user;
@@ -166,9 +176,71 @@ class SessionManager {
   Future<void> switchTenant(String tenantId) async {
     AppLogger.info('Trocando para tenant: $tenantId');
     clearAllCaches();
+    _isInspectingTenantAsAdmin = false;
+    _preInspectionTenant = null;
+    _preInspectionMembership = null;
     await _loadTenantData(tenantId);
     await PreferencesManager.instance.setLastTenantId(tenantId);
     AppLogger.info('Tenant trocado: ${currentTenant!.name}');
+  }
+
+  /// Permite ao Super Admin abrir o board operacional de um tenant
+  /// usando um contexto temporário de administrador.
+  Future<void> startTenantInspection(String tenantId) async {
+    if (currentUser == null) {
+      throw Exception('Sessão não carregada');
+    }
+    if (!isSuperAdmin && !_isInspectingTenantAsAdmin) {
+      throw Exception('Apenas super admins podem inspecionar tenants');
+    }
+
+    if (!_isInspectingTenantAsAdmin) {
+      _preInspectionTenant = currentTenant;
+      _preInspectionMembership = currentMembership;
+    }
+
+    clearAllCaches();
+
+    final tenantDoc = await _firestore
+        .collection('tenants')
+        .doc(tenantId)
+        .get();
+    if (!tenantDoc.exists) {
+      throw Exception('Tenant não encontrado: $tenantId');
+    }
+
+    currentTenant = TenantModel.fromDocumentSnapshot(tenantDoc);
+    currentMembership = MembershipModel(
+      uid: 'inspection_${currentUser!.uid}_$tenantId',
+      userId: currentUser!.uid,
+      tenantId: tenantId,
+      role: UserRole.tenantAdmin,
+      isActive: true,
+      createdAt: DateTime.now(),
+      userName: currentUser!.name,
+      userEmail: currentUser!.email,
+      tenantName: currentTenant!.name,
+      addedBy: 'superadmin_inspection',
+    );
+    _isInspectingTenantAsAdmin = true;
+
+    AppLogger.info(
+      'Modo de inspeção iniciado para tenant: ${currentTenant!.name}',
+    );
+  }
+
+  /// Finaliza a inspeção e restaura o contexto original do Super Admin.
+  Future<void> stopTenantInspection() async {
+    if (!_isInspectingTenantAsAdmin) return;
+
+    clearAllCaches();
+    currentTenant = _preInspectionTenant;
+    currentMembership = _preInspectionMembership;
+    _preInspectionTenant = null;
+    _preInspectionMembership = null;
+    _isInspectingTenantAsAdmin = false;
+
+    AppLogger.info('Modo de inspeção finalizado');
   }
 
   // MARK: - Sign Out
@@ -181,6 +253,9 @@ class SessionManager {
     currentTenant = null;
     currentMembership = null;
     allMemberships = [];
+    _isInspectingTenantAsAdmin = false;
+    _preInspectionTenant = null;
+    _preInspectionMembership = null;
     clearAllCaches();
   }
 

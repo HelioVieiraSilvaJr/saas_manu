@@ -16,6 +16,7 @@ import '../../Commons/Widgets/DesignSystem/DSSpacing.dart';
 import '../../Commons/Widgets/DesignSystem/DSTextStyle.dart';
 import '../../Commons/Widgets/DesignSystem/LoadingIndicator.dart';
 import '../../Sources/Coordinators/AppShell.dart';
+import '../../Sources/SessionManager.dart';
 import 'TenantsRepository.dart';
 
 /// Página de detalhes de um Tenant — Módulo 7.
@@ -608,8 +609,7 @@ class _TenantDetailPageState extends State<TenantDetailPage> {
                     DSAlertDialog.showSuccess(
                       context: context,
                       title: 'Plano alterado',
-                      message:
-                          'O plano foi alterado com sucesso.',
+                      message: 'O plano foi alterado com sucesso.',
                     );
                     _loadTenantDetails(_tenant!.uid);
                   }
@@ -646,22 +646,35 @@ class _TenantDetailPageState extends State<TenantDetailPage> {
     }
   }
 
-  void _impersonate() {
-    DSAlertDialog.showWarning(
+  Future<void> _impersonate() async {
+    final confirmed = await DSAlertDialog.showConfirm(
       context: context,
       title: 'Impersonar Tenant',
       message:
           'Você será redirecionado ao dashboard como "${_tenant!.name}". '
           'Essa ação será registrada em log.',
+      confirmLabel: 'Inspecionar',
     );
 
-    // TODO: Implementar lógica de impersonação
-    // 1. SessionManager.switchTenant(_tenant!)
-    // 2. AppLogger.info('SuperAdmin impersonou tenant: ${_tenant!.uid}')
-    // 3. Navigator.pushNamedAndRemoveUntil('/dashboard', (_) => false)
-    AppLogger.info(
-      'SuperAdmin impersonou tenant: ${_tenant!.uid} - ${_tenant!.name}',
-    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await SessionManager.instance.startTenantInspection(_tenant!.uid);
+      AppLogger.info(
+        'SuperAdmin inspecionando tenant: ${_tenant!.uid} - ${_tenant!.name}',
+      );
+
+      if (!mounted) return;
+      Navigator.of(context).pushNamedAndRemoveUntil('/dashboard', (_) => false);
+    } catch (e) {
+      AppLogger.error('Erro ao inspecionar tenant', error: e);
+      if (!mounted) return;
+      await DSAlertDialog.showError(
+        context: context,
+        title: 'Não foi possível inspecionar',
+        message: 'Falha ao abrir o board desse tenant: $e',
+      );
+    }
   }
 
   Future<void> _deleteTenant() async {

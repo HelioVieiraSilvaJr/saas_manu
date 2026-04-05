@@ -207,7 +207,7 @@ class _AppShellState extends State<AppShell> {
       ),
       actions: [
         // Tenant Switcher
-        if (session.hasMultipleTenants)
+        if (session.hasMultipleTenants && !session.isInspectingTenantAsAdmin)
           PopupMenuButton<String>(
             icon: Icon(Icons.swap_horiz_rounded, color: colors.textSecondary),
             tooltip: 'Trocar Tenant',
@@ -278,6 +278,7 @@ class _AppShellState extends State<AppShell> {
           ),
           onSelected: (value) {
             if (value == 'logout') _handleLogout();
+            if (value == 'end_inspection') _stopTenantInspection();
           },
           itemBuilder: (context) {
             final textStyles = DSTextStyle();
@@ -307,8 +308,12 @@ class _AppShellState extends State<AppShell> {
                     ),
                     const SizedBox(height: DSSpacing.sm),
                     DSBadge(
-                      label: session.currentMembership?.role.label ?? 'User',
-                      type: session.isSuperAdmin
+                      label: session.isInspectingTenantAsAdmin
+                          ? 'Inspecionando como Admin'
+                          : session.currentMembership?.role.label ?? 'User',
+                      type: session.isInspectingTenantAsAdmin
+                          ? DSBadgeType.warning
+                          : session.isSuperAdmin
                           ? DSBadgeType.primary
                           : session.isTenantAdmin
                           ? DSBadgeType.info
@@ -317,6 +322,22 @@ class _AppShellState extends State<AppShell> {
                   ],
                 ),
               ),
+              if (session.isInspectingTenantAsAdmin) const PopupMenuDivider(),
+              if (session.isInspectingTenantAsAdmin)
+                PopupMenuItem<String>(
+                  value: 'end_inspection',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.admin_panel_settings_outlined,
+                        size: 20,
+                        color: colors.textPrimary,
+                      ),
+                      const SizedBox(width: DSSpacing.sm),
+                      Text('Encerrar inspeção', style: textStyles.bodyMedium),
+                    ],
+                  ),
+                ),
               const PopupMenuDivider(),
               PopupMenuItem<String>(
                 value: 'logout',
@@ -693,7 +714,8 @@ class _AppShellState extends State<AppShell> {
             ),
 
             // Tenant switcher (mobile)
-            if (session.hasMultipleTenants)
+            if (session.hasMultipleTenants &&
+                !session.isInspectingTenantAsAdmin)
               Container(
                 padding: const EdgeInsets.all(DSSpacing.md),
                 decoration: BoxDecoration(
@@ -1005,6 +1027,30 @@ class _AppShellState extends State<AppShell> {
       await PreferencesManager.instance.clear();
       if (mounted) {
         LoginCoordinator.navigateToLoginAndClearStack(context);
+      }
+    }
+  }
+
+  Future<void> _stopTenantInspection() async {
+    final inspectedTenantId = SessionManager.instance.currentTenant?.uid;
+
+    try {
+      cancelGlobalListeners();
+      await SessionManager.instance.stopTenantInspection();
+      if (mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/admin/tenants/detail',
+          (_) => false,
+          arguments: inspectedTenantId,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        await DSAlertDialog.showError(
+          context: context,
+          title: 'Erro',
+          message: 'Não foi possível encerrar a inspeção: $e',
+        );
       }
     }
   }
