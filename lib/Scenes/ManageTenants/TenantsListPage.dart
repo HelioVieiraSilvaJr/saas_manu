@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../Commons/Utils/ScreenResponsive.dart';
 import '../../Commons/Widgets/DesignSystem/DSAlertDialog.dart';
 import '../../Commons/Widgets/DesignSystem/DSColors.dart';
+import '../../Commons/Widgets/DesignSystem/DSTextStyle.dart';
+import '../../Commons/Widgets/DesignSystem/DSSpacing.dart';
 import '../../Sources/Coordinators/AppShell.dart';
 import 'TenantsListPresenter.dart';
 import 'Web/TenantsListWebView.dart';
@@ -123,19 +125,69 @@ class _TenantsListPageState extends State<TenantsListPage> {
             onPressed: () async {
               if (controller.text.trim() == tenantName) {
                 Navigator.pop(ctx);
+                _showDeleteProgress(tenantName);
                 final success = await _presenter.deleteTenant(tenantId);
-                if (mounted && success) {
-                  DSAlertDialog.showSuccess(
-                    context: context,
-                    title: 'Tenant excluído',
-                    message: '"$tenantName" foi removido com sucesso.',
-                  );
+                if (mounted) {
+                  Navigator.of(context, rootNavigator: true).pop();
+                  if (success) {
+                    await DSAlertDialog.showSuccess(
+                      context: context,
+                      title: 'Tenant excluído',
+                      message: '"$tenantName" foi removido com sucesso.',
+                    );
+                  } else {
+                    await DSAlertDialog.showError(
+                      context: context,
+                      title: 'Falha ao excluir',
+                      message:
+                          'Não foi possível excluir "$tenantName". Tente novamente.',
+                    );
+                  }
                 }
               }
             },
             child: Text('Excluir', style: TextStyle(color: DSColors().red)),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showDeleteProgress(String tenantName) {
+    final colors = DSColors();
+    final textStyles = DSTextStyle();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(color: colors.primaryColor),
+              ),
+              const SizedBox(height: DSSpacing.lg),
+              Text(
+                'Excluindo tenant',
+                style: textStyles.labelLarge,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: DSSpacing.xs),
+              Text(
+                'Removendo "$tenantName" e seus dados relacionados.',
+                style: textStyles.bodySmall.copyWith(
+                  color: colors.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:elegant_notification/elegant_notification.dart';
 import 'package:flutter/material.dart';
+import '../../Commons/Constants/AppConstants.dart';
 import '../../Commons/Widgets/DesignSystem/DSColors.dart';
 import '../../Commons/Widgets/DesignSystem/DSTextStyle.dart';
 import '../../Commons/Widgets/DesignSystem/DSSpacing.dart';
@@ -297,6 +298,13 @@ class _AppShellState extends State<AppShell> {
                         color: colors.textSecondary,
                       ),
                     ),
+                    const SizedBox(height: DSSpacing.xs),
+                    Text(
+                      'Versão ${AppConstants.appVersion}',
+                      style: textStyles.bodySmall.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                    ),
                     const SizedBox(height: DSSpacing.sm),
                     DSBadge(
                       label: session.currentMembership?.role.label ?? 'User',
@@ -467,6 +475,22 @@ class _AppShellState extends State<AppShell> {
                   ),
                 ],
               ],
+            ),
+          ),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(
+              DSSpacing.lg,
+              DSSpacing.sm,
+              DSSpacing.lg,
+              DSSpacing.lg,
+            ),
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: colors.divider)),
+            ),
+            child: Text(
+              'Versão ${AppConstants.appVersion}',
+              style: textStyles.bodySmall.copyWith(color: colors.textSecondary),
             ),
           ),
         ],
@@ -736,6 +760,16 @@ class _AppShellState extends State<AppShell> {
                   style: textStyles.bodyMedium.copyWith(color: colors.red),
                 ),
                 onTap: _handleLogout,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: DSSpacing.md),
+              child: Text(
+                'Versão ${AppConstants.appVersion}',
+                style: textStyles.bodySmall.copyWith(
+                  color: colors.textSecondary,
+                ),
+                textAlign: TextAlign.center,
               ),
             ),
           ],

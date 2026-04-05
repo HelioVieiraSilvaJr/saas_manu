@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
+import '../../../Commons/Constants/AppConstants.dart';
 import '../../../Commons/Widgets/DesignSystem/DSColors.dart';
 import '../../../Commons/Widgets/DesignSystem/DSTextStyle.dart';
 import '../../../Commons/Widgets/DesignSystem/DSSpacing.dart';
@@ -158,6 +159,11 @@ class _LoginWebViewState extends State<LoginWebView> {
                 'Multi-tenant com cada negócio operando no seu próprio espaço',
             colors: colors,
             textStyles: textStyles,
+          ),
+          const SizedBox(height: DSSpacing.xl),
+          Text(
+            'Versão ${AppConstants.appVersion}',
+            style: textStyles.bodySmall.copyWith(color: colors.textSecondary),
           ),
         ],
       ),

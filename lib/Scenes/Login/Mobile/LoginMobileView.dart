@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
+import '../../../Commons/Constants/AppConstants.dart';
 import '../../../Commons/Widgets/DesignSystem/DSColors.dart';
 import '../../../Commons/Widgets/DesignSystem/DSTextStyle.dart';
 import '../../../Commons/Widgets/DesignSystem/DSSpacing.dart';
@@ -110,7 +111,7 @@ class _LoginMobileViewState extends State<LoginMobileView> {
         ),
         const SizedBox(height: DSSpacing.xl),
         Text(
-          'SaaS Manu',
+          AppConstants.appName,
           style: textStyles.headline1,
           textAlign: TextAlign.center,
         ),
@@ -118,6 +119,12 @@ class _LoginMobileViewState extends State<LoginMobileView> {
         Text(
           'Transforme seu WhatsApp em um vendedor com IA conectado ao seu catálogo.',
           style: textStyles.bodyMedium.copyWith(color: colors.textSecondary),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: DSSpacing.sm),
+        Text(
+          'Versão ${AppConstants.appVersion}',
+          style: textStyles.bodySmall.copyWith(color: colors.textSecondary),
           textAlign: TextAlign.center,
         ),
       ],
