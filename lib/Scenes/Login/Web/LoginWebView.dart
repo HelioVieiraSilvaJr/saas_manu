@@ -271,7 +271,7 @@ class _LoginWebViewState extends State<LoginWebView> {
                 ),
               ),
               DSButton.text(
-                label: 'Criar tenant',
+                label: 'Criar conta',
                 onTap: widget.presenter.openRegister,
               ),
             ],
@@ -380,7 +380,7 @@ class _LoginWebViewState extends State<LoginWebView> {
           ),
           const SizedBox(height: DSSpacing.lg),
           DSButton.primary(
-            label: 'Criar conta e tenant',
+            label: 'Criar conta',
             icon: Icons.app_registration_rounded,
             isLoading: vm.isLoading,
             isExpanded: true,
