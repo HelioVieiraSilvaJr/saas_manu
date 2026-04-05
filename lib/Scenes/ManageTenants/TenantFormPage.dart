@@ -135,7 +135,7 @@ class _TenantFormPageState extends State<TenantFormPage> {
 
           // E-mail
           FormTextField(
-            label: 'E-mail de contato',
+            label: 'E-mail do admin inicial',
             controller: _presenter.emailController,
             validator: _presenter.validateEmail,
             keyboardType: TextInputType.emailAddress,
@@ -143,7 +143,7 @@ class _TenantFormPageState extends State<TenantFormPage> {
             hintText: 'admin@empresa.com',
             helperText: _presenter.isEditing
                 ? null
-                : 'Será o primeiro usuário Admin do tenant',
+                : 'Se esse e-mail já existir no Auth, ele será associado ao tenant com papel tenantAdmin.',
             textInputAction: TextInputAction.next,
           ),
           const SizedBox(height: DSSpacing.md),

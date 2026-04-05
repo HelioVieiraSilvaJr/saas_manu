@@ -13,8 +13,18 @@ class SeedRunner {
 
   /// Verifica se o seed já foi executado (existe pelo menos 1 tenant).
   Future<bool> isSeeded() async {
-    final snapshot = await _firestore.collection('tenants').limit(1).get();
-    return snapshot.docs.isNotEmpty;
+    try {
+      final snapshot = await _firestore.collection('tenants').limit(1).get();
+      return snapshot.docs.isNotEmpty;
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        AppLogger.warning(
+          'SeedRunner.isSeeded sem permissão para consultar tenants. Ignorando seed para este usuário.',
+        );
+        return true;
+      }
+      rethrow;
+    }
   }
 
   /// Executa o seed completo: cria user, tenant e membership.

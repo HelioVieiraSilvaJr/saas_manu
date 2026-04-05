@@ -977,10 +977,12 @@ async function buildTenantData(payload) {
   return tenantData;
 }
 
-async function getOrCreateAuthUser({ email, name }) {
+async function getOrCreateAuthUser({ email, name, password }) {
   const normalizedEmail = sanitizeEmail(email);
   const displayName = String(name || "").trim();
-  const temporaryPassword = process.env.DEFAULT_INVITE_PASSWORD || generateTemporaryPassword();
+  const providedPassword = String(password || "").trim();
+  const temporaryPassword =
+    process.env.DEFAULT_INVITE_PASSWORD || generateTemporaryPassword();
 
   try {
     const existing = await admin.auth().getUserByEmail(normalizedEmail);
@@ -988,6 +990,7 @@ async function getOrCreateAuthUser({ email, name }) {
       uid: existing.uid,
       isNewUser: false,
       temporaryPassword: null,
+      requiresPasswordReset: null,
     };
   } catch (error) {
     if (error.code !== "auth/user-not-found") {
@@ -997,18 +1000,25 @@ async function getOrCreateAuthUser({ email, name }) {
 
   const created = await admin.auth().createUser({
     email: normalizedEmail,
-    password: temporaryPassword,
+    password: providedPassword || temporaryPassword,
     displayName,
   });
 
   return {
     uid: created.uid,
     isNewUser: true,
-    temporaryPassword,
+    temporaryPassword: providedPassword ? null : temporaryPassword,
+    requiresPasswordReset: providedPassword ? false : true,
   };
 }
 
-async function upsertUserDoc({ uid, email, name, platformRole }) {
+async function upsertUserDoc({
+  uid,
+  email,
+  name,
+  platformRole,
+  requiresPasswordReset,
+}) {
   const payload = {
     email: sanitizeEmail(email),
     name: String(name || "").trim(),
@@ -1017,6 +1027,10 @@ async function upsertUserDoc({ uid, email, name, platformRole }) {
 
   if (platformRole) {
     payload.platform_role = platformRole;
+  }
+
+  if (typeof requiresPasswordReset === "boolean") {
+    payload.requires_password_reset = requiresPasswordReset;
   }
 
   await db.collection("users").doc(uid).set(
@@ -1161,6 +1175,7 @@ exports.createTenantWithAdmin = onRequest(
 
     const body = jsonBody(req);
     const tenantData = await buildTenantData(body);
+    const adminName = String(body.adminName || tenantData.name || "").trim() || tenantData.name;
 
     if (!tenantData.name || !tenantData.contact_email) {
       res.status(400).json({ ok: false, error: "invalid-tenant-payload" });
@@ -1170,13 +1185,14 @@ exports.createTenantWithAdmin = onRequest(
     const tenantRef = db.collection("tenants").doc();
     const user = await getOrCreateAuthUser({
       email: tenantData.contact_email,
-      name: tenantData.name,
+      name: adminName,
     });
 
     await upsertUserDoc({
       uid: user.uid,
       email: tenantData.contact_email,
-      name: tenantData.name,
+      name: adminName,
+      requiresPasswordReset: user.requiresPasswordReset,
     });
 
     const batch = db.batch();
@@ -1196,7 +1212,7 @@ exports.createTenantWithAdmin = onRequest(
         tenant_id: tenantRef.id,
         role: "tenantAdmin",
         is_active: true,
-        user_name: tenantData.name,
+        user_name: adminName,
         user_email: tenantData.contact_email,
         added_by: auth.uid,
         created_at: nowTs(),
@@ -1213,6 +1229,93 @@ exports.createTenantWithAdmin = onRequest(
       adminUserId: user.uid,
       isNewUser: user.isNewUser,
       temporaryPassword: user.temporaryPassword,
+    });
+  }),
+);
+
+exports.registerTenantSelfService = onRequest(
+  withCors(async (req, res) => {
+    if (req.method !== "POST") {
+      res.status(405).json({ ok: false, error: "method-not-allowed" });
+      return;
+    }
+
+    const body = jsonBody(req);
+    const tenantName = String(body.tenantName || body.name || "").trim();
+    const adminName = String(body.adminName || tenantName).trim();
+    const email = sanitizeEmail(body.email);
+    const phone = sanitizePhone(body.phone);
+    const password = String(body.password || "").trim();
+
+    if (!tenantName || !adminName || !email || !phone) {
+      res.status(400).json({ ok: false, error: "invalid-signup-payload" });
+      return;
+    }
+
+    if (password.length < 7) {
+      res.status(400).json({ ok: false, error: "weak-password" });
+      return;
+    }
+
+    const tenantData = await buildTenantData({
+      name: tenantName,
+      email,
+      phone,
+      plan: body.plan || "trial",
+      planTier: body.planTier || "standard",
+      isActive: true,
+      aiAgentEnabled: true,
+    });
+
+    const tenantRef = db.collection("tenants").doc();
+    const user = await getOrCreateAuthUser({
+      email,
+      name: adminName,
+      password,
+    });
+
+    await upsertUserDoc({
+      uid: user.uid,
+      email,
+      name: adminName,
+      requiresPasswordReset: user.requiresPasswordReset,
+    });
+
+    const batch = db.batch();
+    batch.set(
+      tenantRef,
+      {
+        ...tenantData,
+        created_at: nowTs(),
+      },
+      { merge: true },
+    );
+
+    batch.set(
+      db.collection("memberships").doc(membershipDocId(tenantRef.id, user.uid)),
+      {
+        user_id: user.uid,
+        tenant_id: tenantRef.id,
+        role: "tenantAdmin",
+        is_active: true,
+        user_name: adminName,
+        user_email: email,
+        added_by: user.uid,
+        tenant_name: tenantName,
+        created_at: nowTs(),
+        updated_at: nowTs(),
+      },
+      { merge: true },
+    );
+
+    await batch.commit();
+
+    res.status(200).json({
+      ok: true,
+      tenantId: tenantRef.id,
+      adminUserId: user.uid,
+      isNewUser: user.isNewUser,
+      requiresExistingLogin: !user.isNewUser,
     });
   }),
 );
@@ -1244,7 +1347,12 @@ exports.provisionTenantMember = onRequest(
     await assertCanManageTenant(tenantId, auth.uid);
 
     const user = await getOrCreateAuthUser({ email, name });
-    await upsertUserDoc({ uid: user.uid, email, name });
+    await upsertUserDoc({
+      uid: user.uid,
+      email,
+      name,
+      requiresPasswordReset: user.requiresPasswordReset,
+    });
 
     const membershipRef = db.collection("memberships").doc(membershipDocId(tenantId, user.uid));
     const existing = await membershipRef.get();
@@ -1268,6 +1376,26 @@ exports.provisionTenantMember = onRequest(
       isNewUser: user.isNewUser,
       temporaryPassword: user.temporaryPassword,
     });
+  }),
+);
+
+exports.completePasswordReset = onRequest(
+  withCors(async (req, res) => {
+    if (req.method !== "POST") {
+      res.status(405).json({ ok: false, error: "method-not-allowed" });
+      return;
+    }
+
+    const auth = await verifyAuth(req);
+    await db.collection("users").doc(auth.uid).set(
+      {
+        requires_password_reset: false,
+        updated_at: nowTs(),
+      },
+      { merge: true },
+    );
+
+    res.status(200).json({ ok: true });
   }),
 );
 

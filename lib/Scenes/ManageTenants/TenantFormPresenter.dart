@@ -140,7 +140,7 @@ class TenantFormPresenter {
       }
     } catch (e) {
       AppLogger.error('Erro ao salvar tenant', error: e);
-      errorMessage = 'Erro ao salvar tenant.';
+      errorMessage = mapBackendError(e);
       isSaving = false;
       _notify();
       return false;
@@ -168,7 +168,7 @@ class TenantFormPresenter {
       return true;
     }
 
-    errorMessage = 'Erro ao criar tenant.';
+    errorMessage = 'Não foi possível criar o tenant.';
     _notify();
     return false;
   }
@@ -224,5 +224,17 @@ class TenantFormPresenter {
     nameController.dispose();
     emailController.dispose();
     phoneController.dispose();
+  }
+
+  String mapBackendError(Object error) {
+    final message = error.toString().replaceAll('Exception: ', '').trim();
+    switch (message) {
+      case 'super-admin-required':
+        return 'Apenas o Super Admin pode criar tenants.';
+      case 'invalid-tenant-payload':
+        return 'Preencha corretamente os dados do tenant.';
+      default:
+        return message.isEmpty ? 'Erro ao salvar tenant.' : message;
+    }
   }
 }

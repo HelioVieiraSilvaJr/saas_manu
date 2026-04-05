@@ -58,28 +58,23 @@ class TenantsRepository {
     required String planTier,
     required bool isActive,
   }) async {
-    try {
-      final response = await BackendApi.instance.postAuthenticated(
-        functionName: 'createTenantWithAdmin',
-        body: {
-          'name': name,
-          'email': email,
-          'phone': phone,
-          'plan': plan,
-          'planTier': planTier,
-          'isActive': isActive,
-        },
-      );
+    final response = await BackendApi.instance.postAuthenticated(
+      functionName: 'createTenantWithAdmin',
+      body: {
+        'name': name,
+        'email': email,
+        'phone': phone,
+        'plan': plan,
+        'planTier': planTier,
+        'isActive': isActive,
+      },
+    );
 
-      final tenantId = response['tenantId'] as String?;
-      if (tenantId != null) {
-        AppLogger.info('Tenant criado via backend: $tenantId');
-      }
-      return response;
-    } catch (e) {
-      AppLogger.error('Erro ao criar tenant', error: e);
-      return null;
+    final tenantId = response['tenantId'] as String?;
+    if (tenantId != null) {
+      AppLogger.info('Tenant criado via backend: $tenantId');
     }
+    return response;
   }
 
   /// Atualiza um tenant existente.

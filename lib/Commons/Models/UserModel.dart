@@ -8,6 +8,7 @@ class UserModel {
   String email;
   String name;
   String? photoUrl;
+  bool requiresPasswordReset;
   DateTime createdAt;
 
   UserModel({
@@ -15,6 +16,7 @@ class UserModel {
     required this.email,
     required this.name,
     this.photoUrl,
+    this.requiresPasswordReset = false,
     required this.createdAt,
   });
 
@@ -27,6 +29,7 @@ class UserModel {
       email: data['email'] ?? '',
       name: data['name'] ?? '',
       photoUrl: data['photo_url'],
+      requiresPasswordReset: data['requires_password_reset'] == true,
       createdAt: data['created_at'] != null
           ? (data['created_at'] as Timestamp).toDate()
           : DateTime.now(),
@@ -40,6 +43,7 @@ class UserModel {
       'email': email,
       'name': name,
       'photo_url': photoUrl,
+      'requires_password_reset': requiresPasswordReset,
       'created_at': Timestamp.fromDate(createdAt),
     };
   }
@@ -55,6 +59,7 @@ class UserModel {
     String? email,
     String? name,
     String? photoUrl,
+    bool? requiresPasswordReset,
     DateTime? createdAt,
   }) {
     return UserModel(
@@ -62,6 +67,8 @@ class UserModel {
       email: email ?? this.email,
       name: name ?? this.name,
       photoUrl: photoUrl ?? this.photoUrl,
+      requiresPasswordReset:
+          requiresPasswordReset ?? this.requiresPasswordReset,
       createdAt: createdAt ?? this.createdAt,
     );
   }

@@ -80,8 +80,8 @@ class _SplashPageState extends State<SplashPage> {
           return; // Não navega — dialog controla o fluxo
         }
 
-        // Verificar primeiro login (troca de senha obrigatória)
-        if (_isFirstLogin(firebaseUser)) {
+        // Verificar primeiro login com senha temporária.
+        if (session.currentUser?.requiresPasswordReset == true) {
           AppLogger.info('Primeiro login detectado — forçando troca de senha');
           final changed = await _showForceChangePasswordDialog();
           if (!changed || !mounted) return;
@@ -109,13 +109,6 @@ class _SplashPageState extends State<SplashPage> {
   }
 
   // MARK: - Helpers
-
-  bool _isFirstLogin(User user) {
-    final creation = user.metadata.creationTime;
-    final lastSignIn = user.metadata.lastSignInTime;
-    if (creation == null || lastSignIn == null) return false;
-    return lastSignIn.difference(creation).inMinutes.abs() < 2;
-  }
 
   // MARK: - Trial Expired Dialog
 

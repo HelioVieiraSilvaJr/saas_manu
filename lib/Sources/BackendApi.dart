@@ -58,6 +58,32 @@ class BackendApi {
     );
   }
 
+  Future<Map<String, dynamic>> registerTenantSelfService({
+    required String tenantName,
+    required String adminName,
+    required String email,
+    required String phone,
+    required String password,
+  }) {
+    return postPublic(
+      functionName: 'registerTenantSelfService',
+      body: {
+        'tenantName': tenantName,
+        'adminName': adminName,
+        'email': email,
+        'phone': phone,
+        'password': password,
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> completePasswordReset() {
+    return postAuthenticated(
+      functionName: 'completePasswordReset',
+      body: const {},
+    );
+  }
+
   Future<Map<String, dynamic>> postAuthenticated({
     required String functionName,
     required Map<String, dynamic> body,
@@ -79,6 +105,25 @@ class BackendApi {
         )
         .timeout(const Duration(seconds: 20));
 
+    return _decodeResponse(response);
+  }
+
+  Future<Map<String, dynamic>> postPublic({
+    required String functionName,
+    required Map<String, dynamic> body,
+  }) async {
+    final response = await http
+        .post(
+          Uri.parse(functionUrl(functionName)),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        )
+        .timeout(const Duration(seconds: 20));
+
+    return _decodeResponse(response);
+  }
+
+  Map<String, dynamic> _decodeResponse(http.Response response) {
     final decoded = response.body.isNotEmpty
         ? jsonDecode(response.body) as Map<String, dynamic>
         : <String, dynamic>{};
