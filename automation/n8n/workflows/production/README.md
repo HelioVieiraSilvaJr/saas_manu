@@ -67,3 +67,4 @@ production/
 
 - O arquivo `entrypoints/whatsapp-sales-agent.json` veio sem `name` e sem `id` no export original; o `name` foi preenchido no repositorio para facilitar manutencao.
 - O workflow `Sub - Registrar Venda` depende da `webhook_url` oficial do tenant para usar o endpoint `receiveN8nSale` com validacao server-side.
+- A whitelist de remetentes de teste do workflow principal agora e aplicada apenas para tenants listados em `test_sender_whitelist_tenant_ids`. Se o `tenant_id` atual nao estiver nessa lista, o fluxo ignora a whitelist e segue normalmente.

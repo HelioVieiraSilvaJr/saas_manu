@@ -17,7 +17,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const body = $input.first().json.body ?? $input.first().json;\nconst info = $('Info').first().json;\nconst normalizePhone = (value = '') => String(value).replace(/\\D/g, '');\n\n// Ignora se não for mensagem válida\nif (!body.data || !body.data.message) {\n  return [];\n}\n\nconst message = body.data;\nconst isFromMe = message.key?.fromMe === true;\nconst isGroup = message.key?.remoteJid?.includes('@g.us');\nconst isStatus = message.key?.remoteJid === 'status@broadcast';\n\nif (isFromMe || isGroup || isStatus) {\n  return [];\n}\n\n// Extrai dados relevantes\nconst telefone = normalizePhone(message.key?.remoteJid || '');\nconst messageType = message.messageType || '';\nconst isAudio = messageType === 'audioMessage';\nconst texto = message.message?.conversation\n  || message.message?.extendedTextMessage?.text\n  || '';\nconst pushName = message.pushName || '';\nconst whitelistEnabled = info.test_sender_whitelist_enabled === true;\nconst whitelist = String(info.test_sender_whitelist_numbers || '')\n  .split(',')\n  .map((item) => normalizePhone(item))\n  .filter(Boolean);\n\nif (whitelistEnabled && !whitelist.includes(telefone)) {\n  return [];\n}\n\n// Permite áudio mesmo sem texto\nif (!texto.trim() && !isAudio) {\n  return [];\n}\n\nreturn [{\n  json: {\n    telefone,\n    texto,\n    pushName,\n    messageId: message.key.id,\n    messageType,\n    timestamp: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const body = $input.first().json.body ?? $input.first().json;\nconst info = $('Info').first().json;\nconst normalizePhone = (value = '') => String(value).replace(/\\D/g, '');\n\n// Ignora se não for mensagem válida\nif (!body.data || !body.data.message) {\n  return [];\n}\n\nconst message = body.data;\nconst isFromMe = message.key?.fromMe === true;\nconst isGroup = message.key?.remoteJid?.includes('@g.us');\nconst isStatus = message.key?.remoteJid === 'status@broadcast';\n\nif (isFromMe || isGroup || isStatus) {\n  return [];\n}\n\n// Extrai dados relevantes\nconst telefone = normalizePhone(message.key?.remoteJid || '');\nconst messageType = message.messageType || '';\nconst isAudio = messageType === 'audioMessage';\nconst texto = message.message?.conversation\n  || message.message?.extendedTextMessage?.text\n  || '';\nconst pushName = message.pushName || '';\nconst tenantId = String(info.tenant_id || '').trim();\nconst whitelistEnabled = info.test_sender_whitelist_enabled === true;\nconst whitelistTenantIds = String(info.test_sender_whitelist_tenant_ids || '')\n  .split(',')\n  .map((item) => String(item || '').trim())\n  .filter(Boolean);\nconst whitelistAppliesToThisTenant = whitelistEnabled\n  && tenantId\n  && whitelistTenantIds.includes(tenantId);\nconst whitelist = String(info.test_sender_whitelist_numbers || '')\n  .split(',')\n  .map((item) => normalizePhone(item))\n  .filter(Boolean);\n\nif (whitelistAppliesToThisTenant && !whitelist.includes(telefone)) {\n  return [];\n}\n\n// Permite áudio mesmo sem texto\nif (!texto.trim() && !isAudio) {\n  return [];\n}\n\nreturn [{\n  json: {\n    telefone,\n    texto,\n    pushName,\n    messageId: message.key.id,\n    messageType,\n    timestamp: new Date().toISOString()\n  }\n}];"
       },
       "id": "4a6529d5-bae0-493f-b7ba-1c57ede069e4",
       "name": "Filtrar Mensagens",
@@ -201,6 +201,12 @@
               "id": "e0a32b7f-4ff1-4986-a3d4-8724a3db2b02",
               "name": "test_sender_whitelist_numbers",
               "value": "5511966191991,5511966220880",
+              "type": "string"
+            },
+            {
+              "id": "7baf3e6a-8dbf-4f3a-8425-aef72d447a1c",
+              "name": "test_sender_whitelist_tenant_ids",
+              "value": "SEFAY0UHZh54huJsPAd7",
               "type": "string"
             },
             {
