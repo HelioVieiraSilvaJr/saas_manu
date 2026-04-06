@@ -249,7 +249,8 @@ class CustomerListItem extends StatelessWidget {
   // MARK: - Actions
 
   void _openWhatsApp() {
-    final url = 'https://wa.me/55${customer.whatsapp}';
+    final url =
+        'https://wa.me/${customer.whatsapp.toWhatsAppInternationalDigits()}';
     launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
   }
 }

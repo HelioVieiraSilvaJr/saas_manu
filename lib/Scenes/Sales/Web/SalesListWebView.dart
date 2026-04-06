@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../Commons/Enums/SaleStatus.dart';
 import '../../../Commons/Enums/OrderStatus.dart';
+import '../../../Commons/Enums/SaleStatus.dart';
 import '../../../Commons/Extensions/String+Extensions.dart';
 import '../../../Commons/Models/SaleModel.dart';
 import '../../../Commons/Widgets/DesignSystem/DSBadge.dart';
@@ -14,9 +14,14 @@ import '../../../Commons/Widgets/DesignSystem/LoadingIndicator.dart';
 import '../SalesListPresenter.dart';
 import '../SalesListViewModel.dart';
 
-/// View Web da listagem de vendas.
-///
-/// Catálogo moderno com metric cards, filtros, tabela e ações rápidas de pagamento.
+String _salesFormatDateTime(DateTime date) {
+  final day = date.day.toString().padLeft(2, '0');
+  final month = date.month.toString().padLeft(2, '0');
+  final hour = date.hour.toString().padLeft(2, '0');
+  final minute = date.minute.toString().padLeft(2, '0');
+  return '$day/$month/${date.year} $hour:$minute';
+}
+
 class SalesListWebView extends StatelessWidget {
   final SalesListPresenter presenter;
   final TextEditingController searchController;
@@ -39,12 +44,34 @@ class SalesListWebView extends StatelessWidget {
     required this.onCancelSale,
   });
 
+  static const List<String> _monthNames = [
+    'janeiro',
+    'fevereiro',
+    'marco',
+    'abril',
+    'maio',
+    'junho',
+    'julho',
+    'agosto',
+    'setembro',
+    'outubro',
+    'novembro',
+    'dezembro',
+  ];
+
+  String _formatMonthYear(DateTime date) {
+    return '${_monthNames[date.month - 1]} ${date.year}';
+  }
+
+  String _formatDayMonth(DateTime date) {
+    return '${date.day} de ${_monthNames[date.month - 1]}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final vm = presenter.viewModel;
     final colors = DSColors();
     final textStyles = DSTextStyle();
-    const sectionGap = DSSpacing.lg;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(
@@ -54,22 +81,21 @@ class SalesListWebView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(context, vm, colors, textStyles),
-          const SizedBox(height: sectionGap),
-          _buildMetricCards(vm, colors, textStyles),
-          const SizedBox(height: sectionGap),
+          _buildHeader(vm, colors, textStyles),
+          const SizedBox(height: DSSpacing.lg),
+          _buildMetricCards(vm),
+          const SizedBox(height: DSSpacing.lg),
           _buildFiltersBar(vm, colors, textStyles),
-          const SizedBox(height: sectionGap),
+          const SizedBox(height: DSSpacing.base),
+          _buildDayNavigator(vm, colors, textStyles),
+          const SizedBox(height: DSSpacing.lg),
           _buildContent(vm, colors, textStyles),
         ],
       ),
     );
   }
 
-  // ──────────────────── Header ────────────────────
-
   Widget _buildHeader(
-    BuildContext context,
     SalesListViewModel vm,
     DSColors colors,
     DSTextStyle textStyles,
@@ -83,7 +109,7 @@ class SalesListWebView extends StatelessWidget {
               Text('Vendas', style: textStyles.headline1),
               const SizedBox(height: DSSpacing.xs),
               Text(
-                'Gerencie todas as vendas e acompanhe os resultados',
+                'Hoje permanece visivel e os dias anteriores ficam organizados para acompanhamento e fechamento.',
                 style: textStyles.bodyMedium.copyWith(
                   color: colors.textTertiary,
                 ),
@@ -91,6 +117,7 @@ class SalesListWebView extends StatelessWidget {
             ],
           ),
         ),
+        const SizedBox(width: DSSpacing.base),
         DSButton.primary(
           label: 'Nova Venda',
           icon: Icons.add_shopping_cart_rounded,
@@ -100,13 +127,7 @@ class SalesListWebView extends StatelessWidget {
     );
   }
 
-  // ──────────────────── Metric Cards ────────────────────
-
-  Widget _buildMetricCards(
-    SalesListViewModel vm,
-    DSColors colors,
-    DSTextStyle textStyles,
-  ) {
+  Widget _buildMetricCards(SalesListViewModel vm) {
     return Row(
       children: [
         Expanded(
@@ -143,9 +164,9 @@ class SalesListWebView extends StatelessWidget {
         const SizedBox(width: DSSpacing.base),
         Expanded(
           child: DSMetricCard(
-            title: 'Total de Vendas',
-            value: '${vm.totalCount}',
-            comparison: '${vm.filteredCount} exibidas',
+            title: 'Exibidas',
+            value: '${vm.filteredCount}',
+            comparison: '${vm.totalCount} carregadas',
             icon: Icons.point_of_sale_rounded,
             compact: true,
           ),
@@ -154,33 +175,35 @@ class SalesListWebView extends StatelessWidget {
     );
   }
 
-  // ──────────────────── Filters Bar ────────────────────
-
   Widget _buildFiltersBar(
     SalesListViewModel vm,
     DSColors colors,
     DSTextStyle textStyles,
   ) {
-    return Row(
+    final selectedMonth = DateTime(
+      vm.selectedDayOrToday.year,
+      vm.selectedDayOrToday.month,
+    );
+
+    return Wrap(
+      spacing: DSSpacing.sm,
+      runSpacing: DSSpacing.sm,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        // Status dropdown
         _buildFilterDropdown<SaleStatusFilter>(
           value: vm.statusFilter,
           items: const {
             SaleStatusFilter.all: 'Todos os status',
-            SaleStatusFilter.pending: 'Pendente',
+            SaleStatusFilter.pending: 'Pendentes',
             SaleStatusFilter.paymentSent: 'Cobrança Enviada',
-            SaleStatusFilter.confirmed: 'Pago',
-            SaleStatusFilter.cancelled: 'Cancelada',
+            SaleStatusFilter.confirmed: 'Pagas',
+            SaleStatusFilter.cancelled: 'Canceladas',
           },
-          onChanged: (v) =>
-              presenter.setStatusFilter(v ?? SaleStatusFilter.all),
+          onChanged: (value) =>
+              presenter.setStatusFilter(value ?? SaleStatusFilter.all),
           colors: colors,
           textStyles: textStyles,
         ),
-        const SizedBox(width: DSSpacing.sm),
-
-        // Origem dropdown
         _buildFilterDropdown<SaleSourceFilter>(
           value: vm.sourceFilter,
           items: const {
@@ -188,83 +211,58 @@ class SalesListWebView extends StatelessWidget {
             SaleSourceFilter.manual: 'Manual',
             SaleSourceFilter.whatsappAutomation: 'WhatsApp Bot',
           },
-          onChanged: (v) =>
-              presenter.setSourceFilter(v ?? SaleSourceFilter.all),
+          onChanged: (value) =>
+              presenter.setSourceFilter(value ?? SaleSourceFilter.all),
           colors: colors,
           textStyles: textStyles,
         ),
-        const SizedBox(width: DSSpacing.sm),
-
-        // Período dropdown
-        _buildFilterDropdown<SalePeriodFilter>(
-          value: vm.periodFilter,
-          items: const {
-            SalePeriodFilter.all: 'Todos os períodos',
-            SalePeriodFilter.today: 'Hoje',
-            SalePeriodFilter.last7Days: 'Últimos 7 dias',
-            SalePeriodFilter.last30Days: 'Últimos 30 dias',
-            SalePeriodFilter.thisMonth: 'Este mês',
-          },
-          onChanged: (v) =>
-              presenter.setPeriodFilter(v ?? SalePeriodFilter.all),
-          colors: colors,
-          textStyles: textStyles,
-        ),
-        const SizedBox(width: DSSpacing.sm),
-
-        // Ordenação dropdown
         _buildFilterDropdown<SaleSortOption>(
           value: vm.sortOption,
           items: const {
-            SaleSortOption.newestFirst: 'Mais Recentes',
-            SaleSortOption.oldestFirst: 'Mais Antigas',
-            SaleSortOption.totalHighest: 'Valor (maior)',
-            SaleSortOption.totalLowest: 'Valor (menor)',
-            SaleSortOption.customerAZ: 'Cliente (A-Z)',
-            SaleSortOption.customerZA: 'Cliente (Z-A)',
+            SaleSortOption.newestFirst: 'Mais recentes',
+            SaleSortOption.oldestFirst: 'Mais antigas',
+            SaleSortOption.totalHighest: 'Valor maior',
+            SaleSortOption.totalLowest: 'Valor menor',
+            SaleSortOption.customerAZ: 'Cliente A-Z',
+            SaleSortOption.customerZA: 'Cliente Z-A',
           },
-          onChanged: (v) =>
-              presenter.setSortOption(v ?? SaleSortOption.newestFirst),
+          onChanged: (value) =>
+              presenter.setSortOption(value ?? SaleSortOption.newestFirst),
           colors: colors,
           textStyles: textStyles,
           icon: Icons.sort_rounded,
         ),
-
-        if (vm.hasActiveFilters) ...[
-          const SizedBox(width: DSSpacing.sm),
-          _buildClearFiltersButton(colors),
-        ],
-
-        const Spacer(),
-
-        // Busca
+        _buildFilterDropdown<DateTime>(
+          value: selectedMonth,
+          items: {
+            for (final month in vm.availableMonths)
+              month: _formatMonthYear(month),
+          },
+          onChanged: (value) {
+            if (value != null) presenter.setSelectedMonth(value);
+          },
+          colors: colors,
+          textStyles: textStyles,
+          icon: Icons.calendar_today_rounded,
+        ),
+        if (vm.hasActiveFilters || vm.hasSearch)
+          _buildClearFiltersButton(colors, textStyles),
         SizedBox(
-          width: 280,
+          width: 300,
           child: TextField(
             controller: searchController,
             onChanged: presenter.search,
             style: textStyles.bodyMedium,
             decoration: InputDecoration(
               hintText: 'Buscar venda...',
-              hintStyle: textStyles.bodyMedium.copyWith(
-                color: colors.textTertiary,
-              ),
-              prefixIcon: Icon(
-                Icons.search_rounded,
-                color: colors.textTertiary,
-                size: DSSpacing.iconMd,
-              ),
+              prefixIcon: const Icon(Icons.search_rounded),
               suffixIcon: vm.hasSearch
                   ? IconButton(
                       onPressed: () {
                         searchController.clear();
                         presenter.search('');
                       },
-                      icon: Icon(
-                        Icons.close_rounded,
-                        color: colors.textTertiary,
-                        size: DSSpacing.iconSm,
-                      ),
+                      icon: const Icon(Icons.close_rounded),
                     )
                   : null,
               filled: true,
@@ -313,8 +311,8 @@ class SalesListWebView extends StatelessWidget {
           value: value,
           items: items.entries
               .map(
-                (e) => DropdownMenuItem(
-                  value: e.key,
+                (entry) => DropdownMenuItem<T>(
+                  value: entry.key,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -322,7 +320,7 @@ class SalesListWebView extends StatelessWidget {
                         Icon(icon, size: 14, color: colors.textSecondary),
                         const SizedBox(width: DSSpacing.xs),
                       ],
-                      Text(e.value),
+                      Text(entry.value),
                     ],
                   ),
                 ),
@@ -342,34 +340,83 @@ class SalesListWebView extends StatelessWidget {
     );
   }
 
-  Widget _buildClearFiltersButton(DSColors colors) {
-    return Tooltip(
-      message: 'Limpar filtros',
-      child: InkWell(
-        onTap: () {
-          searchController.clear();
-          presenter.clearFilters();
-        },
-        borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
-        child: Container(
-          height: 40,
-          width: 40,
-          decoration: BoxDecoration(
-            color: colors.redLight,
-            borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
-            border: Border.all(color: colors.red.withValues(alpha: 0.3)),
-          ),
-          child: Icon(
-            Icons.filter_alt_off_rounded,
-            color: colors.red,
-            size: DSSpacing.iconMd,
-          ),
+  Widget _buildClearFiltersButton(DSColors colors, DSTextStyle textStyles) {
+    return InkWell(
+      onTap: () {
+        searchController.clear();
+        presenter.clearFilters();
+      },
+      borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+      child: Container(
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: DSSpacing.md),
+        decoration: BoxDecoration(
+          color: colors.redLight,
+          borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+          border: Border.all(color: colors.red.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.filter_alt_off_rounded, size: 16, color: colors.red),
+            const SizedBox(width: DSSpacing.xs),
+            Text(
+              'Limpar',
+              style: textStyles.bodySmall.copyWith(color: colors.red),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // ──────────────────── Content ────────────────────
+  Widget _buildDayNavigator(
+    SalesListViewModel vm,
+    DSColors colors,
+    DSTextStyle textStyles,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(DSSpacing.base),
+      decoration: BoxDecoration(
+        color: colors.cardBackground,
+        borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
+        border: Border.all(color: colors.divider),
+      ),
+      child: Row(
+        children: [
+          DSButton.ghost(
+            label: 'Hoje',
+            icon: Icons.today_rounded,
+            onTap: vm.isSelectedDayToday ? null : presenter.goToToday,
+          ),
+          const SizedBox(width: DSSpacing.sm),
+          _NavigatorIconButton(
+            icon: Icons.chevron_left_rounded,
+            onTap: presenter.goToPreviousDay,
+          ),
+          const SizedBox(width: DSSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Dia selecionado', style: textStyles.caption),
+                const SizedBox(height: DSSpacing.xxs),
+                Text(
+                  _formatSelectedDay(vm.selectedDayOrToday),
+                  style: textStyles.labelLarge,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: DSSpacing.sm),
+          _NavigatorIconButton(
+            icon: Icons.chevron_right_rounded,
+            onTap: vm.isSelectedDayToday ? null : presenter.goToNextDay,
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildContent(
     SalesListViewModel vm,
@@ -396,8 +443,8 @@ class SalesListWebView extends StatelessWidget {
         title: 'Nenhuma venda encontrada',
         message: vm.hasSearch
             ? 'Nenhum resultado para "${vm.searchQuery}".'
-            : 'Tente alterar os filtros aplicados.',
-        actionLabel: 'Limpar Filtros',
+            : 'Ajuste os filtros aplicados para localizar as vendas.',
+        actionLabel: 'Limpar filtros',
         onAction: () {
           searchController.clear();
           presenter.clearFilters();
@@ -405,33 +452,110 @@ class SalesListWebView extends StatelessWidget {
       );
     }
 
-    return _buildTable(vm, colors, textStyles);
+    return Column(
+      children: [
+        _buildDaySection(
+          title: 'Hoje',
+          subtitle: 'Vendas do dia atual sempre visiveis',
+          openSales: vm.todayOpenSales,
+          closedSales: vm.todayClosedSales,
+          colors: colors,
+          textStyles: textStyles,
+        ),
+        if (!vm.isSelectedDayToday) ...[
+          const SizedBox(height: DSSpacing.lg),
+          _buildDaySection(
+            title: _formatSelectedDay(vm.selectedDayOrToday),
+            subtitle: 'Historico do dia selecionado',
+            openSales: vm.selectedDayOpenSales,
+            closedSales: vm.selectedDayClosedSales,
+            colors: colors,
+            textStyles: textStyles,
+          ),
+        ],
+      ],
+    );
   }
 
-  // ──────────────────── Table ────────────────────
+  Widget _buildDaySection({
+    required String title,
+    required String subtitle,
+    required List<SaleModel> openSales,
+    required List<SaleModel> closedSales,
+    required DSColors colors,
+    required DSTextStyle textStyles,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: textStyles.headline3),
+        const SizedBox(height: DSSpacing.xxs),
+        Text(
+          subtitle,
+          style: textStyles.bodySmall.copyWith(color: colors.textTertiary),
+        ),
+        const SizedBox(height: DSSpacing.md),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final useRow = constraints.maxWidth >= 1200;
+            final openCard = _buildSalesGroupCard(
+              title: 'Em aberto',
+              count: openSales.length,
+              sales: openSales,
+              emptyMessage: 'Nenhuma venda em aberto neste dia.',
+              colors: colors,
+              textStyles: textStyles,
+            );
+            final closedCard = _buildSalesGroupCard(
+              title: 'Finalizadas',
+              count: closedSales.length,
+              sales: closedSales,
+              emptyMessage: 'Nenhuma venda finalizada neste dia.',
+              colors: colors,
+              textStyles: textStyles,
+            );
 
-  Widget _buildTable(
-    SalesListViewModel vm,
-    DSColors colors,
-    DSTextStyle textStyles,
-  ) {
+            if (useRow) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: openCard),
+                  const SizedBox(width: DSSpacing.base),
+                  Expanded(child: closedCard),
+                ],
+              );
+            }
+
+            return Column(
+              children: [
+                openCard,
+                const SizedBox(height: DSSpacing.base),
+                closedCard,
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSalesGroupCard({
+    required String title,
+    required int count,
+    required List<SaleModel> sales,
+    required String emptyMessage,
+    required DSColors colors,
+    required DSTextStyle textStyles,
+  }) {
     return Container(
       decoration: BoxDecoration(
         color: colors.cardBackground,
         borderRadius: BorderRadius.circular(DSSpacing.radiusLg),
         border: Border.all(color: colors.divider),
-        boxShadow: [
-          BoxShadow(
-            color: colors.shadowColor,
-            blurRadius: DSSpacing.elevationSmBlur,
-            offset: const Offset(0, DSSpacing.elevationSmOffset),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Section header
           Padding(
             padding: const EdgeInsets.fromLTRB(
               DSSpacing.lg,
@@ -439,35 +563,53 @@ class SalesListWebView extends StatelessWidget {
               DSSpacing.lg,
               DSSpacing.base,
             ),
-            child: Text('Todas as Vendas', style: textStyles.headline3),
-          ),
-
-          // Divider
-          Divider(height: 1, color: colors.divider),
-
-          // Table Header
-          _buildTableHeader(colors, textStyles),
-
-          // Table Rows
-          ...vm.filteredSales.map((sale) {
-            final isLast = sale == vm.filteredSales.last;
-            return Column(
-              mainAxisSize: MainAxisSize.min,
+            child: Row(
               children: [
-                _SaleTableRow(
-                  sale: sale,
-                  colors: colors,
-                  textStyles: textStyles,
-                  onTap: () => onViewDetails(sale.uid),
-                  onDelete: () => onDeleteSale(sale.uid),
-                  onSendPaymentRequest: () => onSendPaymentRequest(sale.uid),
-                  onConfirmPayment: () => onConfirmPayment(sale.uid),
-                  onCancelSale: () => onCancelSale(sale.uid),
+                Text(title, style: textStyles.labelLarge),
+                const SizedBox(width: DSSpacing.xs),
+                DSBadge(
+                  label: '$count',
+                  type: title == 'Em aberto'
+                      ? DSBadgeType.warning
+                      : DSBadgeType.success,
+                  size: DSBadgeSize.small,
                 ),
-                if (!isLast) Divider(height: 1, color: colors.divider),
               ],
-            );
-          }),
+            ),
+          ),
+          Divider(height: 1, color: colors.divider),
+          if (sales.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(DSSpacing.lg),
+              child: Text(
+                emptyMessage,
+                style: textStyles.bodyMedium.copyWith(
+                  color: colors.textTertiary,
+                ),
+              ),
+            )
+          else ...[
+            _buildTableHeader(colors, textStyles),
+            ...sales.map((sale) {
+              final isLast = sale == sales.last;
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _SaleTableRow(
+                    sale: sale,
+                    colors: colors,
+                    textStyles: textStyles,
+                    onTap: () => onViewDetails(sale.uid),
+                    onDelete: () => onDeleteSale(sale.uid),
+                    onSendPaymentRequest: () => onSendPaymentRequest(sale.uid),
+                    onConfirmPayment: () => onConfirmPayment(sale.uid),
+                    onCancelSale: () => onCancelSale(sale.uid),
+                  ),
+                  if (!isLast) Divider(height: 1, color: colors.divider),
+                ],
+              );
+            }),
+          ],
         ],
       ),
     );
@@ -497,9 +639,44 @@ class SalesListWebView extends StatelessWidget {
       ),
     );
   }
+
+  String _formatSelectedDay(DateTime date) {
+    final today = DateTime.now();
+    final normalizedToday = DateTime(today.year, today.month, today.day);
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    if (normalizedDate == normalizedToday) return 'Hoje';
+    return _formatDayMonth(date);
+  }
 }
 
-/// Linha de venda na tabela — widget separado com hover animado.
+class _NavigatorIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  const _NavigatorIconButton({required this.icon, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = DSColors();
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          border: Border.all(color: colors.divider),
+          borderRadius: BorderRadius.circular(DSSpacing.radiusMd),
+          color: onTap == null
+              ? colors.scaffoldBackground
+              : colors.cardBackground,
+        ),
+        child: Icon(icon, color: onTap == null ? colors.textTertiary : null),
+      ),
+    );
+  }
+}
+
 class _SaleTableRow extends StatefulWidget {
   final SaleModel sale;
   final DSColors colors;
@@ -550,7 +727,6 @@ class _SaleTableRowState extends State<_SaleTableRow> {
               : Colors.transparent,
           child: Row(
             children: [
-              // Venda (número + data)
               Expanded(
                 flex: 3,
                 child: Column(
@@ -566,7 +742,7 @@ class _SaleTableRowState extends State<_SaleTableRow> {
                     ),
                     const SizedBox(height: DSSpacing.xxs),
                     Text(
-                      _formatDate(sale.createdAt),
+                      _salesFormatDateTime(sale.createdAt),
                       style: textStyles.caption.copyWith(
                         color: colors.textTertiary,
                       ),
@@ -574,8 +750,6 @@ class _SaleTableRowState extends State<_SaleTableRow> {
                   ],
                 ),
               ),
-
-              // Cliente
               Expanded(
                 flex: 3,
                 child: Column(
@@ -587,31 +761,23 @@ class _SaleTableRowState extends State<_SaleTableRow> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (sale.items.isNotEmpty) ...[
-                      const SizedBox(height: DSSpacing.xxs),
-                      Text(
-                        '${sale.itemsCount} ${sale.itemsCount == 1 ? 'item' : 'itens'}',
-                        style: textStyles.caption.copyWith(
-                          color: colors.textTertiary,
-                        ),
+                    const SizedBox(height: DSSpacing.xxs),
+                    Text(
+                      '${sale.itemsCount} ${sale.itemsCount == 1 ? 'item' : 'itens'}',
+                      style: textStyles.caption.copyWith(
+                        color: colors.textTertiary,
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ),
-
-              // Valor
               Expanded(
                 flex: 2,
                 child: Text(
                   sale.total.formatToBRL(),
-                  style: textStyles.labelLarge.copyWith(
-                    color: colors.textPrimary,
-                  ),
+                  style: textStyles.labelLarge,
                 ),
               ),
-
-              // Status
               Expanded(
                 flex: 2,
                 child: Align(
@@ -623,8 +789,6 @@ class _SaleTableRowState extends State<_SaleTableRow> {
                   ),
                 ),
               ),
-
-              // Origem
               Expanded(
                 flex: 2,
                 child: Align(
@@ -638,14 +802,12 @@ class _SaleTableRowState extends State<_SaleTableRow> {
                   ),
                 ),
               ),
-
-              // Ações rápidas
               Expanded(
                 flex: 3,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+                child: Wrap(
+                  spacing: DSSpacing.xs,
+                  runSpacing: DSSpacing.xs,
                   children: [
-                    // Enviar cobrança
                     if (sale.canSendPaymentRequest)
                       _QuickActionButton(
                         label: 'Cobrar',
@@ -654,11 +816,7 @@ class _SaleTableRowState extends State<_SaleTableRow> {
                         bgColor: colors.blueLight,
                         onTap: widget.onSendPaymentRequest,
                       ),
-
-                    // Confirmar pagamento
-                    if (sale.canConfirmPayment) ...[
-                      if (sale.canSendPaymentRequest)
-                        const SizedBox(width: DSSpacing.xs),
+                    if (sale.canConfirmPayment)
                       _QuickActionButton(
                         label: 'Pago',
                         icon: Icons.check_circle_rounded,
@@ -666,11 +824,7 @@ class _SaleTableRowState extends State<_SaleTableRow> {
                         bgColor: colors.greenLight,
                         onTap: widget.onConfirmPayment,
                       ),
-                    ],
-
-                    // Cancelar (pendentes e cobrança enviada)
-                    if (sale.canCancel && !sale.isConfirmed) ...[
-                      const SizedBox(width: DSSpacing.xs),
+                    if (sale.canCancel && !sale.isConfirmed)
                       _QuickActionButton(
                         label: 'Cancelar',
                         icon: Icons.cancel_rounded,
@@ -678,29 +832,15 @@ class _SaleTableRowState extends State<_SaleTableRow> {
                         bgColor: colors.redLight,
                         onTap: widget.onCancelSale,
                       ),
-                    ],
-
-                    // Se confirmada com orderStatus — badge Kanban
                     if (sale.isConfirmed && sale.orderStatus != null)
                       DSBadge(
                         label: sale.orderStatus!.label,
                         type: _orderStatusBadgeType(sale.orderStatus!),
                         size: DSBadgeSize.small,
                       ),
-
-                    // Se confirmada sem orderStatus (vendas legadas) —
-                    // oferecer enviar para esteira
-                    if (sale.isConfirmed && sale.orderStatus == null)
-                      DSBadge(
-                        label: 'Pago',
-                        type: DSBadgeType.success,
-                        size: DSBadgeSize.small,
-                      ),
-
-                    // Se cancelada
                     if (sale.isCancelled)
                       Text(
-                        '—',
+                        'Sem pendencias',
                         style: textStyles.bodySmall.copyWith(
                           color: colors.textTertiary,
                         ),
@@ -734,19 +874,20 @@ class _SaleTableRowState extends State<_SaleTableRow> {
         return DSBadgeType.warning;
       case OrderStatus.preparing:
         return DSBadgeType.info;
-      case OrderStatus.ready_for_pickup:
+      case OrderStatus.packing:
+        return DSBadgeType.info;
+      case OrderStatus.awaiting_pickup:
+        return DSBadgeType.primary;
+      case OrderStatus.ready_for_shipping:
+        return DSBadgeType.primary;
+      case OrderStatus.shipped:
         return DSBadgeType.primary;
       case OrderStatus.completed:
         return DSBadgeType.success;
     }
   }
-
-  String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-  }
 }
 
-/// Botão de ação rápida compacto para a tabela.
 class _QuickActionButton extends StatefulWidget {
   final String label;
   final IconData icon;
@@ -774,43 +915,40 @@ class _QuickActionButtonState extends State<_QuickActionButton> {
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: Tooltip(
-        message: widget.label,
-        child: InkWell(
-          onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.symmetric(
-              horizontal: DSSpacing.sm,
-              vertical: DSSpacing.xs,
-            ),
-            decoration: BoxDecoration(
+      child: InkWell(
+        onTap: widget.onTap,
+        borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(
+            horizontal: DSSpacing.sm,
+            vertical: DSSpacing.xs,
+          ),
+          decoration: BoxDecoration(
+            color: _hovered
+                ? widget.color.withValues(alpha: 0.15)
+                : widget.bgColor,
+            borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
+            border: Border.all(
               color: _hovered
-                  ? widget.color.withValues(alpha: 0.15)
-                  : widget.bgColor,
-              borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
-              border: Border.all(
-                color: _hovered
-                    ? widget.color
-                    : widget.color.withValues(alpha: 0.3),
-              ),
+                  ? widget.color
+                  : widget.color.withValues(alpha: 0.3),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(widget.icon, size: 14, color: widget.color),
-                const SizedBox(width: DSSpacing.xxs),
-                Text(
-                  widget.label,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: widget.color,
-                  ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(widget.icon, size: 14, color: widget.color),
+              const SizedBox(width: DSSpacing.xxs),
+              Text(
+                widget.label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: widget.color,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

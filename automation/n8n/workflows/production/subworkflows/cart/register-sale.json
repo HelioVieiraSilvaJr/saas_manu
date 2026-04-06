@@ -143,7 +143,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const response = $input.first().json || {};\nconst salePayload = $('Montar Payload da Venda').first().json;\n\nreturn [{\n  json: {\n    success: response.ok === true,\n    ok: response.ok === true,\n    sale_id: response.saleId || null,\n    customer_id: response.customerId || salePayload.sale?.customer_id || null,\n    created: response.created === true,\n    total: salePayload.sale?.total || 0,\n    item_count: salePayload.sale?.items?.length || 0,\n    message: response.ok === true\n      ? 'Venda registrada com sucesso.'\n      : (response.message || response.error || 'Nao foi possivel registrar a venda.'),\n  }\n}];"
+        "jsCode": "const response = $input.first().json || {};\nconst salePayload = $('Montar Payload da Venda').first().json;\nconst orderNumber = String(response.orderNumber || response.order_number || '').trim();\n\nreturn [{\n  json: {\n    success: response.ok === true,\n    ok: response.ok === true,\n    sale_id: response.saleId || null,\n    order_number: orderNumber || null,\n    order_number_label: orderNumber ? `#${orderNumber}` : null,\n    customer_id: response.customerId || salePayload.sale?.customer_id || null,\n    created: response.created === true,\n    total: salePayload.sale?.total || 0,\n    item_count: salePayload.sale?.items?.length || 0,\n    message: response.ok === true\n      ? (orderNumber ? `Venda registrada com sucesso. Pedido #${orderNumber}.` : 'Venda registrada com sucesso.')\n      : (response.message || response.error || 'Nao foi possivel registrar a venda.'),\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,

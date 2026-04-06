@@ -564,7 +564,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage> {
   // MARK: - Actions
 
   void _openWhatsApp(String whatsapp) {
-    final url = 'https://wa.me/55$whatsapp';
+    final url = 'https://wa.me/${whatsapp.toWhatsAppInternationalDigits()}';
     launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
   }
 

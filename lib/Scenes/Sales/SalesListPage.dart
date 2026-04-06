@@ -189,7 +189,7 @@ class _SalesListPageState extends State<SalesListPage> {
           onSendPaymentRequest: _handleSendPaymentRequest,
           onConfirmPayment: _handleConfirmPayment,
           onCancelSale: _handleCancelSale,
-          onRefresh: () async {},
+          onRefresh: () async => _presenter.startWatching(),
         ),
       ),
     );

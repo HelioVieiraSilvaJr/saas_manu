@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../Commons/Extensions/String+Extensions.dart';
 import '../../Commons/Models/CustomerModel.dart';
 import '../../Commons/Utils/AppLogger.dart';
 import '../../Commons/Utils/DataCache.dart';
@@ -194,14 +195,24 @@ class CustomersRepository {
   /// Verifica se um WhatsApp já existe no tenant.
   Future<bool> whatsappExists(String whatsapp, {String? excludeId}) async {
     try {
-      final snapshot = await _collection
-          .where('whatsapp', isEqualTo: whatsapp)
-          .get();
+      final normalized = whatsapp.toWhatsAppInternationalDigits();
+      final national = normalized.toWhatsAppNationalDigits();
+      final numbersToCheck = {
+        normalized,
+        national,
+      }.where((value) => value.isNotEmpty).toList();
+
+      final snapshots = await Future.wait(
+        numbersToCheck.map(
+          (number) => _collection.where('whatsapp', isEqualTo: number).get(),
+        ),
+      );
+      final docs = snapshots.expand((snapshot) => snapshot.docs);
 
       if (excludeId != null) {
-        return snapshot.docs.any((doc) => doc.id != excludeId);
+        return docs.any((doc) => doc.id != excludeId);
       }
-      return snapshot.docs.isNotEmpty;
+      return docs.isNotEmpty;
     } catch (e) {
       AppLogger.error('Erro ao verificar WhatsApp', error: e);
       return false;

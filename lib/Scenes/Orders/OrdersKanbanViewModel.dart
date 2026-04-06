@@ -8,12 +8,14 @@ const _sentinel = Object();
 class OrdersKanbanViewModel {
   final bool isLoading;
   final List<SaleModel> allOrders;
+  final List<OrderStatus> visibleStatuses;
   final String? errorMessage;
   final String? movingOrderId;
 
   const OrdersKanbanViewModel({
     this.isLoading = true,
     this.allOrders = const [],
+    this.visibleStatuses = OrderStatus.defaultVisibleStatuses,
     this.errorMessage,
     this.movingOrderId,
   });
@@ -51,12 +53,14 @@ class OrdersKanbanViewModel {
   OrdersKanbanViewModel copyWith({
     bool? isLoading,
     List<SaleModel>? allOrders,
+    List<OrderStatus>? visibleStatuses,
     String? errorMessage,
     Object? movingOrderId = _sentinel,
   }) {
     return OrdersKanbanViewModel(
       isLoading: isLoading ?? this.isLoading,
       allOrders: allOrders ?? this.allOrders,
+      visibleStatuses: visibleStatuses ?? this.visibleStatuses,
       errorMessage: errorMessage ?? this.errorMessage,
       movingOrderId: movingOrderId == _sentinel
           ? this.movingOrderId

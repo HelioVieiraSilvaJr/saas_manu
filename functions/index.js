@@ -79,6 +79,13 @@ function normalizeSaleSource(source) {
     : "whatsapp_automation";
 }
 
+function generatePublicOrderNumber(saleId) {
+  const hash = crypto.createHash("sha1").update(String(saleId || "")).digest("hex");
+  const numeric = parseInt(hash.substring(0, 10), 16);
+  const normalized = (numeric % 90000) + 10000;
+  return String(normalized);
+}
+
 const DEFAULT_PLAN_CATALOG = Object.freeze({
   trial: {
     id: "trial",
@@ -1917,9 +1924,13 @@ exports.receiveN8nSale = onRequest(
           );
           if (!existingSnapshot.empty) {
             const existingDoc = existingSnapshot.docs[0];
+            const existingData = existingDoc.data() || {};
             return {
               saleId: existingDoc.id,
-              customerId: existingDoc.data().customer_id,
+              orderNumber:
+                String(existingData.public_order_number || "").trim() ||
+                generatePublicOrderNumber(existingDoc.id),
+              customerId: existingData.customer_id,
               created: false,
             };
           }
@@ -1954,6 +1965,7 @@ exports.receiveN8nSale = onRequest(
         }
 
         const saleRef = salesCol.doc();
+        const publicOrderNumber = generatePublicOrderNumber(saleRef.id);
         const orderStatus = payload.status === "confirmed" ? "awaiting_processing" : null;
         const paymentRequestedAt =
           payload.status === "payment_sent" || payload.status === "confirmed"
@@ -2082,6 +2094,7 @@ exports.receiveN8nSale = onRequest(
           customer_id: customerId,
           customer_name: payload.customer.name || payload.customer.whatsapp,
           customer_whatsapp: payload.customer.whatsapp,
+          public_order_number: publicOrderNumber,
           customer_email: payload.customer.email || "",
           customer_address: payload.customer.address || "",
           items: normalizedItems,
@@ -2127,6 +2140,7 @@ exports.receiveN8nSale = onRequest(
 
         return {
           saleId: saleRef.id,
+          orderNumber: publicOrderNumber,
           customerId,
           created: true,
         };

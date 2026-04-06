@@ -11,13 +11,43 @@ extension StringExtensions on String {
 
   /// Formata telefone para exibição: "11987654321" → "(11) 98765-4321"
   String formatWhatsApp() {
-    final digits = replaceAll(RegExp(r'[^\d]'), '');
-    if (digits.length == 11) {
-      return '(${digits.substring(0, 2)}) ${digits.substring(2, 7)}-${digits.substring(7)}';
-    } else if (digits.length == 10) {
-      return '(${digits.substring(0, 2)}) ${digits.substring(2, 6)}-${digits.substring(6)}';
+    final digits = toWhatsAppInternationalDigits();
+    if (digits.length == 13) {
+      return '${digits.substring(0, 2)} (${digits.substring(2, 4)}) ${digits.substring(4, 9)}-${digits.substring(9)}';
+    } else if (digits.length == 12) {
+      return '${digits.substring(0, 2)} (${digits.substring(2, 4)}) ${digits.substring(4, 8)}-${digits.substring(8)}';
     }
     return this;
+  }
+
+  /// Normaliza números de WhatsApp para padrão internacional sem símbolos.
+  String toWhatsAppInternationalDigits({String defaultCountryCode = '55'}) {
+    final digits = replaceAll(RegExp(r'[^\d]'), '');
+
+    if (digits.isEmpty) return digits;
+    if (digits.startsWith(defaultCountryCode) &&
+        (digits.length == 12 || digits.length == 13)) {
+      return digits;
+    }
+    if (digits.length == 10 || digits.length == 11) {
+      return '$defaultCountryCode$digits';
+    }
+
+    return digits;
+  }
+
+  /// Retorna somente DDD + número local (sem DDI) quando possível.
+  String toWhatsAppNationalDigits({String defaultCountryCode = '55'}) {
+    final digits = toWhatsAppInternationalDigits(
+      defaultCountryCode: defaultCountryCode,
+    );
+
+    if (digits.startsWith(defaultCountryCode) &&
+        (digits.length == 12 || digits.length == 13)) {
+      return digits.substring(defaultCountryCode.length);
+    }
+
+    return digits;
   }
 
   /// Formata CPF: "12345678901" → "123.456.789-01"

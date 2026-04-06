@@ -543,6 +543,77 @@
     },
     {
       "parameters": {
+        "name": "Consultar_Pedido_Cliente",
+        "description": "Consulta pedidos de um cliente especifico com seguranca. Sempre filtra pelo customer_id do proprio atendimento e opcionalmente pelo numero do pedido. Use para informar status do pedido, sem nunca consultar pedidos de outros clientes.",
+        "workflowId": {
+          "__rl": true,
+          "value": "1YyfRLyYGtNeVcuA",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/1YyfRLyYGtNeVcuA",
+          "cachedResultName": "Sub - Consultar Pedido do Cliente"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "tenant_id": "={{ $fromAI('tenant_id', 'ID do tenant', 'string') }}",
+            "customer_id": "={{ $fromAI('customer_id', 'document_id do cliente do atendimento atual', 'string') }}",
+            "phone": "={{ $fromAI('phone', 'Telefone do cliente do atendimento atual', 'string') }}",
+            "order_number": "={{ $fromAI('order_number', 'Numero do pedido, somente digitos ou com #', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "tenant_id",
+              "displayName": "tenant_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "customer_id",
+              "displayName": "customer_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "order_number",
+              "displayName": "order_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        688
+      ],
+      "id": "18181818-1718-4171-8171-181818181818",
+      "name": "Consultar_Pedido_Cliente"
+    },
+    {
+      "parameters": {
         "name": "Registrar_Venda",
         "description": "Fecha a venda usando o carrinho atual do cliente e registra no CRM. Use quando o cliente confirmar fechamento ou quando o pagamento for confirmado. Exige webhook_url do tenant, customer_id e phone.",
         "workflowId": {
@@ -741,6 +812,17 @@
       ]
     },
     "Registrar_Aviso_Estoque": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar_Pedido_Cliente": {
       "ai_tool": [
         [
           {

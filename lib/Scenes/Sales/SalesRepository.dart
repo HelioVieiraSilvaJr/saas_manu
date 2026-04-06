@@ -258,10 +258,21 @@ class SalesRepository {
   Future<bool> updateStatus(String saleId, SaleStatus newStatus) async {
     try {
       final now = DateTime.now();
-      await _collection.doc(saleId).update({
+      final payload = <String, dynamic>{
         'status': newStatus.name,
         'updated_at': Timestamp.fromDate(now),
-      });
+      };
+
+      if (newStatus != SaleStatus.confirmed) {
+        payload['order_status'] = FieldValue.delete();
+        payload['payment_confirmed_at'] = FieldValue.delete();
+      }
+
+      if (newStatus != SaleStatus.payment_sent) {
+        payload['payment_requested_at'] = FieldValue.delete();
+      }
+
+      await _collection.doc(saleId).update(payload);
       if (salesCache.hasData) {
         final current = salesCache.data
             .where((sale) => sale.uid == saleId)
@@ -269,7 +280,19 @@ class SalesRepository {
         if (current != null) {
           salesCache.updateWhere(
             (sale) => sale.uid == saleId,
-            current.copyWith(status: newStatus, updatedAt: now),
+            current.copyWith(
+              status: newStatus,
+              orderStatus: newStatus == SaleStatus.confirmed
+                  ? current.orderStatus
+                  : null,
+              paymentConfirmedAt: newStatus == SaleStatus.confirmed
+                  ? current.paymentConfirmedAt
+                  : null,
+              paymentRequestedAt: newStatus == SaleStatus.payment_sent
+                  ? current.paymentRequestedAt
+                  : null,
+              updatedAt: now,
+            ),
           );
         }
       }
@@ -355,6 +378,7 @@ class SalesRepository {
       final now = DateTime.now();
       await _collection.doc(saleId).update({
         'status': SaleStatus.cancelled.name,
+        'order_status': FieldValue.delete(),
         'updated_at': Timestamp.fromDate(now),
       });
       if (salesCache.hasData) {
@@ -364,7 +388,11 @@ class SalesRepository {
         if (current != null) {
           salesCache.updateWhere(
             (sale) => sale.uid == saleId,
-            current.copyWith(status: SaleStatus.cancelled, updatedAt: now),
+            current.copyWith(
+              status: SaleStatus.cancelled,
+              orderStatus: null,
+              updatedAt: now,
+            ),
           );
         }
       }
@@ -419,7 +447,7 @@ class SalesRepository {
     try {
       final snapshot = await _collection
           .where('status', isEqualTo: SaleStatus.confirmed.name)
-          .orderBy('payment_confirmed_at', descending: true)
+          .orderBy('created_at', descending: true)
           .get();
       return snapshot.docs
           .map((doc) => SaleModel.fromDocumentSnapshot(doc))
@@ -434,7 +462,7 @@ class SalesRepository {
   Stream<List<SaleModel>> watchConfirmedOrders() {
     return _collection
         .where('status', isEqualTo: SaleStatus.confirmed.name)
-        .orderBy('payment_confirmed_at', descending: true)
+        .orderBy('created_at', descending: true)
         .snapshots()
         .map(
           (snapshot) => snapshot.docs

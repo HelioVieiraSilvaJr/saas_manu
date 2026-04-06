@@ -4,6 +4,8 @@ import '../../Commons/Enums/SaleSource.dart';
 import '../../Commons/Enums/OrderStatus.dart';
 import 'SaleItemModel.dart';
 
+const _saleModelSentinel = Object();
+
 /// Modelo de venda.
 ///
 /// Subcoleção: `tenants/{tenant_id}/sales/{sale_id}`
@@ -19,6 +21,7 @@ class SaleModel {
   String customerId;
   String customerName;
   String customerWhatsapp;
+  String? publicOrderNumber;
   List<SaleItemModel> items;
   double total;
   SaleStatus status;
@@ -36,6 +39,7 @@ class SaleModel {
     required this.customerId,
     required this.customerName,
     required this.customerWhatsapp,
+    this.publicOrderNumber,
     required this.items,
     required this.total,
     required this.status,
@@ -53,6 +57,8 @@ class SaleModel {
 
   static SaleModel fromDocumentSnapshot(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    final status = SaleStatus.fromString(data['status'] ?? 'pending');
+    final orderStatusValue = data['order_status'];
 
     final itemsList =
         (data['items'] as List<dynamic>?)
@@ -65,12 +71,15 @@ class SaleModel {
       customerId: data['customer_id'] ?? '',
       customerName: data['customer_name'] ?? '',
       customerWhatsapp: data['customer_whatsapp'] ?? '',
+      publicOrderNumber: data['public_order_number'],
       items: itemsList,
       total: (data['total'] ?? 0).toDouble(),
-      status: SaleStatus.fromString(data['status'] ?? 'pending'),
+      status: status,
       source: SaleSource.fromString(data['source'] ?? 'manual'),
-      orderStatus: data['order_status'] != null
-          ? OrderStatus.fromString(data['order_status'])
+      orderStatus: orderStatusValue != null
+          ? OrderStatus.fromString(orderStatusValue)
+          : status == SaleStatus.confirmed
+          ? OrderStatus.awaiting_processing
           : null,
       notes: data['notes'],
       conversationId: data['conversation_id'],
@@ -96,6 +105,7 @@ class SaleModel {
       'customer_id': customerId,
       'customer_name': customerName,
       'customer_whatsapp': customerWhatsapp,
+      'public_order_number': publicOrderNumber,
       'items': items.map((item) => item.toMap()).toList(),
       'total': total,
       'status': status.name,
@@ -136,11 +146,12 @@ class SaleModel {
     String? customerId,
     String? customerName,
     String? customerWhatsapp,
+    String? publicOrderNumber,
     List<SaleItemModel>? items,
     double? total,
     SaleStatus? status,
     SaleSource? source,
-    OrderStatus? orderStatus,
+    Object? orderStatus = _saleModelSentinel,
     String? notes,
     String? conversationId,
     DateTime? createdAt,
@@ -153,11 +164,14 @@ class SaleModel {
       customerId: customerId ?? this.customerId,
       customerName: customerName ?? this.customerName,
       customerWhatsapp: customerWhatsapp ?? this.customerWhatsapp,
+      publicOrderNumber: publicOrderNumber ?? this.publicOrderNumber,
       items: items ?? this.items,
       total: total ?? this.total,
       status: status ?? this.status,
       source: source ?? this.source,
-      orderStatus: orderStatus ?? this.orderStatus,
+      orderStatus: orderStatus == _saleModelSentinel
+          ? this.orderStatus
+          : orderStatus as OrderStatus?,
       notes: notes ?? this.notes,
       conversationId: conversationId ?? this.conversationId,
       createdAt: createdAt ?? this.createdAt,
@@ -171,7 +185,9 @@ class SaleModel {
   int get itemsCount => items.fold(0, (sum, item) => sum + item.quantity);
 
   /// Número formatado (5 dígitos).
-  String get number => uid.isNotEmpty
+  String get number => (publicOrderNumber?.isNotEmpty ?? false)
+      ? publicOrderNumber!
+      : uid.isNotEmpty
       ? uid.hashCode.abs().toString().padLeft(5, '0').substring(0, 5)
       : '00000';
 

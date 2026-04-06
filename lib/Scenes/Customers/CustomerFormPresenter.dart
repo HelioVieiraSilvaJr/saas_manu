@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../Commons/Extensions/String+Extensions.dart';
 import '../../Commons/Models/CustomerModel.dart';
 import '../../Commons/Utils/AppLogger.dart';
 import 'CustomersRepository.dart';
@@ -67,9 +68,11 @@ class CustomerFormPresenter {
     _update(_viewModel.copyWith(isSaving: true));
 
     try {
+      final normalizedWhatsapp = whatsapp.toWhatsAppInternationalDigits();
+
       // Validar WhatsApp único
       final exists = await _repository.whatsappExists(
-        whatsapp,
+        normalizedWhatsapp,
         excludeId: _viewModel.isEditing ? _viewModel.customer?.uid : null,
       );
 
@@ -88,7 +91,7 @@ class CustomerFormPresenter {
         // EDITAR
         final customer = _viewModel.customer!.copyWith(
           name: name,
-          whatsapp: whatsapp,
+          whatsapp: normalizedWhatsapp,
           email: email,
           notes: notes,
           updatedAt: DateTime.now(),
@@ -114,7 +117,7 @@ class CustomerFormPresenter {
         final customer = CustomerModel(
           uid: '',
           name: name,
-          whatsapp: whatsapp,
+          whatsapp: normalizedWhatsapp,
           email: email,
           notes: notes,
           isActive: true,

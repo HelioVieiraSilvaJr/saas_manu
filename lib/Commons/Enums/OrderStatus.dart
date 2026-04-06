@@ -3,19 +3,28 @@
 /// Só entra nessa esteira após pagamento confirmado (SaleStatus.confirmed).
 enum OrderStatus {
   awaiting_processing, // Aguardando processamento
-  preparing, // Preparação/Embalagem
-  ready_for_pickup, // Disponível para retirada/envio
+  preparing, // Preparando
+  packing, // Embalando
+  awaiting_pickup, // Aguardando retirada
+  ready_for_shipping, // Pronto para envio/retirada
+  shipped, // Enviado
   completed; // Concluído/Finalizado
 
   /// Label para exibição na UI.
   String get label {
     switch (this) {
       case OrderStatus.awaiting_processing:
-        return 'Aguardando Processamento';
+        return 'Aguardando';
       case OrderStatus.preparing:
-        return 'Preparação/Embalagem';
-      case OrderStatus.ready_for_pickup:
-        return 'Disponível para Retirada/Envio';
+        return 'Preparando';
+      case OrderStatus.packing:
+        return 'Embalando';
+      case OrderStatus.awaiting_pickup:
+        return 'Aguardando Retirada';
+      case OrderStatus.ready_for_shipping:
+        return 'Pronto para Envio';
+      case OrderStatus.shipped:
+        return 'Enviado';
       case OrderStatus.completed:
         return 'Concluído';
     }
@@ -28,8 +37,14 @@ enum OrderStatus {
         return 'Aguardando';
       case OrderStatus.preparing:
         return 'Preparação';
-      case OrderStatus.ready_for_pickup:
-        return 'Retirada/Envio';
+      case OrderStatus.packing:
+        return 'Embalando';
+      case OrderStatus.awaiting_pickup:
+        return 'Retirada';
+      case OrderStatus.ready_for_shipping:
+        return 'Pronto';
+      case OrderStatus.shipped:
+        return 'Enviado';
       case OrderStatus.completed:
         return 'Concluídos';
     }
@@ -41,9 +56,15 @@ enum OrderStatus {
       case OrderStatus.awaiting_processing:
         return '⏳';
       case OrderStatus.preparing:
+        return '🧰';
+      case OrderStatus.packing:
         return '📦';
-      case OrderStatus.ready_for_pickup:
+      case OrderStatus.awaiting_pickup:
+        return '🏬';
+      case OrderStatus.ready_for_shipping:
         return '🚚';
+      case OrderStatus.shipped:
+        return '🛵';
       case OrderStatus.completed:
         return '✅';
     }
@@ -55,8 +76,14 @@ enum OrderStatus {
       case OrderStatus.awaiting_processing:
         return OrderStatus.preparing;
       case OrderStatus.preparing:
-        return OrderStatus.ready_for_pickup;
-      case OrderStatus.ready_for_pickup:
+        return OrderStatus.packing;
+      case OrderStatus.packing:
+        return OrderStatus.awaiting_pickup;
+      case OrderStatus.awaiting_pickup:
+        return OrderStatus.ready_for_shipping;
+      case OrderStatus.ready_for_shipping:
+        return OrderStatus.shipped;
+      case OrderStatus.shipped:
         return OrderStatus.completed;
       case OrderStatus.completed:
         return null;
@@ -70,10 +97,16 @@ enum OrderStatus {
         return null;
       case OrderStatus.preparing:
         return OrderStatus.awaiting_processing;
-      case OrderStatus.ready_for_pickup:
+      case OrderStatus.packing:
         return OrderStatus.preparing;
+      case OrderStatus.awaiting_pickup:
+        return OrderStatus.packing;
+      case OrderStatus.ready_for_shipping:
+        return OrderStatus.awaiting_pickup;
+      case OrderStatus.shipped:
+        return OrderStatus.ready_for_shipping;
       case OrderStatus.completed:
-        return OrderStatus.ready_for_pickup;
+        return OrderStatus.shipped;
     }
   }
 
@@ -85,13 +118,34 @@ enum OrderStatus {
       case 'separating':
         return OrderStatus.awaiting_processing;
       case 'packing':
-        return OrderStatus.preparing;
+        return OrderStatus.packing;
+      case 'awaiting_pickup':
+        return OrderStatus.awaiting_pickup;
       case 'ready':
-        return OrderStatus.ready_for_pickup;
+      case 'ready_for_pickup':
+        return OrderStatus.ready_for_shipping;
     }
     return OrderStatus.values.firstWhere(
       (s) => s.name == value,
       orElse: () => OrderStatus.awaiting_processing,
     );
   }
+
+  static const List<OrderStatus> configurableStatuses = [
+    OrderStatus.awaiting_processing,
+    OrderStatus.preparing,
+    OrderStatus.packing,
+    OrderStatus.awaiting_pickup,
+    OrderStatus.ready_for_shipping,
+    OrderStatus.shipped,
+    OrderStatus.completed,
+  ];
+
+  static const List<OrderStatus> defaultVisibleStatuses = [
+    OrderStatus.awaiting_processing,
+    OrderStatus.preparing,
+    OrderStatus.ready_for_shipping,
+    OrderStatus.shipped,
+    OrderStatus.completed,
+  ];
 }

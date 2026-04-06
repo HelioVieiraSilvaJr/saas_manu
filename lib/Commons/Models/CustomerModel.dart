@@ -10,7 +10,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class CustomerModel {
   String uid;
   String name;
-  String whatsapp; // Apenas números: 11987654321
+  String whatsapp; // Apenas números no padrão internacional: 5511966191991
   String? email;
   String? notes;
   bool isActive;

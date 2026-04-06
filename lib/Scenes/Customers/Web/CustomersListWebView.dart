@@ -648,10 +648,7 @@ class _CustomerTableRowState extends State<_CustomerTableRow> {
   }
 
   String _formatWhatsApp(String phone) {
-    if (phone.length == 11) {
-      return '(${phone.substring(0, 2)}) ${phone.substring(2, 7)}-${phone.substring(7)}';
-    }
-    return phone;
+    return phone.formatWhatsApp();
   }
 
   String _formatDate(DateTime? date) {

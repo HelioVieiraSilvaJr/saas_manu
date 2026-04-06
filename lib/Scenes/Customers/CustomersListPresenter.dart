@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../Commons/Extensions/String+Extensions.dart';
 import '../../Commons/Models/CustomerModel.dart';
 import '../../Commons/Utils/AppLogger.dart';
 import '../../Commons/Widgets/DesignSystem/DSAlertDialog.dart';
@@ -157,7 +158,7 @@ class CustomersListPresenter {
         content: DSAlertContentCard(
           icon: Icons.person_outline,
           title: customer.name,
-          subtitle: customer.whatsapp,
+          subtitle: customer.whatsapp.formatWhatsApp(),
         ),
       );
 
@@ -200,9 +201,13 @@ class CustomersListPresenter {
     // 1. Busca
     if (_viewModel.searchQuery.isNotEmpty) {
       final query = _viewModel.searchQuery.toLowerCase();
+      final queryDigits = query.digitsOnly;
       customers = customers.where((c) {
+        final normalizedWhatsapp = c.whatsapp.toWhatsAppInternationalDigits();
         return c.name.toLowerCase().contains(query) ||
             c.whatsapp.contains(query) ||
+            normalizedWhatsapp.contains(queryDigits) ||
+            c.whatsapp.formatWhatsApp().toLowerCase().contains(query) ||
             (c.email?.toLowerCase().contains(query) ?? false);
       }).toList();
     }

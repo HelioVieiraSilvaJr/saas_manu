@@ -1,0 +1,110 @@
+{
+  "name": "Sub - Consultar Pedido do Cliente",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "tenant_id"
+            },
+            {
+              "name": "customer_id"
+            },
+            {
+              "name": "phone"
+            },
+            {
+              "name": "order_number"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -928,
+        16
+      ],
+      "id": "11111111-1111-4aa1-8aa1-111111111111",
+      "name": "Workflow Trigger"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $json.tenant_id }}:runQuery",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleFirebaseCloudFirestoreOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"structuredQuery\": {\n    \"from\": [{ \"collectionId\": \"sales\" }],\n    \"where\": {\n      \"fieldFilter\": {\n        \"field\": { \"fieldPath\": \"customer_id\" },\n        \"op\": \"EQUAL\",\n        \"value\": { \"stringValue\": \"{{ $json.customer_id }}\" }\n      }\n    },\n    \"orderBy\": [\n      {\n        \"field\": { \"fieldPath\": \"created_at\" },\n        \"direction\": \"DESCENDING\"\n      }\n    ],\n    \"limit\": 25\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -672,
+        16
+      ],
+      "id": "22222222-2222-4aa2-8aa2-222222222222",
+      "name": "Buscar Pedidos",
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "QxD9cYkBZKwyeLQL",
+          "name": "Saas Manu - Firestore OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const trigger = $('Workflow Trigger').first().json;\nconst targetOrderNumber = String(trigger.order_number || '').replace(/\\D/g, '');\nconst targetPhone = String(trigger.phone || '').replace(/\\D/g, '');\nconst docs = $input.all().map((entry) => entry.json).filter((entry) => entry && entry.document);\n\nconst parseField = (field) => {\n  if (!field || typeof field !== 'object') return field;\n  if (field.stringValue !== undefined) return field.stringValue;\n  if (field.integerValue !== undefined) return Number(field.integerValue);\n  if (field.doubleValue !== undefined) return Number(field.doubleValue);\n  if (field.booleanValue !== undefined) return field.booleanValue;\n  if (field.timestampValue !== undefined) return field.timestampValue;\n  if (field.nullValue !== undefined) return null;\n  if (field.arrayValue) return (field.arrayValue.values || []).map(parseField);\n  if (field.mapValue) {\n    const obj = {};\n    for (const [key, value] of Object.entries(field.mapValue.fields || {})) {\n      obj[key] = parseField(value);\n    }\n    return obj;\n  }\n  return null;\n};\n\nconst normalizePhone = (value = '') => String(value).replace(/\\D/g, '');\nconst describeStatus = (saleStatus, orderStatus) => {\n  if (saleStatus === 'payment_sent') {\n    return 'aguardando pagamento';\n  }\n  switch (orderStatus) {\n    case 'awaiting_processing':\n    case 'separating':\n      return 'aguardando processamento';\n    case 'preparing':\n      return 'em preparacao';\n    case 'packing':\n      return 'embalando';\n    case 'awaiting_pickup':\n      return 'aguardando retirada';\n    case 'ready_for_pickup':\n    case 'ready_for_shipping':\n    case 'ready':\n      return 'pronto para envio ou retirada';\n    case 'shipped':\n      return 'enviado';\n    case 'completed':\n      return 'concluido';\n    default:\n      return saleStatus === 'confirmed' ? 'em andamento' : 'aguardando definicao';\n  }\n};\n\nconst sales = docs\n  .map((raw) => {\n    const fields = raw.document.fields || {};\n    const items = parseField(fields.items) || [];\n    const publicOrderNumber = String(parseField(fields.public_order_number) || '').trim();\n    const customerWhatsapp = normalizePhone(parseField(fields.customer_whatsapp) || '');\n    return {\n      sale_id: raw.document.name.split('/').pop(),\n      order_number: publicOrderNumber,\n      order_number_label: publicOrderNumber ? `#${publicOrderNumber}` : '',\n      status: String(parseField(fields.status) || '').trim(),\n      order_status: String(parseField(fields.order_status) || '').trim(),\n      customer_id: String(parseField(fields.customer_id) || '').trim(),\n      customer_whatsapp: customerWhatsapp,\n      total: Number(parseField(fields.total) || 0),\n      customer_name: String(parseField(fields.customer_name) || '').trim(),\n      items,\n      created_at: String(parseField(fields.created_at) || '').trim(),\n      current_status_label: describeStatus(\n        String(parseField(fields.status) || '').trim(),\n        String(parseField(fields.order_status) || '').trim(),\n      ),\n    };\n  })\n  .filter((sale) => sale.status && sale.status !== 'cancelled')\n  .filter((sale) => !targetPhone || !sale.customer_whatsapp || sale.customer_whatsapp === targetPhone);\n\nlet matchedSale = null;\nif (targetOrderNumber) {\n  matchedSale = sales.find((sale) => sale.order_number === targetOrderNumber) || null;\n}\nif (!matchedSale) {\n  matchedSale = sales[0] || null;\n}\n\nif (!matchedSale) {\n  return [{ json: { success: false, found: false, message: 'Nenhum pedido encontrado para este cliente.' } }];\n}\n\nreturn [{\n  json: {\n    success: true,\n    found: true,\n    ...matchedSale,\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        16
+      ],
+      "id": "33333333-3333-4aa3-8aa3-333333333333",
+      "name": "Normalizar Pedido"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Buscar Pedidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Pedidos": {
+      "main": [
+        [
+          {
+            "node": "Normalizar Pedido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "c9d6d8dd-9bf5-4e2b-8c16-8e52af910001",
+  "meta": {
+    "instanceId": "8f610a00096a913663098d07d4589b06a2b6a8fa62c633cf329d6f8ac12d3afd"
+  },
+  "id": "1YyfRLyYGtNeVcuA",
+  "tags": []
+}

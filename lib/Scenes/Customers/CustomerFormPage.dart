@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
+import '../../Commons/Extensions/String+Extensions.dart';
 import '../../Commons/Utils/ScreenResponsive.dart';
 import '../../Commons/Widgets/DesignSystem/DSColors.dart';
 import '../../Commons/Widgets/DesignSystem/DSTextStyle.dart';
@@ -34,7 +35,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
   bool _initialized = false;
 
   final _whatsappMask = MaskTextInputFormatter(
-    mask: '(##) #####-####',
+    mask: '## (##) #####-####',
     filter: {'#': RegExp(r'[0-9]')},
   );
 
@@ -72,9 +73,10 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
     final customer = _viewModel.customer;
     if (customer != null) {
       _nameController.text = customer.name;
-      // Formatar WhatsApp com máscara
       if (customer.whatsapp.isNotEmpty) {
-        _whatsappController.text = _whatsappMask.maskText(customer.whatsapp);
+        _whatsappController.text = _whatsappMask.maskText(
+          customer.whatsapp.toWhatsAppInternationalDigits(),
+        );
       }
       _emailController.text = customer.email ?? '';
       _notesController.text = customer.notes ?? '';
@@ -303,7 +305,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
                       child: FormTextField(
                         label: 'WhatsApp *',
                         controller: _whatsappController,
-                        hintText: '(11) 98765-4321',
+                        hintText: '55 (11) 96619-1991',
                         prefixIcon: Icons.phone_android_rounded,
                         keyboardType: TextInputType.phone,
                         inputFormatters: [_whatsappMask],
@@ -426,7 +428,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
           FormTextField(
             label: 'WhatsApp *',
             controller: _whatsappController,
-            hintText: '(11) 98765-4321',
+            hintText: '55 (11) 96619-1991',
             prefixIcon: Icons.phone_android_rounded,
             keyboardType: TextInputType.phone,
             inputFormatters: [_whatsappMask],
@@ -546,7 +548,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
     if (!_formKey.currentState!.validate()) return;
 
     // Extrair apenas números do WhatsApp
-    final whatsapp = _whatsappController.text.replaceAll(RegExp(r'[^\d]'), '');
+    final whatsapp = _whatsappController.text.toWhatsAppInternationalDigits();
 
     final success = await _presenter.save(
       name: _nameController.text.trim(),
@@ -577,9 +579,9 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
     if (value == null || value.trim().isEmpty) {
       return 'WhatsApp é obrigatório';
     }
-    final cleanNumber = value.replaceAll(RegExp(r'[^\d]'), '');
-    if (cleanNumber.length != 11) {
-      return 'WhatsApp inválido (11 dígitos)';
+    final cleanNumber = value.toWhatsAppInternationalDigits();
+    if (cleanNumber.length != 13 || !cleanNumber.startsWith('55')) {
+      return 'Use o formato 55 (11) 96619-1991';
     }
     return null;
   }

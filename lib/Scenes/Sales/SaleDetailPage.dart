@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../Commons/Enums/OrderStatus.dart';
 import '../../Commons/Enums/SaleSource.dart';
 import '../../Commons/Enums/SaleStatus.dart';
 import '../../Commons/Extensions/String+Extensions.dart';
@@ -80,7 +81,42 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
 
     if (confirm != true || !mounted) return;
 
-    final success = await _salesRepository.updateStatus(_sale!.uid, newStatus);
+    bool success = false;
+    var updatedSale = _sale!;
+
+    switch (newStatus) {
+      case SaleStatus.confirmed:
+        success = await _salesRepository.confirmPayment(_sale!.uid);
+        updatedSale = _sale!.copyWith(
+          status: SaleStatus.confirmed,
+          orderStatus: OrderStatus.awaiting_processing,
+          paymentConfirmedAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+        break;
+      case SaleStatus.payment_sent:
+        success = await _salesRepository.sendPaymentRequest(_sale!.uid);
+        updatedSale = _sale!.copyWith(
+          status: SaleStatus.payment_sent,
+          paymentRequestedAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+        break;
+      case SaleStatus.cancelled:
+        success = await _salesRepository.cancelSale(_sale!.uid);
+        updatedSale = _sale!.copyWith(
+          status: SaleStatus.cancelled,
+          updatedAt: DateTime.now(),
+        );
+        break;
+      case SaleStatus.pending:
+        success = await _salesRepository.updateStatus(_sale!.uid, newStatus);
+        updatedSale = _sale!.copyWith(
+          status: newStatus,
+          updatedAt: DateTime.now(),
+        );
+        break;
+    }
 
     if (success) {
       // Se cancelar: devolver estoque
@@ -95,14 +131,17 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
       }
 
       setState(() {
-        _sale = _sale!.copyWith(status: newStatus, updatedAt: DateTime.now());
+        _sale = updatedSale;
       });
 
       if (mounted) {
+        final message = newStatus == SaleStatus.confirmed
+            ? 'Venda marcada como paga e enviada para o menu Pedidos.'
+            : 'Venda atualizada para "${newStatus.label}".';
         await DSAlertDialog.showSuccess(
           context: context,
           title: 'Status Alterado',
-          message: 'Venda atualizada para "${newStatus.label}".',
+          message: message,
         );
       }
     }
@@ -167,7 +206,8 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
       }
     }
 
-    final url = 'https://wa.me/55${_sale!.customerWhatsapp}';
+    final whatsapp = _sale!.customerWhatsapp.toWhatsAppInternationalDigits();
+    final url = 'https://wa.me/$whatsapp';
     await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
   }
 
@@ -413,28 +453,27 @@ class _SaleDetailPageState extends State<SaleDetailPage> {
                       : DSBadgeType.success,
                   size: DSBadgeSize.small,
                 ),
-              IconButton(
-                icon: const Icon(Icons.chat, color: Color(0xFF25D366)),
-                tooltip: 'Falar com cliente no WhatsApp',
-                onPressed: _isUpdatingCustomerAutomation ? null : _openWhatsApp,
-              ),
             ],
           ),
           const SizedBox(height: DSSpacing.md),
-          Row(
+          Text(
+            (_customerAgentOff ?? false)
+                ? 'O atendimento automatico esta pausado para este cliente. A regra do timer continua valendo caso voce nao religue manualmente.'
+                : 'Se o atendente assumir a conversa manualmente pelo WhatsApp, o agente automatico sera pausado para nao interferir.',
+            style: textStyles.bodySmall.copyWith(color: colors.textSecondary),
+          ),
+          const SizedBox(height: DSSpacing.md),
+          Wrap(
+            spacing: DSSpacing.sm,
+            runSpacing: DSSpacing.sm,
             children: [
-              Expanded(
-                child: Text(
-                  (_customerAgentOff ?? false)
-                      ? 'O atendimento automatico esta pausado para este cliente. A regra do timer continua valendo caso voce nao religue manualmente.'
-                      : 'Ao abrir o WhatsApp por aqui, o atendimento automatico deste cliente sera pausado para evitar interferencia do agente.',
-                  style: textStyles.bodySmall.copyWith(
-                    color: colors.textSecondary,
-                  ),
-                ),
-              ),
-              const SizedBox(width: DSSpacing.sm),
               DSButton.secondary(
+                label: 'Iniciar atendimento humano',
+                icon: Icons.chat_rounded,
+                isLoading: _isUpdatingCustomerAutomation,
+                onTap: _isUpdatingCustomerAutomation ? null : _openWhatsApp,
+              ),
+              DSButton.ghost(
                 label: 'Religar agente',
                 icon: Icons.autorenew_rounded,
                 isLoading: _isUpdatingCustomerAutomation,

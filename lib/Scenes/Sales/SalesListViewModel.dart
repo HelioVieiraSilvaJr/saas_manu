@@ -142,6 +142,12 @@ class SalesListViewModel {
   final bool isLoading;
   final List<SaleModel> allSales;
   final List<SaleModel> filteredSales;
+  final List<SaleModel> todayOpenSales;
+  final List<SaleModel> todayClosedSales;
+  final List<SaleModel> selectedDayOpenSales;
+  final List<SaleModel> selectedDayClosedSales;
+  final List<DateTime> availableMonths;
+  final DateTime? selectedDay;
   final String searchQuery;
   final SaleStatusFilter statusFilter;
   final SaleSourceFilter sourceFilter;
@@ -161,6 +167,12 @@ class SalesListViewModel {
     this.isLoading = true,
     this.allSales = const [],
     this.filteredSales = const [],
+    this.todayOpenSales = const [],
+    this.todayClosedSales = const [],
+    this.selectedDayOpenSales = const [],
+    this.selectedDayClosedSales = const [],
+    this.availableMonths = const [],
+    this.selectedDay,
     this.searchQuery = '',
     this.statusFilter = SaleStatusFilter.all,
     this.sourceFilter = SaleSourceFilter.all,
@@ -179,6 +191,12 @@ class SalesListViewModel {
     bool? isLoading,
     List<SaleModel>? allSales,
     List<SaleModel>? filteredSales,
+    List<SaleModel>? todayOpenSales,
+    List<SaleModel>? todayClosedSales,
+    List<SaleModel>? selectedDayOpenSales,
+    List<SaleModel>? selectedDayClosedSales,
+    List<DateTime>? availableMonths,
+    DateTime? selectedDay,
     String? searchQuery,
     SaleStatusFilter? statusFilter,
     SaleSourceFilter? sourceFilter,
@@ -196,6 +214,13 @@ class SalesListViewModel {
       isLoading: isLoading ?? this.isLoading,
       allSales: allSales ?? this.allSales,
       filteredSales: filteredSales ?? this.filteredSales,
+      todayOpenSales: todayOpenSales ?? this.todayOpenSales,
+      todayClosedSales: todayClosedSales ?? this.todayClosedSales,
+      selectedDayOpenSales: selectedDayOpenSales ?? this.selectedDayOpenSales,
+      selectedDayClosedSales:
+          selectedDayClosedSales ?? this.selectedDayClosedSales,
+      availableMonths: availableMonths ?? this.availableMonths,
+      selectedDay: selectedDay ?? this.selectedDay,
       searchQuery: searchQuery ?? this.searchQuery,
       statusFilter: statusFilter ?? this.statusFilter,
       sourceFilter: sourceFilter ?? this.sourceFilter,
@@ -220,9 +245,21 @@ class SalesListViewModel {
   /// Verifica se há filtros ativos.
   bool get hasActiveFilters =>
       statusFilter != SaleStatusFilter.all ||
-      sourceFilter != SaleSourceFilter.all ||
-      periodFilter != SalePeriodFilter.all;
+      sourceFilter != SaleSourceFilter.all;
 
   /// Verifica se há busca ativa.
   bool get hasSearch => searchQuery.isNotEmpty;
+
+  DateTime get selectedDayOrToday {
+    final day = selectedDay ?? DateTime.now();
+    return DateTime(day.year, day.month, day.day);
+  }
+
+  bool get isSelectedDayToday {
+    final today = DateTime.now();
+    final selected = selectedDayOrToday;
+    return selected.year == today.year &&
+        selected.month == today.month &&
+        selected.day == today.day;
+  }
 }

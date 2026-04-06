@@ -24,9 +24,55 @@ class SalesListPresenter {
 
   // MARK: - Real-Time Streaming
 
+  DateTime _normalizeDay(DateTime value) {
+    return DateTime(value.year, value.month, value.day);
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    final left = _normalizeDay(a);
+    final right = _normalizeDay(b);
+    return left.year == right.year &&
+        left.month == right.month &&
+        left.day == right.day;
+  }
+
+  bool _isOpenSale(SaleModel sale) =>
+      sale.status != SaleStatus.confirmed &&
+      sale.status != SaleStatus.cancelled;
+
+  bool _isClosedSale(SaleModel sale) => !_isOpenSale(sale);
+
+  List<SaleModel> _salesForDay(List<SaleModel> sales, DateTime day) {
+    final target = _normalizeDay(day);
+    return sales.where((sale) => _isSameDay(sale.createdAt, target)).toList();
+  }
+
+  List<DateTime> _extractAvailableMonths(List<SaleModel> sales) {
+    final seen = <String>{};
+    final months = <DateTime>[];
+    final today = DateTime.now();
+    final currentMonth = DateTime(today.year, today.month);
+    months.add(currentMonth);
+    seen.add('${currentMonth.year}-${currentMonth.month}');
+
+    for (final sale in sales) {
+      final month = DateTime(sale.createdAt.year, sale.createdAt.month);
+      final key = '${month.year}-${month.month}';
+      if (seen.add(key)) {
+        months.add(month);
+      }
+    }
+
+    months.sort((a, b) => b.compareTo(a));
+    return months;
+  }
+
   /// Inicia escuta em tempo real de todas as vendas.
   void startWatching() {
-    _viewModel = _viewModel.copyWith(isLoading: true);
+    _viewModel = _viewModel.copyWith(
+      isLoading: true,
+      selectedDay: _viewModel.selectedDay ?? _normalizeDay(DateTime.now()),
+    );
     onUpdate?.call();
 
     _salesSubscription?.cancel();
@@ -51,6 +97,8 @@ class SalesListPresenter {
     final now = DateTime.now();
     final startOfDay = DateTime(now.year, now.month, now.day);
     final startOfMonth = DateTime(now.year, now.month, 1);
+    final selectedDay = _normalizeDay(_viewModel.selectedDay ?? now);
+    final availableMonths = _extractAvailableMonths(sales);
 
     final todaySales = sales
         .where(
@@ -76,6 +124,8 @@ class SalesListPresenter {
     _viewModel = _viewModel.copyWith(
       isLoading: false,
       allSales: sales,
+      selectedDay: selectedDay,
+      availableMonths: availableMonths,
       todayTotal: todayTotal,
       todayCount: todaySales.length,
       monthTotal: monthTotal,
@@ -126,6 +176,46 @@ class SalesListPresenter {
       periodFilter: SalePeriodFilter.all,
       sortOption: SaleSortOption.newestFirst,
       searchQuery: '',
+    );
+    _applyFiltersAndSort();
+  }
+
+  void goToToday() {
+    _viewModel = _viewModel.copyWith(
+      selectedDay: _normalizeDay(DateTime.now()),
+    );
+    _applyFiltersAndSort();
+  }
+
+  void goToPreviousDay() {
+    final current = _viewModel.selectedDayOrToday;
+    _viewModel = _viewModel.copyWith(
+      selectedDay: current.subtract(const Duration(days: 1)),
+    );
+    _applyFiltersAndSort();
+  }
+
+  void goToNextDay() {
+    final current = _viewModel.selectedDayOrToday;
+    final today = _normalizeDay(DateTime.now());
+    if (!current.isBefore(today)) return;
+
+    final nextDay = current.add(const Duration(days: 1));
+    _viewModel = _viewModel.copyWith(
+      selectedDay: nextDay.isAfter(today) ? today : nextDay,
+    );
+    _applyFiltersAndSort();
+  }
+
+  void setSelectedMonth(DateTime month) {
+    final today = DateTime.now();
+    final isCurrentMonth =
+        month.year == today.year && month.month == today.month;
+    final targetDay = isCurrentMonth
+        ? today.day
+        : DateTime(month.year, month.month + 1, 0).day;
+    _viewModel = _viewModel.copyWith(
+      selectedDay: DateTime(month.year, month.month, targetDay),
     );
     _applyFiltersAndSort();
   }
@@ -189,7 +279,19 @@ class SalesListPresenter {
         break;
     }
 
-    _viewModel = _viewModel.copyWith(filteredSales: result);
+    final today = _normalizeDay(DateTime.now());
+    final selectedDay = _normalizeDay(_viewModel.selectedDayOrToday);
+    final todaySales = _salesForDay(result, today);
+    final selectedSales = _salesForDay(result, selectedDay);
+
+    _viewModel = _viewModel.copyWith(
+      filteredSales: result,
+      todayOpenSales: todaySales.where(_isOpenSale).toList(),
+      todayClosedSales: todaySales.where(_isClosedSale).toList(),
+      selectedDayOpenSales: selectedSales.where(_isOpenSale).toList(),
+      selectedDayClosedSales: selectedSales.where(_isClosedSale).toList(),
+      selectedDay: selectedDay,
+    );
     onUpdate?.call();
   }
 

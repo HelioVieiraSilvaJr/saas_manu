@@ -33,13 +33,33 @@ class _OrdersKanbanMobileViewState extends State<OrdersKanbanMobileView>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
+  List<OrderStatus> get _visibleStatuses =>
+      widget.presenter.viewModel.visibleStatuses;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(
-      length: OrderStatus.values.length,
+      length: _visibleStatuses.length,
       vsync: this,
     );
+  }
+
+  @override
+  void didUpdateWidget(covariant OrdersKanbanMobileView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_tabController.length != _visibleStatuses.length) {
+      final previousIndex = _tabController.index;
+      _tabController.dispose();
+      _tabController = TabController(
+        length: _visibleStatuses.length,
+        vsync: this,
+      );
+      _tabController.index = previousIndex.clamp(
+        0,
+        _visibleStatuses.length - 1,
+      );
+    }
   }
 
   @override
@@ -76,6 +96,22 @@ class _OrdersKanbanMobileViewState extends State<OrdersKanbanMobileView>
 
     return Column(
       children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            DSSpacing.base,
+            DSSpacing.base,
+            DSSpacing.base,
+            0,
+          ),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton.icon(
+              onPressed: _showBoardSettings,
+              icon: const Icon(Icons.view_column_rounded, size: 18),
+              label: const Text('Colunas'),
+            ),
+          ),
+        ),
         // Tabs
         Container(
           color: colors.surfaceColor,
@@ -88,7 +124,7 @@ class _OrdersKanbanMobileViewState extends State<OrdersKanbanMobileView>
             labelStyle: textStyles.labelMedium.copyWith(
               fontWeight: FontWeight.w600,
             ),
-            tabs: OrderStatus.values.map((status) {
+            tabs: _visibleStatuses.map((status) {
               final count = vm.countByStatus(status);
               return Tab(
                 child: Row(
@@ -108,7 +144,7 @@ class _OrdersKanbanMobileViewState extends State<OrdersKanbanMobileView>
         Expanded(
           child: TabBarView(
             controller: _tabController,
-            children: OrderStatus.values.map((status) {
+            children: _visibleStatuses.map((status) {
               final orders = vm.ordersByStatus(status);
               if (orders.isEmpty) {
                 return Center(
@@ -192,6 +228,77 @@ class _OrdersKanbanMobileViewState extends State<OrdersKanbanMobileView>
         ),
       ],
     );
+  }
+
+  Future<void> _showBoardSettings() async {
+    final draft = <OrderStatus>{...widget.presenter.viewModel.visibleStatuses};
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              title: const Text('Colunas visiveis'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: OrderStatus.configurableStatuses.map((status) {
+                    final locked =
+                        status == OrderStatus.awaiting_processing ||
+                        status == OrderStatus.completed;
+                    return CheckboxListTile(
+                      value: draft.contains(status),
+                      title: Text(status.label),
+                      subtitle: locked
+                          ? Text(
+                              status == OrderStatus.awaiting_processing
+                                  ? 'Sempre visivel para receber pedidos.'
+                                  : 'Sempre visivel para acompanhar pedidos finalizados.',
+                            )
+                          : null,
+                      onChanged: locked
+                          ? null
+                          : (value) {
+                              setModalState(() {
+                                if (value == true) {
+                                  draft.add(status);
+                                } else {
+                                  draft.remove(status);
+                                }
+                              });
+                            },
+                    );
+                  }).toList(),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final success = await widget.presenter.saveVisibleStatuses(
+                      draft.toList(),
+                    );
+                    if (!context.mounted) return;
+                    Navigator.of(context).pop(success);
+                  },
+                  child: const Text('Salvar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (saved == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Board de pedidos atualizado.')),
+      );
+    }
   }
 }
 
@@ -320,8 +427,7 @@ class _MobileOrderCard extends StatelessWidget {
                               child: ElevatedButton(
                                 onPressed: onMoveNext,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                      status == OrderStatus.ready_for_pickup
+                                  backgroundColor: status == OrderStatus.shipped
                                       ? colors.green
                                       : colors.primaryColor,
                                   minimumSize: const Size(0, 36),
@@ -347,8 +453,14 @@ class _MobileOrderCard extends StatelessWidget {
       case OrderStatus.awaiting_processing:
         return 'Preparar →';
       case OrderStatus.preparing:
+        return 'Embalar →';
+      case OrderStatus.packing:
+        return 'Retirada →';
+      case OrderStatus.awaiting_pickup:
         return 'Pronto →';
-      case OrderStatus.ready_for_pickup:
+      case OrderStatus.ready_for_shipping:
+        return 'Enviar →';
+      case OrderStatus.shipped:
         return 'Concluir ✓';
       default:
         return 'Avançar →';
