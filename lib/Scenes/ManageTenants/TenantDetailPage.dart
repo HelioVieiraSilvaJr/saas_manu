@@ -136,7 +136,7 @@ class _TenantDetailPageState extends State<TenantDetailPage> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+          onPressed: _handleBackNavigation,
         ),
         actions: [
           IconButton(
@@ -173,7 +173,7 @@ class _TenantDetailPageState extends State<TenantDetailPage> {
       children: [
         IconButton(
           icon: Icon(Icons.arrow_back, color: colors.textPrimary),
-          onPressed: () => Navigator.pop(context),
+          onPressed: _handleBackNavigation,
         ),
         const SizedBox(width: DSSpacing.sm),
         CircleAvatar(
@@ -665,7 +665,7 @@ class _TenantDetailPageState extends State<TenantDetailPage> {
       );
 
       if (!mounted) return;
-      Navigator.of(context).pushNamedAndRemoveUntil('/dashboard', (_) => false);
+      Navigator.of(context).pushReplacementNamed('/dashboard');
     } catch (e) {
       AppLogger.error('Erro ao inspecionar tenant', error: e);
       if (!mounted) return;
@@ -675,6 +675,15 @@ class _TenantDetailPageState extends State<TenantDetailPage> {
         message: 'Falha ao abrir o board desse tenant: $e',
       );
     }
+  }
+
+  void _handleBackNavigation() {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+      return;
+    }
+
+    Navigator.of(context).pushReplacementNamed('/admin/tenants');
   }
 
   Future<void> _deleteTenant() async {

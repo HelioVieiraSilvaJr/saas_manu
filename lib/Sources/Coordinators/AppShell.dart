@@ -1038,9 +1038,8 @@ class _AppShellState extends State<AppShell> {
       cancelGlobalListeners();
       await SessionManager.instance.stopTenantInspection();
       if (mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil(
+        Navigator.of(context).pushReplacementNamed(
           '/admin/tenants/detail',
-          (_) => false,
           arguments: inspectedTenantId,
         );
       }
