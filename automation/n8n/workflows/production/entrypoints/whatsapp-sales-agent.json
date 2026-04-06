@@ -1821,26 +1821,9 @@
         ]
       ]
     },
-    "Enviar áudio": {
+    "Resetar status operacional": {
       "main": [
-        [
-          {
-            "node": "Resetar status operacional",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Enviar texto": {
-      "main": [
-        [
-          {
-            "node": "Resetar status operacional",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Gravando async": {
@@ -1881,9 +1864,26 @@
         ]
       ]
     },
-    "Resetar status operacional": {
+    "Enviar áudio": {
       "main": [
-        []
+        [
+          {
+            "node": "Resetar status operacional",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar texto": {
+      "main": [
+        [
+          {
+            "node": "Resetar status operacional",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Tem imagens?": {
