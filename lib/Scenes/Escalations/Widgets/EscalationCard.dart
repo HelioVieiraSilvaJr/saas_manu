@@ -115,13 +115,27 @@ class EscalationCard extends StatelessWidget {
                   color: colors.scaffoldBackground,
                   borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
                 ),
-                child: Text(
-                  escalation.reason!,
-                  style: textStyles.bodySmall.copyWith(
-                    color: colors.textSecondary,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Motivo da escalação',
+                      style: textStyles.bodySmall.copyWith(
+                        color: colors.textTertiary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      escalation.reasonLabel,
+                      style: textStyles.bodyMedium.copyWith(
+                        color: colors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -130,26 +144,46 @@ class EscalationCard extends StatelessWidget {
             if (escalation.agentConversationSummary != null &&
                 escalation.agentConversationSummary!.isNotEmpty) ...[
               const SizedBox(height: DSSpacing.xs),
-              Row(
-                children: [
-                  Icon(
-                    Icons.smart_toy_rounded,
-                    size: 14,
-                    color: colors.textTertiary,
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(DSSpacing.sm),
+                decoration: BoxDecoration(
+                  color: colors.blueLight.withValues(alpha: 0.45),
+                  borderRadius: BorderRadius.circular(DSSpacing.radiusSm),
+                  border: Border.all(
+                    color: colors.blue.withValues(alpha: 0.18),
                   ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.smart_toy_rounded,
+                          size: 14,
+                          color: colors.blue,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Contexto do agente',
+                          style: textStyles.bodySmall.copyWith(
+                            color: colors.blue,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
                       escalation.agentConversationSummary!,
                       style: textStyles.bodySmall.copyWith(
-                        color: colors.textTertiary,
-                        fontStyle: FontStyle.italic,
+                        color: colors.textSecondary,
+                        height: 1.4,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
 

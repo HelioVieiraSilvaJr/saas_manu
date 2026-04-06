@@ -49,9 +49,11 @@ class EscalationModel {
       uid: doc.id,
       customerId: data['customer_id'] ?? '',
       customerName: data['customer_name'] ?? '',
-      customerWhatsapp: data['customer_whatsapp'] ?? '',
+      customerWhatsapp:
+          (data['customer_whatsapp'] ?? data['customer_phone'] ?? '').toString(),
       reason: data['reason'],
-      agentConversationSummary: data['agent_conversation_summary'],
+      agentConversationSummary:
+          (data['agent_conversation_summary'] ?? data['summary'])?.toString(),
       status: EscalationStatus.fromString(data['status'] ?? 'pending'),
       assignedTo: data['assigned_to'],
       assignedToName: data['assigned_to_name'],
@@ -77,8 +79,10 @@ class EscalationModel {
       'customer_id': customerId,
       'customer_name': customerName,
       'customer_whatsapp': customerWhatsapp,
+      'customer_phone': customerWhatsapp,
       'reason': reason,
       'agent_conversation_summary': agentConversationSummary,
+      'summary': agentConversationSummary,
       'status': status.name,
       'assigned_to': assignedTo,
       'assigned_to_name': assignedToName,
@@ -150,5 +154,16 @@ class EscalationModel {
     if (hours < 24) return '${hours}h ${minutes % 60}min';
     final days = hours ~/ 24;
     return '${days}d ${hours % 24}h';
+  }
+
+  String get reasonLabel {
+    switch ((reason ?? '').trim()) {
+      case 'user_requested':
+        return 'Cliente pediu atendimento humano';
+      case 'ai_unable':
+        return 'Agente nao conseguiu concluir';
+      default:
+        return (reason ?? '').trim().isEmpty ? 'Sem motivo informado' : reason!;
+    }
   }
 }

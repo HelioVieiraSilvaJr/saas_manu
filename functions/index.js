@@ -1926,9 +1926,18 @@ exports.receiveN8nSale = onRequest(
         }
 
         let customerId = payload.customer.id;
-        let customerDocRef;
+        let customerDocRef = customerId ? customersCol.doc(customerId) : null;
+        let existingCustomerData = null;
+        let isNewCustomer = false;
 
-        if (!customerId) {
+        if (customerDocRef) {
+          const customerDoc = await transaction.get(customerDocRef);
+          if (customerDoc.exists) {
+            existingCustomerData = customerDoc.data() || {};
+          } else {
+            isNewCustomer = true;
+          }
+        } else {
           const existingCustomer = await transaction.get(
             customersCol.where("whatsapp", "==", payload.customer.whatsapp).limit(1),
           );
@@ -1936,39 +1945,12 @@ exports.receiveN8nSale = onRequest(
           if (!existingCustomer.empty) {
             customerDocRef = existingCustomer.docs[0].ref;
             customerId = customerDocRef.id;
+            existingCustomerData = existingCustomer.docs[0].data() || {};
+          } else {
+            customerDocRef = customersCol.doc();
+            customerId = customerDocRef.id;
+            isNewCustomer = true;
           }
-        } else {
-          customerDocRef = customersCol.doc(customerId);
-        }
-
-        if (!customerDocRef) {
-          customerDocRef = customersCol.doc();
-          customerId = customerDocRef.id;
-          transaction.set(customerDocRef, {
-            name: payload.customer.name || payload.customer.whatsapp,
-            whatsapp: payload.customer.whatsapp,
-            email: payload.customer.email || "",
-            address: payload.customer.address || "",
-            notes: "",
-            is_active: true,
-            agent_off: false,
-            purchase_count: 0,
-            total_spent: 0,
-            created_at: nowTs(),
-            updated_at: nowTs(),
-          });
-        } else {
-          transaction.set(
-            customerDocRef,
-            {
-              name: payload.customer.name || payload.customer.whatsapp,
-              whatsapp: payload.customer.whatsapp,
-              email: payload.customer.email || "",
-              address: payload.customer.address || "",
-              updated_at: nowTs(),
-            },
-            { merge: true },
-          );
         }
 
         const saleRef = salesCol.doc();
@@ -2052,6 +2034,39 @@ exports.receiveN8nSale = onRequest(
             throw new Error(`insufficient-stock:${productId}`);
           }
         }
+
+        const customerWriteData = isNewCustomer
+          ? {
+              name: payload.customer.name || payload.customer.whatsapp,
+              whatsapp: payload.customer.whatsapp,
+              email: payload.customer.email || "",
+              address: payload.customer.address || "",
+              notes: "",
+              is_active: true,
+              agent_off: false,
+              purchase_count: 0,
+              total_spent: 0,
+              created_at: nowTs(),
+              updated_at: nowTs(),
+            }
+          : {
+              name:
+                payload.customer.name ||
+                String(existingCustomerData?.name || "").trim() ||
+                payload.customer.whatsapp,
+              whatsapp: payload.customer.whatsapp,
+              email:
+                payload.customer.email ||
+                sanitizeEmail(existingCustomerData?.email || "") ||
+                "",
+              address:
+                payload.customer.address ||
+                String(existingCustomerData?.address || "").trim() ||
+                "",
+              updated_at: nowTs(),
+            };
+
+        transaction.set(customerDocRef, customerWriteData, { merge: !isNewCustomer });
 
         const normalizedItems = resolvedItems.map((item) => ({
           product_id: item.product_id,

@@ -352,7 +352,7 @@
     {
       "parameters": {
         "name": "Escalar_Humano",
-        "description": "Escala o atendimento para um atendente humano. Use quando o cliente pedir para falar com uma pessoa ou quando voce perceber que nao esta conseguindo atender a necessidade do cliente. Informe o motivo: user_requested (cliente pediu) ou ai_unable (IA nao conseguiu resolver). Inclua um resumo breve do que foi conversado ate o momento.",
+        "description": "Escala o atendimento para um atendente humano. Use quando o cliente pedir para falar com uma pessoa ou quando voce perceber que nao esta conseguindo atender a necessidade do cliente. Informe o motivo: user_requested (cliente pediu) ou ai_unable (IA nao conseguiu resolver). O campo summary deve ser um resumo operacional completo para o atendente, incluindo pedido atual do cliente, produtos e variacoes envolvidas, itens no carrinho com quantidade, total quando existir, o que foi tentado e exatamente o que faltou ou falhou.",
         "workflowId": {
           "__rl": true,
           "value": "QvblWeXM9HTYVXDk",
@@ -368,7 +368,7 @@
             "customer_name": "={{ $fromAI('customer_name', 'Nome do cliente', 'string') }}",
             "customer_id": "={{ $fromAI('customer_id', 'document_id do cliente', 'string') }}",
             "reason": "={{ $fromAI('reason', 'Motivo da escalacao: user_requested ou ai_unable', 'string') }}",
-            "summary": "={{ $fromAI('summary', 'Resumo breve do atendimento ate o momento', 'string') }}"
+            "summary": "={{ $fromAI('summary', 'Resumo operacional para o atendente com pedido do cliente, itens, total, etapa atual e o que falhou', 'string') }}"
           },
           "matchingColumns": [],
           "schema": [
