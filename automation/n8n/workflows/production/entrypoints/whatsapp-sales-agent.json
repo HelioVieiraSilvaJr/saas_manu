@@ -1,4 +1,5 @@
 {
+  "name": "SaaS Manu - Principal - Agente de Vendas WhatsApp",
   "nodes": [
     {
       "parameters": {
@@ -67,7 +68,7 @@
     {
       "parameters": {
         "sessionIdType": "customKey",
-        "sessionKey": "={{ $('Dados do Cliente').item.json.documentID }}",
+        "sessionKey": "={{ $('Dados do Cliente').first().json.documentID || $('Filtrar Mensagens').first().json.telefone }}",
         "contextWindowLength": 20
       },
       "id": "fb98283f-bf9d-4f88-9f8e-d4e323e6b95c",
@@ -639,7 +640,7 @@
             },
             {
               "id": "25f9d72f-0ec7-48dc-beaa-247074fdaf39",
-              "name": "=address",
+              "name": "address",
               "value": "={{ $('Formata JSON').item.json.address }}",
               "type": "string"
             }
@@ -929,23 +930,10 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ ($('Info').first().json.body?.server_url || 'https://chatwoot.htech-servidor.space') + '/chat/sendPresence/' + $('Info').first().json['evolution-api_instancia'] }}",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "={{ $('Info').first().json['EvolutionAPI-Key'] }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
+        "url": "=https://n8n.htech-servidor.space/webhook/e56e25c6-d00e-40aa-83b6-4985aea910f1",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ number: $('Filtrar Mensagens').item.json.telefone, presence: 'composing', delay: 12000 }) }}",
+        "jsonBody": "={{ JSON.stringify({ instancia: $('Info').first().json['evolution-api_instancia'], telefone: $('Filtrar Mensagens').item.json.telefone, status: 'composing', delay: 300000, apikey: $('Info').first().json['EvolutionAPI-Key'], server_url: $('Info').first().json.body?.server_url || 'https://chatwoot.htech-servidor.space' }) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -955,7 +943,7 @@
         2544
       ],
       "id": "e09f5d49-e965-48d1-b594-ee524739677e",
-      "name": "Enviar - Default1",
+      "name": "Sinalizar digitando",
       "alwaysOutputData": true,
       "retryOnFail": false,
       "onError": "continueRegularOutput"
@@ -1018,10 +1006,10 @@
     {
       "parameters": {
         "operation": "toBinary",
-        "sourceProperty": "data.base64",
+        "sourceProperty": "base64",
         "options": {
-          "fileName": "audio.mp3",
-          "mimeType": "audio/mpeg"
+          "fileName": "={{ $json.fileName || 'audio.ogg' }}",
+          "mimeType": "={{ String($json.mimetype || 'audio/ogg').split(';')[0] }}"
         }
       },
       "type": "n8n-nodes-base.convertToFile",
@@ -1036,23 +1024,10 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ ($('Info').first().json.body?.server_url || 'https://chatwoot.htech-servidor.space') + '/chat/sendPresence/' + $('Info').first().json['evolution-api_instancia'] }}",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "apikey",
-              "value": "={{ $('Info').first().json['EvolutionAPI-Key'] }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
+        "url": "=https://n8n.htech-servidor.space/webhook/e56e25c6-d00e-40aa-83b6-4985aea910f1",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ number: $('Filtrar Mensagens').item.json.telefone, presence: 'recording', delay: 12000 }) }}",
+        "jsonBody": "={{ JSON.stringify({ instancia: $('Info').first().json['evolution-api_instancia'], telefone: $('Filtrar Mensagens').item.json.telefone, status: 'recording', delay: 300000, apikey: $('Info').first().json['EvolutionAPI-Key'], server_url: $('Info').first().json.body?.server_url || 'https://chatwoot.htech-servidor.space' }) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -1062,8 +1037,29 @@
         3008
       ],
       "id": "b5335970-ebee-40af-a32d-989ec37b4564",
-      "name": "Marcar como lida",
+      "name": "Sinalizar gravando",
       "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://n8n.htech-servidor.space/webhook/e56e25c6-d00e-40aa-83b6-4985aea910f1",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ instancia: $('Info').first().json['evolution-api_instancia'], telefone: $('Filtrar Mensagens').item.json.telefone, status: 'paused', delay: 0, apikey: $('Info').first().json['EvolutionAPI-Key'], server_url: $('Info').first().json.body?.server_url || 'https://chatwoot.htech-servidor.space' }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1888,
+        2656
+      ],
+      "id": "42a2b8fd-7701-4ef8-aad5-e8e260e0f995",
+      "name": "Resetar status operacional",
+      "alwaysOutputData": true,
+      "retryOnFail": false,
       "onError": "continueRegularOutput"
     },
     {
@@ -1679,7 +1675,7 @@
       "main": [
         [
           {
-            "node": "Enviar - Default1",
+            "node": "Sinalizar digitando",
             "type": "main",
             "index": 0
           }
@@ -1719,7 +1715,7 @@
         ]
       ]
     },
-    "Enviar - Default1": {
+    "Sinalizar digitando": {
       "main": [
         [
           {
@@ -1734,7 +1730,7 @@
       "main": [
         [
           {
-            "node": "Marcar como lida",
+            "node": "Sinalizar gravando",
             "type": "main",
             "index": 0
           }
@@ -1763,7 +1759,7 @@
         ]
       ]
     },
-    "Marcar como lida": {
+    "Sinalizar gravando": {
       "main": [
         [
           {
@@ -1789,14 +1785,14 @@
       "main": [
         [
           {
-            "node": "Resetar status",
+            "node": "Gerar áudio TTS",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Resetar status1",
+            "node": "Enviar texto",
             "type": "main",
             "index": 0
           }
@@ -1825,22 +1821,22 @@
         ]
       ]
     },
-    "Resetar status": {
+    "Enviar áudio": {
       "main": [
         [
           {
-            "node": "Gerar áudio TTS",
+            "node": "Resetar status operacional",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Resetar status1": {
+    "Enviar texto": {
       "main": [
         [
           {
-            "node": "Enviar texto",
+            "node": "Resetar status operacional",
             "type": "main",
             "index": 0
           }
@@ -1883,6 +1879,11 @@
             "index": 0
           }
         ]
+      ]
+    },
+    "Resetar status operacional": {
+      "main": [
+        []
       ]
     },
     "Tem imagens?": {

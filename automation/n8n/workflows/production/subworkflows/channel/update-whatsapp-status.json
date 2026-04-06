@@ -14,37 +14,71 @@
         480
       ],
       "id": "25e54aa6-ac9a-49c6-9017-4b4b21237639",
-      "name": " Webhook Digitando...",
+      "name": "Webhook Status WhatsApp",
       "webhookId": "e56e25c6-d00e-40aa-83b6-4985aea910f1"
     },
     {
       "parameters": {
-        "resource": "chat-api",
-        "operation": "send-presence",
-        "instanceName": "={{ $json.body.instancia }}",
-        "remoteJid": "={{ $json.body.telefone }}",
-        "presence": "={{ $json.body.status }}",
-        "delay": 20000
+        "jsCode": "const payload = $input.first().json.body ?? $input.first().json;\n\nconst normalizePhone = (value = '') => String(value).replace(/\\D/g, '');\nconst normalizeStatus = (value = '') => {\n  const status = String(value || '').trim().toLowerCase();\n\n  if (['composing', 'typing', 'digitando'].includes(status)) return 'composing';\n  if (['recording', 'gravando', 'gravando_audio', 'gravando-audio'].includes(status)) return 'recording';\n  if (['paused', 'pause', 'stop', 'reset', 'available'].includes(status)) return 'paused';\n  return 'paused';\n};\n\nconst presence = normalizeStatus(payload.status || payload.presence);\nconst isReset = presence === 'paused';\nconst rawDelay = Number(payload.delay);\nconst delay = Number.isFinite(rawDelay)\n  ? Math.max(0, rawDelay)\n  : (isReset ? 0 : 300000);\nconst serverUrl = String(payload.server_url || payload.base_url || 'https://chatwoot.htech-servidor.space').trim().replace(/\\/$/, '');\n\nreturn [{\n  json: {\n    instancia: String(payload.instancia || payload.instance || '').trim(),\n    telefone: normalizePhone(payload.telefone || payload.number || payload.phone || ''),\n    presence,\n    delay,\n    apikey: String(payload.apikey || payload.api_key || '').trim(),\n    server_url: serverUrl,\n  }\n}];"
       },
-      "type": "n8n-nodes-evolution-api.evolutionApi",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         240,
         480
       ],
+      "id": "2b34c4e1-3f3c-4411-9f1a-989f0e8e0101",
+      "name": "Normalizar status"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.server_url + '/chat/sendPresence/' + $json.instancia }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $json.apikey }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $json.telefone, presence: $json.presence, delay: $json.delay }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        480
+      ],
       "id": "df6b40cb-0e0b-433d-b167-633ffb7f558b",
       "name": "Atualizar status",
-      "credentials": {
-        "evolutionApi": {
-          "id": "M6bGmFNfvOgZac2f",
-          "name": "Loja-Exemplo-1"
-        }
-      }
+      "alwaysOutputData": true,
+      "retryOnFail": false,
+      "onError": "continueRegularOutput"
     }
   ],
   "pinData": {},
   "connections": {
-    " Webhook Digitando...": {
+    "Webhook Status WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Normalizar status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar status": {
       "main": [
         [
           {
