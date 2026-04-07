@@ -154,6 +154,242 @@ const DEFAULT_PLAN_CATALOG = Object.freeze({
   },
 });
 
+const AI_BUSINESS_PROFILE_CACHE_TTL_MS = 5 * 60 * 1000;
+const aiBusinessProfileCache = new Map();
+
+function normalizeBusinessSegmentKey(rawSegment) {
+  const normalized = String(rawSegment || "").trim().toLowerCase();
+  switch (normalized) {
+    case "fashion":
+    case "moda":
+    case "roupas":
+      return "fashion";
+    case "food":
+    case "alimentacao":
+    case "comida":
+      return "food";
+    case "electronics":
+    case "eletronicos":
+    case "eletronico":
+      return "electronics";
+    case "beauty":
+    case "beleza":
+    case "cosmeticos":
+      return "beauty";
+    case "home_decor":
+    case "home decor":
+    case "homedecor":
+    case "casa":
+    case "decoracao":
+      return "homeDecor";
+    case "services":
+    case "servicos":
+    case "servico":
+      return "services";
+    case "other":
+    case "outro":
+      return "other";
+    default:
+      return "unassigned";
+  }
+}
+
+function buildDefaultAiBusinessProfile(rawSegment) {
+  const segment = normalizeBusinessSegmentKey(rawSegment);
+  switch (segment) {
+    case "fashion":
+      return {
+        segment_id: "fashion",
+        segment_label: "Moda",
+        recommendations: `Venda moda com linguagem consultiva e segura.
+Sempre destaque tamanho, caimento, tecido, cor, modelagem e ocasiao de uso.
+Quando o cliente mostrar interesse, reduza a inseguranca com comparacoes objetivas e reais.
+Use urgencia suave apenas quando houver base concreta, como estoque baixo.
+Ofereca combinacoes naturais apenas quando fizer sentido para compor o look.
+Respeite as instrucoes de IA do produto antes de oferecer outra grade, cor ou modelo.
+Valorize conforto, versatilidade, acabamento e facilidade de combinar.
+Evite elogios vazios; use detalhes reais do item para sustentar a venda.`,
+        example_conversations: `Exemplo 1
+Cliente: Tem essa camiseta em M?
+Agente: Tenho sim! A camiseta basica preta em M esta disponivel. Ela e super versatil para o dia a dia e combina facil com jeans, sarja ou alfaiataria casual. Quer que eu separe uma para voce?
+
+Exemplo 2
+Cliente: Gostei desse vestido, mas estou em duvida.
+Agente: Faz sentido ficar em duvida quando o caimento faz tanta diferenca. Esse modelo costuma agradar porque valoriza bem a silhueta e funciona tanto para sair quanto para uma ocasiao mais arrumada. Se quiser, eu ja te mostro as melhores fotos e deixo separado enquanto voce decide.`,
+      };
+    case "food":
+      return {
+        segment_id: "food",
+        segment_label: "Alimentacao",
+        recommendations: `Em alimentacao, venda desejo com informacao util.
+Destaque sabor, ingredientes, rendimento, tamanho da porcao, combinacoes e tempo de entrega ou retirada.
+Use gatilhos de conveniencia e prazer, porque a decisao costuma ser rapida.
+Quando houver combos ou adicionais naturais, sugira uma unica vez de forma objetiva.
+Se o cliente demonstrar pressa, priorize disponibilidade e a forma mais rapida de atendimento.
+Nunca esconda informacoes importantes sobre ingredientes ou restricoes quando estiverem cadastradas.
+Evite respostas longas; comida converte melhor com ritmo agil e seguro.`,
+        example_conversations: `Exemplo 1
+Cliente: O que voces tem para almoco hoje?
+Agente: Hoje eu posso te mostrar as melhores opcoes disponiveis para almoco e ja te digo quais saem mais rapido. Se quiser algo leve, mais reforcado ou para dividir, eu separo as opcoes certas para voce.
+
+Exemplo 2
+Cliente: Quero pedir um lanche.
+Agente: Claro! Eu posso te sugerir os lanches com melhor custo-beneficio e, se fizer sentido, ja incluir bebida ou acompanhamento para ficar completo. Quer que eu te mostre as opcoes mais pedidas?`,
+      };
+    case "electronics":
+      return {
+        segment_id: "electronics",
+        segment_label: "Eletronicos",
+        recommendations: `Em eletronicos, venda confianca antes de impulso.
+Priorize compatibilidade, modelo, voltagem, capacidade, garantia e o problema que o produto resolve.
+Clientes desse segmento hesitam por risco; reduza isso com clareza e objetividade.
+Se o cliente citar um aparelho, confirme compatibilidade antes de empurrar a venda.
+Mostre valor pratico: desempenho, durabilidade, facilidade de uso e seguranca.
+Compare opcoes apenas com criterios concretos.
+Evite superlativos vazios como "o melhor" sem base real.`,
+        example_conversations: `Exemplo 1
+Cliente: Esse carregador serve no iPhone 14?
+Agente: Vou confirmar a compatibilidade certinha para te orientar com seguranca. Se for compativel com o seu modelo, ja te passo tambem a potencia e a melhor opcao para nao comprar errado.
+
+Exemplo 2
+Cliente: Qual fone voce indica?
+Agente: Depende mais do seu uso do que do nome do produto. Se for para treino, trabalho ou chamadas, eu consigo te indicar a opcao com melhor encaixe no seu dia a dia e melhor custo-beneficio.`,
+      };
+    case "beauty":
+      return {
+        segment_id: "beauty",
+        segment_label: "Beleza",
+        recommendations: `Em beleza, conduza a venda como uma recomendacao personalizada.
+Leve em conta tipo de pele, cabelo, objetivo de uso, frequencia e rotina.
+Destaque beneficio percebido, sensacao de uso, textura, acabamento e encaixe na rotina.
+Nao faca promessas exageradas ou medicas sem base cadastrada.
+Quando fizer sentido, monte uma rotina simples com produto principal e complemento natural.
+Use linguagem acolhedora e segura, reduzindo a inseguranca de errar na escolha.`,
+        example_conversations: `Exemplo 1
+Cliente: Quero um creme para cabelo seco.
+Agente: Perfeito. Vou priorizar as opcoes mais indicadas para nutricao e maciez, pensando em algo que funcione bem na sua rotina e nao pese no fio. Se quiser, eu tambem posso te sugerir a melhor combinacao para potencializar o resultado.
+
+Exemplo 2
+Cliente: Esse produto e bom para pele oleosa?
+Agente: Se a proposta dele estiver alinhada com pele oleosa, eu te explico de forma bem pratica o que esperar no uso. A ideia e voce escolher algo que funcione de verdade no dia a dia, sem pesar nem deixar sensacao desconfortavel.`,
+      };
+    case "homeDecor":
+      return {
+        segment_id: "homeDecor",
+        segment_label: "Casa e Decoracao",
+        recommendations: `Em casa e decoracao, venda contexto, harmonizacao e funcionalidade.
+Destaque medidas, material, textura, cor, estilo decorativo e uso no ambiente.
+Ajude o cliente a visualizar o produto no espaco: sala, quarto, escritorio, cozinha ou varanda.
+Se houver combinacoes naturais, ofereca composicao com outro item que complete o ambiente.
+Reduza objecoes com informacoes praticas, como tamanho, manutencao, resistencia, acabamento e entrega.
+Evite descricoes vagas; seja visual e especifico.`,
+        example_conversations: `Exemplo 1
+Cliente: Esse vaso fica bom em sala?
+Agente: Fica sim, principalmente se a proposta da sua sala for mais aconchegante ou contemporanea. Ele ajuda a compor bem aparador, mesa lateral ou estante e costuma funcionar muito bem quando o cliente quer dar vida ao ambiente sem pesar.
+
+Exemplo 2
+Cliente: Estou procurando algo para meu quarto.
+Agente: Perfeito. Se voce me disser se quer algo mais clean, acolhedor ou sofisticado, eu ja te mostro as opcoes que harmonizam melhor com esse estilo e facilitam sua escolha.`,
+      };
+    case "services":
+      return {
+        segment_id: "services",
+        segment_label: "Servicos",
+        recommendations: `Em servicos, venda clareza, confianca e proximo passo.
+Descubra rapidamente a necessidade, urgencia, objetivo e contexto do cliente.
+Destaque escopo, processo, prazo, agenda, resultado esperado e como o atendimento acontece.
+Clientes de servico precisam de seguranca; deixe claro o que esta incluso e o que acontece depois.
+Conduza para agendamento, proposta, reserva ou fechamento com uma unica chamada para acao.
+Evite parecer generico; mostre entendimento real do problema do cliente.`,
+        example_conversations: `Exemplo 1
+Cliente: Queria saber como funciona o servico de voces.
+Agente: Claro! Eu consigo te explicar de forma objetiva como funciona, o que esta incluso e qual o melhor caminho para o seu caso. Se voce me disser rapidinho qual resultado busca, eu ja te direciono da forma mais assertiva.
+
+Exemplo 2
+Cliente: Queria fechar um horario.
+Agente: Perfeito. Eu posso te ajudar a avancar nisso agora. Primeiro eu confirmo a opcao ideal para sua necessidade e, em seguida, ja te conduzo para o fechamento do agendamento com o maximo de praticidade.`,
+      };
+    case "other":
+      return {
+        segment_id: "other",
+        segment_label: "Outro",
+        recommendations: `Use uma abordagem comercial consultiva e adaptavel para negocios fora dos segmentos padrao.
+Comece entendendo necessidade, prioridade, contexto de uso e urgencia.
+Fale com clareza, sem excesso de jargao e sem empurrar venda cedo demais.
+Transforme caracteristicas em beneficio pratico para o cliente.
+Quando houver mais de uma opcao, compare de forma simples e objetiva.
+Se o cliente estiver pronto para comprar, reduza friccao e conduza para o fechamento imediatamente.`,
+        example_conversations: `Exemplo 1
+Cliente: Ainda nao sei qual escolher.
+Agente: Sem problema, eu te ajudo a decidir de forma pratica. Me diz o que e mais importante para voce nessa compra e eu priorizo as opcoes que fazem mais sentido para o seu objetivo.
+
+Exemplo 2
+Cliente: Quero algo com bom custo-beneficio.
+Agente: Perfeito. Eu vou te mostrar as opcoes que equilibram melhor valor, utilidade e resultado, para voce comprar com mais seguranca e sem pagar por algo que nao vai aproveitar.`,
+      };
+    default:
+      return {
+        segment_id: "unassigned",
+        segment_label: "Nao definido",
+        recommendations: `Atenda de forma consultiva quando o segmento ainda nao estiver bem definido.
+Comece entendendo rapidamente o que o cliente procura antes de tentar vender.
+Priorize clareza: produto, preco, disponibilidade, prazo e forma de retirada ou entrega.
+Evite empurrar complemento cedo demais; primeiro confirme a necessidade principal.
+Quando nao houver item exato, ofereca alternativa proxima mantendo a necessidade central do cliente.
+Nunca invente descontos, prazos, garantias ou condicoes nao cadastradas.`,
+        example_conversations: `Exemplo 1
+Cliente: Oi, voces tem alguma opcao boa pra presente?
+Agente: Tenho sim! Me diz rapidinho para quem seria e qual faixa de valor voce quer manter, que eu ja te sugiro as melhores opcoes.
+
+Exemplo 2
+Cliente: Gostei desse produto. Como funciona?
+Agente: Fico feliz que tenha gostado! Eu posso te explicar certinho como ele funciona, confirmar disponibilidade e, se fizer sentido para voce, ja deixar separado. Quer que eu te passe os detalhes agora?`,
+      };
+  }
+}
+
+async function resolveGlobalAiBusinessProfile(rawSegment) {
+  const segment = normalizeBusinessSegmentKey(rawSegment);
+  const defaultProfile = buildDefaultAiBusinessProfile(segment);
+  const cached = aiBusinessProfileCache.get(segment);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value;
+  }
+
+  try {
+    const doc = await db.collection("platform_ai_business_profiles").doc(segment).get();
+    if (!doc.exists) {
+      aiBusinessProfileCache.set(segment, {
+        value: defaultProfile,
+        expiresAt: Date.now() + AI_BUSINESS_PROFILE_CACHE_TTL_MS,
+      });
+      return defaultProfile;
+    }
+
+    const data = doc.data() || {};
+    const mergedProfile = {
+      segment_id: segment,
+      segment_label: String(data.segment_label || defaultProfile.segment_label || "").trim(),
+      recommendations: String(data.recommendations || defaultProfile.recommendations || "").trim(),
+      example_conversations: String(
+        data.example_conversations || defaultProfile.example_conversations || "",
+      ).trim(),
+    };
+
+    aiBusinessProfileCache.set(segment, {
+      value: mergedProfile,
+      expiresAt: Date.now() + AI_BUSINESS_PROFILE_CACHE_TTL_MS,
+    });
+    return mergedProfile;
+  } catch (error) {
+    logger.warn("Falha ao carregar perfil global de IA por segmento", {
+      segment,
+      error: error.message || String(error || ""),
+    });
+    return defaultProfile;
+  }
+}
+
 function buildPlanCatalogId(plan, tier = "standard") {
   if (plan === "trial") return "trial";
   return `${plan}_${tier || "standard"}`;
@@ -751,15 +987,17 @@ function formatTenantPolicies(tenantData = {}) {
 
 async function buildTenantAiContext({ tenantId, tenantData }) {
   const webhookToken = await ensureTenantSalesWebhookToken(tenantId, tenantData);
-  const segment = BusinessSegmentLabel(tenantData.business_segment);
+  const normalizedSegment = normalizeBusinessSegmentKey(tenantData.business_segment);
+  const segment = BusinessSegmentLabel(normalizedSegment);
   const subsegment = String(tenantData.business_subsegment || "").trim();
+  const globalSegmentProfile = await resolveGlobalAiBusinessProfile(normalizedSegment);
 
   return {
     tenant_id: tenantId,
     tenant_name: String(tenantData.name || "").trim(),
     ai_agent_enabled: tenantData.ai_agent_enabled !== false,
     tenant_segment: subsegment ? `${segment} / ${subsegment}` : segment,
-    business_segment: String(tenantData.business_segment || "").trim(),
+    business_segment: normalizedSegment,
     business_subsegment: subsegment,
     business_description: String(tenantData.business_description || "").trim(),
     sales_playbook: String(tenantData.sales_playbook || "").trim(),
@@ -770,6 +1008,13 @@ async function buildTenantAiContext({ tenantId, tenantData }) {
     payment_policies: String(tenantData.payment_policies || "").trim(),
     exchange_policies: String(tenantData.exchange_policies || "").trim(),
     policies: formatTenantPolicies(tenantData),
+    global_segment_label: String(globalSegmentProfile.segment_label || segment).trim(),
+    global_segment_recommendations: String(
+      globalSegmentProfile.recommendations || "",
+    ).trim(),
+    global_segment_examples: String(
+      globalSegmentProfile.example_conversations || "",
+    ).trim(),
     sales_webhook_url: buildSalesWebhookUrl(tenantId, webhookToken),
     whatsapp_instance_id: String(
       tenantData.whatsapp_instance_id || tenantData.evolution_instance_name || "",
@@ -782,31 +1027,21 @@ async function buildTenantAiContext({ tenantId, tenantData }) {
 }
 
 function BusinessSegmentLabel(rawSegment) {
-  const normalized = String(rawSegment || "").trim().toLowerCase();
+  const normalized = normalizeBusinessSegmentKey(rawSegment);
   switch (normalized) {
     case "fashion":
-    case "moda":
-    case "roupas":
       return "Moda";
     case "food":
-    case "alimentacao":
-    case "comida":
       return "Alimentacao";
     case "electronics":
-    case "eletronicos":
       return "Eletronicos";
     case "beauty":
-    case "beleza":
       return "Beleza";
-    case "home_decor":
-    case "casa":
-    case "decoracao":
+    case "homeDecor":
       return "Casa e Decoracao";
     case "services":
-    case "servicos":
       return "Servicos";
     case "other":
-    case "outro":
       return "Outro";
     default:
       return "Nao definido";

@@ -133,5 +133,10 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow write: if isSuperAdmin();
     }
+
+    match /platform_ai_business_profiles/{profileId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
   }
 }
