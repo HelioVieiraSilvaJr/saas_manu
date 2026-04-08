@@ -6,7 +6,9 @@ Este documento resume as integracoes externas e colecoes impactadas pelos workfl
 
 - `POST /whatsapp-incoming`: entrada principal de mensagens do WhatsApp
 - `POST /mcp-firestore`: servidor MCP para ferramentas do agente
-- `POST /e56e25c6-d00e-40aa-83b6-4985aea910f1`: webhook operacional de atualizacao de status no canal
+
+Observacao:
+- a sinalizacao de status operacional do WhatsApp deixou de usar webhook publico e passou a rodar como subworkflow interno chamado pelo fluxo principal
 
 ## Servicos externos
 
@@ -69,3 +71,5 @@ Os workflows dependem fortemente destes identificadores:
 - endpoints externos hardcoded exigem revisao ao trocar dominio ou instancia do `n8n`
 - os IDs de producao dos subworkflows precisam ser mantidos sincronizados com o ambiente real do `n8n`
 - credenciais de Firestore, OpenAI, Evolution API e Postgres continuam sendo dependencia do ambiente do `n8n`
+- o fluxo principal ainda consulta clientes com `pageSize=500` e o catalogo com `pageSize=1000`, o que tende a degradar em tenants maiores
+- existe segredo sensivel da Evolution API versionado no workflow principal e isso deve ser migrado para credencial ou injecao segura de ambiente

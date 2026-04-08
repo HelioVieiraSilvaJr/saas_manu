@@ -231,10 +231,10 @@ Papel:
 - atualizar status assincro nos eventos do canal WhatsApp
 
 Entrada:
-- webhook `POST /e56e25c6-d00e-40aa-83b6-4985aea910f1`
+- chamada interna de subworkflow com `instancia`, `telefone`, `status`, `delay`, `apikey` e `server_url`
 
 Observacao:
-- o workflow principal dispara esse endpoint para sinalizacao operacional, possivelmente digitando ou gravando
+- o workflow principal dispara esse subworkflow de forma assincro para ligar o feedback antes do agente e resetar antes do envio da resposta
 
 ### `escalate-human`
 

@@ -3,23 +3,41 @@
   "nodes": [
     {
       "parameters": {
-        "httpMethod": "POST",
-        "path": "e56e25c6-d00e-40aa-83b6-4985aea910f1",
-        "options": {}
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "instancia"
+            },
+            {
+              "name": "telefone"
+            },
+            {
+              "name": "status"
+            },
+            {
+              "name": "delay"
+            },
+            {
+              "name": "apikey"
+            },
+            {
+              "name": "server_url"
+            }
+          ]
+        }
       },
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
       "position": [
         0,
         480
       ],
       "id": "25e54aa6-ac9a-49c6-9017-4b4b21237639",
-      "name": "Webhook Status WhatsApp",
-      "webhookId": "e56e25c6-d00e-40aa-83b6-4985aea910f1"
+      "name": "Workflow Trigger"
     },
     {
       "parameters": {
-        "jsCode": "const payload = $input.first().json.body ?? $input.first().json;\n\nconst normalizePhone = (value = '') => String(value).replace(/\\D/g, '');\nconst normalizeStatus = (value = '') => {\n  const status = String(value || '').trim().toLowerCase();\n\n  if (['composing', 'typing', 'digitando'].includes(status)) return 'composing';\n  if (['recording', 'gravando', 'gravando_audio', 'gravando-audio'].includes(status)) return 'recording';\n  if (['paused', 'pause', 'stop', 'reset', 'available'].includes(status)) return 'paused';\n  return 'paused';\n};\n\nconst presence = normalizeStatus(payload.status || payload.presence);\nconst isReset = presence === 'paused';\nconst rawDelay = Number(payload.delay);\nconst delay = Number.isFinite(rawDelay)\n  ? Math.max(0, rawDelay)\n  : (isReset ? 0 : 300000);\nconst serverUrl = String(payload.server_url || payload.base_url || 'https://chatwoot.htech-servidor.space').trim().replace(/\\/$/, '');\n\nreturn [{\n  json: {\n    instancia: String(payload.instancia || payload.instance || '').trim(),\n    telefone: normalizePhone(payload.telefone || payload.number || payload.phone || ''),\n    presence,\n    delay,\n    apikey: String(payload.apikey || payload.api_key || '').trim(),\n    server_url: serverUrl,\n  }\n}];"
+        "jsCode": "const payload = $input.first().json;\n\nconst normalizePhone = (value = '') => String(value).replace(/\\D/g, '');\nconst normalizeStatus = (value = '') => {\n  const status = String(value || '').trim().toLowerCase();\n\n  if (['composing', 'typing', 'digitando'].includes(status)) return 'composing';\n  if (['recording', 'gravando', 'gravando_audio', 'gravando-audio'].includes(status)) return 'recording';\n  if (['paused', 'pause', 'stop', 'reset', 'available'].includes(status)) return 'paused';\n  return 'paused';\n};\n\nconst presence = normalizeStatus(payload.status || payload.presence);\nconst isReset = presence === 'paused';\nconst rawDelay = Number(payload.delay);\nconst delay = Number.isFinite(rawDelay)\n  ? Math.max(0, rawDelay)\n  : (isReset ? 0 : 300000);\nconst serverUrl = String(payload.server_url || payload.base_url || 'https://chatwoot.htech-servidor.space').trim().replace(/\\/$/, '');\n\nreturn [{\n  json: {\n    instancia: String(payload.instancia || payload.instance || '').trim(),\n    telefone: normalizePhone(payload.telefone || payload.number || payload.phone || ''),\n    presence,\n    delay,\n    apikey: String(payload.apikey || payload.api_key || '').trim(),\n    server_url: serverUrl,\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -67,7 +85,7 @@
   ],
   "pinData": {},
   "connections": {
-    "Webhook Status WhatsApp": {
+    "Workflow Trigger": {
       "main": [
         [
           {
@@ -92,7 +110,10 @@
   },
   "active": true,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
   },
   "versionId": "d747e13e-5c67-46b0-ad1f-14ecd882e86c",
   "meta": {

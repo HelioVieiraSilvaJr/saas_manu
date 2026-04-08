@@ -947,15 +947,89 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "=https://n8n.htech-servidor.space/webhook/e56e25c6-d00e-40aa-83b6-4985aea910f1",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ instancia: $('Info').first().json['evolution-api_instancia'], telefone: $('Filtrar Mensagens').item.json.telefone, status: 'composing', delay: 300000, apikey: $('Info').first().json['EvolutionAPI-Key'], server_url: $('Info').first().json.body?.server_url || 'https://chatwoot.htech-servidor.space' }) }}",
-        "options": {}
+        "workflowId": {
+          "__rl": true,
+          "value": "dq34Nu1lmyMdp1rb",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/dq34Nu1lmyMdp1rb",
+          "cachedResultName": "Sub - Atualizar Status WhatsApp"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "instancia": "={{ $('Info').first().json['evolution-api_instancia'] }}",
+            "telefone": "={{ $('Filtrar Mensagens').item.json.telefone }}",
+            "status": "composing",
+            "delay": 300000,
+            "apikey": "={{ $('Info').first().json['EvolutionAPI-Key'] }}",
+            "server_url": "={{ $('Info').first().json.body?.server_url || 'https://chatwoot.htech-servidor.space' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "instancia",
+              "displayName": "instancia",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "delay",
+              "displayName": "delay",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "apikey",
+              "displayName": "apikey",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "server_url",
+              "displayName": "server_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
       },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
       "position": [
         -4320,
         2544
@@ -1041,15 +1115,89 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "=https://n8n.htech-servidor.space/webhook/e56e25c6-d00e-40aa-83b6-4985aea910f1",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ instancia: $('Info').first().json['evolution-api_instancia'], telefone: $('Filtrar Mensagens').item.json.telefone, status: 'recording', delay: 300000, apikey: $('Info').first().json['EvolutionAPI-Key'], server_url: $('Info').first().json.body?.server_url || 'https://chatwoot.htech-servidor.space' }) }}",
-        "options": {}
+        "workflowId": {
+          "__rl": true,
+          "value": "dq34Nu1lmyMdp1rb",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/dq34Nu1lmyMdp1rb",
+          "cachedResultName": "Sub - Atualizar Status WhatsApp"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "instancia": "={{ $('Info').first().json['evolution-api_instancia'] }}",
+            "telefone": "={{ $('Filtrar Mensagens').item.json.telefone }}",
+            "status": "recording",
+            "delay": 300000,
+            "apikey": "={{ $('Info').first().json['EvolutionAPI-Key'] }}",
+            "server_url": "={{ $('Info').first().json.body?.server_url || 'https://chatwoot.htech-servidor.space' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "instancia",
+              "displayName": "instancia",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "delay",
+              "displayName": "delay",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "apikey",
+              "displayName": "apikey",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "server_url",
+              "displayName": "server_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
       },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
       "position": [
         -4320,
         3008
@@ -1061,15 +1209,89 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "=https://n8n.htech-servidor.space/webhook/e56e25c6-d00e-40aa-83b6-4985aea910f1",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ instancia: $('Info').first().json['evolution-api_instancia'], telefone: $('Filtrar Mensagens').item.json.telefone, status: 'paused', delay: 0, apikey: $('Info').first().json['EvolutionAPI-Key'], server_url: $('Info').first().json.body?.server_url || 'https://chatwoot.htech-servidor.space' }) }}",
-        "options": {}
+        "workflowId": {
+          "__rl": true,
+          "value": "dq34Nu1lmyMdp1rb",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/dq34Nu1lmyMdp1rb",
+          "cachedResultName": "Sub - Atualizar Status WhatsApp"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "instancia": "={{ $('Info').first().json['evolution-api_instancia'] }}",
+            "telefone": "={{ $('Filtrar Mensagens').item.json.telefone }}",
+            "status": "paused",
+            "delay": 0,
+            "apikey": "={{ $('Info').first().json['EvolutionAPI-Key'] }}",
+            "server_url": "={{ $('Info').first().json.body?.server_url || 'https://chatwoot.htech-servidor.space' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "instancia",
+              "displayName": "instancia",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "telefone",
+              "displayName": "telefone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "delay",
+              "displayName": "delay",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "apikey",
+              "displayName": "apikey",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "server_url",
+              "displayName": "server_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
       },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
       "position": [
         -1888,
         2656
@@ -1841,7 +2063,18 @@
     },
     "Resetar status operacional": {
       "main": [
-        []
+        [
+          {
+            "node": "Tem imagens?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Resposta em áudio?",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Gravando async": {
@@ -1870,12 +2103,7 @@
       "main": [
         [
           {
-            "node": "Tem imagens?",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Resposta em áudio?",
+            "node": "Resetar status operacional",
             "type": "main",
             "index": 0
           }
@@ -1884,24 +2112,12 @@
     },
     "Enviar áudio": {
       "main": [
-        [
-          {
-            "node": "Resetar status operacional",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Enviar texto": {
       "main": [
-        [
-          {
-            "node": "Resetar status operacional",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Tem imagens?": {

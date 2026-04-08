@@ -83,5 +83,8 @@ O prompt do agente implementa algumas politicas importantes:
 - o workflow principal foi exportado sem `id`; o repositorio preserva o conteudo e adiciona apenas `name`
 - o subworkflow de escalacao em producao usa o ID `QvblWeXM9HTYVXDk`
 - os subworkflows de registrar venda e aviso de estoque em producao usam os IDs `Rpx4VA5kvlMPk7kd` e `47qiiS7zFoTZd3qm`
+- o subworkflow de status do WhatsApp agora deve ser chamado internamente e sem espera do resultado, para nao bloquear o atendimento principal
+- o reset de presenca precisa acontecer antes do envio de texto, audio e imagens; depois disso o envio pode seguir em paralelo
 - o fluxo de registro de venda depende da `webhook_url` oficial do tenant para reutilizar a validacao server-side do backend
 - parte do comportamento operacional depende de endpoints externos e credenciais do ambiente do `n8n`
+- existem gargalos previsiveis de escala em consultas amplas de clientes e catalogo carregadas por pagina fixa
