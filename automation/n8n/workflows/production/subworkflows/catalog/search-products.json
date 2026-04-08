@@ -17,28 +17,77 @@
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.1,
       "position": [
-        -240,
-        0
+        -720,
+        80
       ],
       "id": "772d62b2-f909-4807-9a9b-9ec0972ad52f",
       "name": "Workflow Trigger"
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $json.tenant_id }}/products?pageSize=1000",
+        "jsCode": "const rawSearchTerm = String($('Workflow Trigger').first().json.search_term || '').trim();\nconst norm = (s) => (s || '').toString().toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\nconst normalizedSearchTerm = norm(rawSearchTerm).replace(/[^a-z0-9\\s-]/g, ' ').replace(/\\s+/g, ' ').trim();\nconst searchWords = normalizedSearchTerm.split(/\\s+/).filter((word) => word.length > 1);\nconst candidateTokens = Array.from(new Set(searchWords)).slice(0, 10);\n\nreturn [{\n  json: {\n    raw_search_term: rawSearchTerm,\n    normalized_search_term: normalizedSearchTerm,\n    candidate_tokens: candidateTokens,\n    has_candidate_tokens: candidateTokens.length > 0,\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -496,
+        80
+      ],
+      "id": "4c8f1d0f-bb08-45d4-b765-ef9ba9aa1001",
+      "name": "Preparar Busca"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-candidate-tokens",
+              "leftValue": "={{ $('Preparar Busca').first().json.candidate_tokens.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -256,
+        80
+      ],
+      "id": "f78cc2ce-c6f7-4fcf-b194-a7942bc5f7d5",
+      "name": "Tem tokens candidatos?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $('Workflow Trigger').first().json.tenant_id }}:runQuery",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleFirebaseCloudFirestoreOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ structuredQuery: { from: [{ collectionId: 'products' }], where: { compositeFilter: { op: 'AND', filters: [ { fieldFilter: { field: { fieldPath: 'is_active' }, op: 'EQUAL', value: { booleanValue: true } } }, { fieldFilter: { field: { fieldPath: 'search_tokens' }, op: 'ARRAY_CONTAINS_ANY', value: { arrayValue: { values: $('Preparar Busca').first().json.candidate_tokens.map((token) => ({ stringValue: token })) } } } } ] } }, limit: 60 } }) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
         -16,
-        0
+        -32
       ],
       "id": "942eed4c-1506-49d3-9f77-2db6b543d13b",
-      "name": "Firestore - Get Products",
+      "name": "Firestore - Buscar por Tokens",
       "credentials": {
         "googleFirebaseCloudFirestoreOAuth2Api": {
           "id": "QxD9cYkBZKwyeLQL",
@@ -48,13 +97,92 @@
     },
     {
       "parameters": {
-        "jsCode": "// Busca fuzzy + retorna TODOS os resultados relevantes (com e sem estoque)\n// para que o agente possa raciocinar sobre alternativas, fotos e regras específicas por produto.\n\nconst payload = $input.first().json;\nconst docs = payload.documents || [];\nconst searchTerm = $('Workflow Trigger').first().json.search_term || '';\nconst norm = (s) => (s || '').toString().toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\nconst searchWords = norm(searchTerm).split(/\\s+/).filter(w => w.length > 1);\n\nconst sizeWords = new Set(['pp','p','m','g','gg','xg','xxg','xs','s','l','xl','xxl']);\nconst isNumericSize = (w) => /^\\d{1,3}$/.test(w);\n\nfunction parseValue(val) {\n  if (!val) return null;\n  if (val.stringValue !== undefined) return val.stringValue;\n  if (val.integerValue !== undefined) return Number(val.integerValue);\n  if (val.doubleValue !== undefined) return Number(val.doubleValue);\n  if (val.booleanValue !== undefined) return val.booleanValue;\n  if (val.timestampValue !== undefined) return val.timestampValue;\n  if (val.nullValue !== undefined) return null;\n  if (val.arrayValue) return (val.arrayValue.values || []).map(v => parseValue(v));\n  if (val.mapValue) {\n    const obj = {};\n    for (const [k, v] of Object.entries(val.mapValue.fields || {})) obj[k] = parseValue(v);\n    return obj;\n  }\n  return JSON.stringify(val);\n}\n\nconst products = docs.map((doc) => {\n  const product = { sku: doc.name?.split('/').pop() || '' };\n  for (const [key, val] of Object.entries(doc.fields || {})) {\n    product[key] = parseValue(val);\n  }\n\n  const imageUrls = Array.isArray(product.image_urls)\n    ? product.image_urls.filter(Boolean)\n    : product.image_url\n      ? [product.image_url]\n      : [];\n\n  return {\n    ...product,\n    image_urls: imageUrls,\n    image_url: imageUrls[0] || product.image_url || '',\n    ai_instructions: product.ai_instructions || ''\n  };\n}).filter((product) => product.is_active !== false);\n\nif (products.length === 0) {\n  return [{ json: { found: false, message: 'Nenhum produto encontrado.' } }];\n}\n\nif (searchWords.length === 0) {\n  const available = products.filter(p => (p.stock || 0) > 0);\n  return available.slice(0, 15).map(p => ({\n    json: {\n      found: true,\n      name: p.name,\n      color: p.color || '',\n      size: p.size || '',\n      price: p.price,\n      stock: p.stock,\n      description: p.description || '',\n      category: p.category || '',\n      ai_instructions: p.ai_instructions || '',\n      image_url: p.image_url || '',\n      image_urls: p.image_urls || []\n    }\n  }));\n}\n\nconst productWords = [];\nlet searchedSize = null;\nconst colorWords = [];\n\nconst knownColors = ['preto','branco','azul','vermelho','verde','amarelo','rosa','roxo','laranja','marrom','cinza','bege','dourado','prata','nude','caramelo','vinho','bordo','coral','lilas','turquesa','creme','grafite','off-white','offwhite'];\n\nfor (const word of searchWords) {\n  if (sizeWords.has(word) || isNumericSize(word)) {\n    searchedSize = word;\n  } else if (knownColors.includes(word)) {\n    colorWords.push(word);\n  } else {\n    productWords.push(word);\n  }\n}\n\nfunction searchable(p) {\n  const tagsStr = Array.isArray(p.tags) ? p.tags.join(' ') : (p.tags || '');\n  return norm([p.name || '', p.description || '', p.category || '', tagsStr].join(' '));\n}\n\nconst scored = products.map(p => {\n  const text = searchable(p);\n  const nameNorm = norm(p.name);\n  let score = 0;\n\n  for (const word of productWords) {\n    if (text.includes(word)) score += 10;\n    for (const w of text.split(/\\s+/)) {\n      if (w.startsWith(word) || word.startsWith(w)) score += 3;\n    }\n  }\n  if (productWords.length > 0 && nameNorm.includes(productWords.join(' '))) score += 25;\n  if (norm(p.category) === productWords.join(' ')) score += 15;\n  if (Array.isArray(p.tags) && p.tags.some(t => productWords.some(pw => norm(t).includes(pw)))) score += 10;\n\n  let colorMatch = colorWords.length === 0 ? null : false;\n  if (colorWords.length > 0 && p.color) {\n    if (colorWords.some(c => norm(p.color).includes(c))) {\n      colorMatch = true;\n      score += 15;\n    }\n  }\n\n  let sizeMatch = searchedSize === null ? null : false;\n  if (searchedSize && p.size !== undefined && p.size !== null) {\n    if (norm(String(p.size)) === searchedSize) {\n      sizeMatch = true;\n      score += 15;\n    }\n  }\n\n  return {\n    sku: p.sku,\n    name: p.name,\n    color: p.color || '',\n    size: p.size !== undefined ? p.size : '',\n    price: p.price,\n    stock: p.stock || 0,\n    description: p.description || '',\n    category: p.category || '',\n    ai_instructions: p.ai_instructions || '',\n    image_url: p.image_url || '',\n    image_urls: p.image_urls || [],\n    _score: score,\n    _colorMatch: colorMatch,\n    _sizeMatch: sizeMatch,\n    _inStock: (p.stock || 0) > 0\n  };\n});\n\nconst relevant = scored.filter(p => p._score > 0).sort((a, b) => b._score - a._score);\n\nif (relevant.length === 0) {\n  return [{ json: { found: false, message: 'Nenhum produto encontrado para: ' + searchTerm } }];\n}\n\nconst exact = relevant.filter(p => \n  p._inStock && \n  (p._colorMatch === null || p._colorMatch === true) && \n  (p._sizeMatch === null || p._sizeMatch === true)\n);\n\nconst sameProductDiffColor = relevant.filter(p => \n  p._inStock && \n  p._colorMatch === false && \n  (p._sizeMatch === null || p._sizeMatch === true)\n);\n\nconst sameProductDiffSize = relevant.filter(p => \n  p._inStock && \n  (p._colorMatch === null || p._colorMatch === true) && \n  p._sizeMatch === false\n);\n\nconst outOfStock = relevant.filter(p => \n  !p._inStock && \n  (p._colorMatch === null || p._colorMatch === true) && \n  (p._sizeMatch === null || p._sizeMatch === true)\n);\n\nconst stripInternal = ({ _score, _colorMatch, _sizeMatch, _inStock, ...product }) => product;\nconst result = { found: true };\n\nif (exact.length > 0) {\n  result.exact_matches = exact.slice(0, 5).map(stripInternal);\n}\nif (sameProductDiffColor.length > 0) {\n  result.alternative_colors = sameProductDiffColor.slice(0, 5).map(stripInternal);\n}\nif (sameProductDiffSize.length > 0) {\n  result.alternative_sizes = sameProductDiffSize.slice(0, 5).map(stripInternal);\n}\nif (outOfStock.length > 0) {\n  result.out_of_stock = outOfStock.slice(0, 3).map(stripInternal);\n}\n\nif (!result.exact_matches && !result.alternative_colors && !result.alternative_sizes) {\n  result.found = false;\n  result.message = 'Produto não encontrado com essas especificações.';\n  if (outOfStock.length > 0) result.message += ' Estava no catálogo mas zerou o estoque.';\n}\n\nreturn [{ json: result }];\n"
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "token-results-found",
+              "leftValue": "={{ $input.all().filter((item) => item.json && item.json.document).length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        -32
+      ],
+      "id": "7d3e938b-1843-4d73-a6b6-92df0658d2e3",
+      "name": "Tem resultados por token?"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $('Workflow Trigger').first().json.tenant_id }}/products?pageSize=300",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleFirebaseCloudFirestoreOAuth2Api",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        464,
+        144
+      ],
+      "id": "f3b0f1a2-80d8-4659-bb0d-7dfc6f616f8e",
+      "name": "Firestore - Fallback Legado",
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "QxD9cYkBZKwyeLQL",
+          "name": "Saas Manu - Firestore OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $('Workflow Trigger').first().json.tenant_id }}/products?pageSize=60",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleFirebaseCloudFirestoreOAuth2Api",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -16,
+        192
+      ],
+      "id": "7f1bc7c4-4d2c-4d90-b7d2-a64e4e964d60",
+      "name": "Firestore - Lista Curta Ativa",
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "QxD9cYkBZKwyeLQL",
+          "name": "Saas Manu - Firestore OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Busca fuzzy com pré-filtro por search_tokens.\n// Mantém fallback legado enquanto a base é retroalimentada com os novos campos.\n\nconst inputItems = $input.all().map((item) => item.json || {});\nconst docs = [];\nfor (const entry of inputItems) {\n  if (entry.document) {\n    docs.push(entry.document);\n    continue;\n  }\n  if (Array.isArray(entry.documents)) {\n    docs.push(...entry.documents);\n  }\n}\n\nconst searchTerm = $('Workflow Trigger').first().json.search_term || '';\nconst norm = (s) => (s || '').toString().toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\nconst searchWords = norm(searchTerm).split(/\\s+/).filter((w) => w.length > 1);\n\nconst sizeWords = new Set(['pp', 'p', 'm', 'g', 'gg', 'xg', 'xxg', 'xs', 's', 'l', 'xl', 'xxl']);\nconst isNumericSize = (w) => /^\\d{1,3}$/.test(w);\n\nfunction parseValue(val) {\n  if (!val) return null;\n  if (val.stringValue !== undefined) return val.stringValue;\n  if (val.integerValue !== undefined) return Number(val.integerValue);\n  if (val.doubleValue !== undefined) return Number(val.doubleValue);\n  if (val.booleanValue !== undefined) return val.booleanValue;\n  if (val.timestampValue !== undefined) return val.timestampValue;\n  if (val.nullValue !== undefined) return null;\n  if (val.arrayValue) return (val.arrayValue.values || []).map((value) => parseValue(value));\n  if (val.mapValue) {\n    const obj = {};\n    for (const [key, value] of Object.entries(val.mapValue.fields || {})) obj[key] = parseValue(value);\n    return obj;\n  }\n  return JSON.stringify(val);\n}\n\nconst products = docs.map((doc) => {\n  const product = { sku: doc.name?.split('/').pop() || '' };\n  for (const [key, val] of Object.entries(doc.fields || {})) {\n    product[key] = parseValue(val);\n  }\n\n  const imageUrls = Array.isArray(product.image_urls)\n    ? product.image_urls.filter(Boolean)\n    : product.image_url\n      ? [product.image_url]\n      : [];\n\n  return {\n    ...product,\n    image_urls: imageUrls,\n    image_url: imageUrls[0] || product.image_url || '',\n    ai_instructions: product.ai_instructions || '',\n  };\n}).filter((product) => product.is_active !== false);\n\nif (products.length === 0) {\n  return [{ json: { found: false, message: 'Nenhum produto encontrado.' } }];\n}\n\nif (searchWords.length === 0) {\n  const available = products.filter((product) => (product.stock || 0) > 0);\n  return available.slice(0, 15).map((product) => ({\n    json: {\n      found: true,\n      name: product.name,\n      color: product.color || '',\n      size: product.size || '',\n      price: product.price,\n      stock: product.stock,\n      description: product.description || '',\n      category: product.category || '',\n      ai_instructions: product.ai_instructions || '',\n      image_url: product.image_url || '',\n      image_urls: product.image_urls || [],\n    }\n  }));\n}\n\nconst productWords = [];\nlet searchedSize = null;\nconst colorWords = [];\n\nconst knownColors = ['preto', 'branco', 'azul', 'vermelho', 'verde', 'amarelo', 'rosa', 'roxo', 'laranja', 'marrom', 'cinza', 'bege', 'dourado', 'prata', 'nude', 'caramelo', 'vinho', 'bordo', 'coral', 'lilas', 'turquesa', 'creme', 'grafite', 'off-white', 'offwhite'];\n\nfor (const word of searchWords) {\n  if (sizeWords.has(word) || isNumericSize(word)) {\n    searchedSize = word;\n  } else if (knownColors.includes(word)) {\n    colorWords.push(word);\n  } else {\n    productWords.push(word);\n  }\n}\n\nfunction searchable(product) {\n  const tagsStr = Array.isArray(product.tags) ? product.tags.join(' ') : (product.tags || '');\n  const indexed = Array.isArray(product.search_tokens) ? product.search_tokens.join(' ') : (product.search_text || '');\n  return norm([product.name || '', product.description || '', product.category || '', tagsStr, indexed].join(' '));\n}\n\nconst scored = products.map((product) => {\n  const text = searchable(product);\n  const nameNorm = norm(product.name);\n  let score = 0;\n\n  for (const word of productWords) {\n    if (text.includes(word)) score += 10;\n    for (const textWord of text.split(/\\s+/)) {\n      if (textWord.startsWith(word) || word.startsWith(textWord)) score += 3;\n    }\n  }\n  if (productWords.length > 0 && nameNorm.includes(productWords.join(' '))) score += 25;\n  if (norm(product.category) === productWords.join(' ')) score += 15;\n  if (Array.isArray(product.tags) && product.tags.some((tag) => productWords.some((productWord) => norm(tag).includes(productWord)))) score += 10;\n\n  let colorMatch = colorWords.length === 0 ? null : false;\n  if (colorWords.length > 0 && product.color) {\n    if (colorWords.some((color) => norm(product.color).includes(color))) {\n      colorMatch = true;\n      score += 15;\n    }\n  }\n\n  let sizeMatch = searchedSize === null ? null : false;\n  if (searchedSize && product.size !== undefined && product.size !== null) {\n    if (norm(String(product.size)) === searchedSize) {\n      sizeMatch = true;\n      score += 15;\n    }\n  }\n\n  return {\n    sku: product.sku,\n    name: product.name,\n    color: product.color || '',\n    size: product.size !== undefined ? product.size : '',\n    price: product.price,\n    stock: product.stock || 0,\n    description: product.description || '',\n    category: product.category || '',\n    ai_instructions: product.ai_instructions || '',\n    image_url: product.image_url || '',\n    image_urls: product.image_urls || [],\n    _score: score,\n    _colorMatch: colorMatch,\n    _sizeMatch: sizeMatch,\n    _inStock: (product.stock || 0) > 0,\n  };\n});\n\nconst relevant = scored.filter((product) => product._score > 0).sort((a, b) => b._score - a._score);\n\nif (relevant.length === 0) {\n  return [{ json: { found: false, message: 'Nenhum produto encontrado para: ' + searchTerm } }];\n}\n\nconst exact = relevant.filter((product) =>\n  product._inStock &&\n  (product._colorMatch === null || product._colorMatch === true) &&\n  (product._sizeMatch === null || product._sizeMatch === true)\n);\n\nconst sameProductDiffColor = relevant.filter((product) =>\n  product._inStock &&\n  product._colorMatch === false &&\n  (product._sizeMatch === null || product._sizeMatch === true)\n);\n\nconst sameProductDiffSize = relevant.filter((product) =>\n  product._inStock &&\n  (product._colorMatch === null || product._colorMatch === true) &&\n  product._sizeMatch === false\n);\n\nconst outOfStock = relevant.filter((product) =>\n  !product._inStock &&\n  (product._colorMatch === null || product._colorMatch === true) &&\n  (product._sizeMatch === null || product._sizeMatch === true)\n);\n\nconst stripInternal = ({ _score, _colorMatch, _sizeMatch, _inStock, ...product }) => product;\nconst result = { found: true };\n\nif (exact.length > 0) {\n  result.exact_matches = exact.slice(0, 5).map(stripInternal);\n}\nif (sameProductDiffColor.length > 0) {\n  result.alternative_colors = sameProductDiffColor.slice(0, 5).map(stripInternal);\n}\nif (sameProductDiffSize.length > 0) {\n  result.alternative_sizes = sameProductDiffSize.slice(0, 5).map(stripInternal);\n}\nif (outOfStock.length > 0) {\n  result.out_of_stock = outOfStock.slice(0, 3).map(stripInternal);\n}\n\nif (!result.exact_matches && !result.alternative_colors && !result.alternative_sizes) {\n  result.found = false;\n  result.message = 'Produto não encontrado com essas especificações.';\n  if (outOfStock.length > 0) result.message += ' Estava no catálogo mas zerou o estoque.';\n}\n\nreturn [{ json: result }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        240,
-        0
+        736,
+        80
       ],
       "id": "a8b53d9f-6e39-4ca0-9f77-d292f3381933",
       "name": "Filtrar por Relevância"
@@ -66,14 +194,83 @@
       "main": [
         [
           {
-            "node": "Firestore - Get Products",
+            "node": "Preparar Busca",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Firestore - Get Products": {
+    "Preparar Busca": {
+      "main": [
+        [
+          {
+            "node": "Tem tokens candidatos?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem tokens candidatos?": {
+      "main": [
+        [
+          {
+            "node": "Firestore - Buscar por Tokens",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Firestore - Lista Curta Ativa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Firestore - Buscar por Tokens": {
+      "main": [
+        [
+          {
+            "node": "Tem resultados por token?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem resultados por token?": {
+      "main": [
+        [
+          {
+            "node": "Filtrar por Relevância",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Firestore - Fallback Legado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Firestore - Fallback Legado": {
+      "main": [
+        [
+          {
+            "node": "Filtrar por Relevância",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Firestore - Lista Curta Ativa": {
       "main": [
         [
           {

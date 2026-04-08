@@ -71,5 +71,5 @@ Os workflows dependem fortemente destes identificadores:
 - endpoints externos hardcoded exigem revisao ao trocar dominio ou instancia do `n8n`
 - os IDs de producao dos subworkflows precisam ser mantidos sincronizados com o ambiente real do `n8n`
 - credenciais de Firestore, OpenAI, Evolution API e Postgres continuam sendo dependencia do ambiente do `n8n`
-- o fluxo principal ainda consulta clientes com `pageSize=500` e o catalogo com `pageSize=1000`, o que tende a degradar em tenants maiores
+- o catalogo passou a depender de `search_tokens` e `search_text`; enquanto o backfill nao termina, ainda existe fallback legado mais custoso para alguns produtos antigos
 - existe segredo sensivel da Evolution API versionado no workflow principal e isso deve ser migrado para credencial ou injecao segura de ambiente

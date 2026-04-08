@@ -92,7 +92,8 @@ Entradas:
 - `search_term`
 
 Efeitos:
-- consulta produtos no Firestore
+- consulta candidatos no Firestore com pre-filtro por `search_tokens`
+- usa fallback legado de leitura mais ampla apenas quando ainda nao ha candidatos tokenizados
 - filtra inativos
 - aplica match por nome, descricao, categoria, tags, cor e tamanho
 
@@ -106,6 +107,7 @@ Retorno esperado:
 
 Observacao:
 - o algoritmo foi desenhado para dar contexto suficiente para o agente sugerir alternativas sem inventar disponibilidade
+- produtos novos e atualizados passam a gravar `search_tokens` e `search_text` no app para reduzir custo da consulta
 
 ### `register-stock-alert`
 

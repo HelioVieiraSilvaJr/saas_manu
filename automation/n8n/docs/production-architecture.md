@@ -87,4 +87,4 @@ O prompt do agente implementa algumas politicas importantes:
 - o reset de presenca precisa acontecer antes do envio de texto, audio e imagens; depois disso o envio pode seguir em paralelo
 - o fluxo de registro de venda depende da `webhook_url` oficial do tenant para reutilizar a validacao server-side do backend
 - parte do comportamento operacional depende de endpoints externos e credenciais do ambiente do `n8n`
-- existem gargalos previsiveis de escala em consultas amplas de clientes e catalogo carregadas por pagina fixa
+- a busca de catalogo agora depende da retroalimentacao de `search_tokens`; enquanto o backfill nao for concluido, o fallback legado ainda pode custar mais em alguns tenants
