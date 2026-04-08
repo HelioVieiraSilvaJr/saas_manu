@@ -88,3 +88,4 @@ O prompt do agente implementa algumas politicas importantes:
 - o fluxo de registro de venda depende da `webhook_url` oficial do tenant para reutilizar a validacao server-side do backend
 - parte do comportamento operacional depende de endpoints externos e credenciais do ambiente do `n8n`
 - a busca de catalogo agora depende da retroalimentacao de `search_tokens`; enquanto o backfill nao for concluido, o fallback legado ainda pode custar mais em alguns tenants
+- existe um helper de sincronizacao em `automation/n8n/scripts/sync_workflow.sh` para comparar e publicar workflows especificos com `dry-run` por padrao

@@ -63,6 +63,23 @@ production/
 4. Importar `entrypoints/whatsapp-sales-agent.json`.
 5. Testar webhook, MCP e credenciais antes de publicar.
 
+## Rollout via API
+
+Para sincronizar com o ambiente remoto de forma previsivel, use o helper:
+
+```bash
+automation/n8n/scripts/sync_workflow.sh main
+automation/n8n/scripts/sync_workflow.sh search-products
+automation/n8n/scripts/sync_workflow.sh update-whatsapp-status
+```
+
+Observacoes:
+
+- o script roda em `dry-run` por padrao e apenas compara local x remoto
+- para publicar, use `--apply --allow-active`
+- o payload preserva `staticData`, `pinData` e `versionId` do workflow remoto
+- o ideal e publicar primeiro os subworkflows, validar, e so depois publicar o workflow principal
+
 ## Observacoes
 
 - O arquivo `entrypoints/whatsapp-sales-agent.json` veio sem `name` e sem `id` no export original; o `name` foi preenchido no repositorio para facilitar manutencao.
