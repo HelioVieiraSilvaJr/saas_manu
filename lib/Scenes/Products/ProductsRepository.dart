@@ -35,6 +35,72 @@ class ProductsRepository {
   CollectionReference get _collection =>
       _firestore.collection('tenants').doc(_tenantId).collection('products');
 
+  static String _normalizeSearchText(String value) {
+    const accentsIn = 'áàâãäéèêëíìîïóòôõöúùûüçÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇ';
+    const accentsOut = 'aaaaaeeeeiiiiooooouuuucAAAAAEEEEIIIIOOOOOUUUUC';
+
+    final buffer = StringBuffer();
+    for (final rune in value.trim().toLowerCase().runes) {
+      final char = String.fromCharCode(rune);
+      final accentIndex = accentsIn.indexOf(char);
+      buffer.write(accentIndex >= 0 ? accentsOut[accentIndex] : char);
+    }
+
+    return buffer
+        .toString()
+        .replaceAll(RegExp(r'[^a-z0-9\s-]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  static List<String> _buildSearchTokens(ProductModel product) {
+    final sources = <String>[
+      product.name,
+      product.sku,
+      product.category ?? '',
+      product.color ?? '',
+      product.size ?? '',
+      product.description ?? '',
+      ...product.tags,
+    ];
+
+    final tokens = <String>{};
+    for (final source in sources) {
+      final normalized = _normalizeSearchText(source);
+      if (normalized.isEmpty) continue;
+
+      for (final token in normalized.split(' ')) {
+        if (token.length >= 2) {
+          tokens.add(token);
+        }
+      }
+
+      tokens.add(normalized);
+    }
+
+    return tokens.toList()..sort();
+  }
+
+  static Map<String, dynamic> _withSearchFields(
+    ProductModel product,
+    Map<String, dynamic> data,
+  ) {
+    final searchTokens = _buildSearchTokens(product);
+    final searchText = _normalizeSearchText(
+      [
+        product.name,
+        product.sku,
+        product.category ?? '',
+        product.color ?? '',
+        product.size ?? '',
+        product.description ?? '',
+        ...product.tags,
+      ].join(' '),
+    );
+
+    return {...data, 'search_tokens': searchTokens, 'search_text': searchText};
+  }
+
   // MARK: - CRUD
 
   /// Busca todos os produtos. Usa cache se fresco.
@@ -88,7 +154,9 @@ class ProductsRepository {
   /// Cria um novo produto.
   Future<String?> create(ProductModel product) async {
     try {
-      final docRef = await _collection.add(product.toMap());
+      final docRef = await _collection.add(
+        _withSearchFields(product, product.toMap()),
+      );
       if (productsCache.hasData) {
         productsCache.add(product.copyWith(uid: docRef.id));
       }
@@ -103,7 +171,7 @@ class ProductsRepository {
   /// Atualiza um produto existente.
   Future<bool> update(ProductModel product) async {
     try {
-      final data = product.toMap();
+      final data = _withSearchFields(product, product.toMap());
       data['updated_at'] = Timestamp.fromDate(DateTime.now());
       await _collection.doc(product.uid).update(data);
       if (productsCache.hasData) {

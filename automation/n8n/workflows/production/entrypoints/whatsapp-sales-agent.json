@@ -17,7 +17,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const body = $input.first().json.body ?? $input.first().json;\nconst info = $('Info').first().json;\nconst normalizePhone = (value = '') => String(value).replace(/\\D/g, '');\n\n// Ignora se não for mensagem válida\nif (!body.data || !body.data.message) {\n  return [];\n}\n\nconst message = body.data;\nconst isFromMe = message.key?.fromMe === true;\nconst isGroup = message.key?.remoteJid?.includes('@g.us');\nconst isStatus = message.key?.remoteJid === 'status@broadcast';\n\nif (isFromMe || isGroup || isStatus) {\n  return [];\n}\n\n// Extrai dados relevantes\nconst telefone = normalizePhone(message.key?.remoteJid || '');\nconst messageType = message.messageType || '';\nconst isAudio = messageType === 'audioMessage';\nconst texto = message.message?.conversation\n  || message.message?.extendedTextMessage?.text\n  || '';\nconst pushName = message.pushName || '';\nconst tenantId = String(info.tenant_id || '').trim();\nconst whitelistEnabled = info.test_sender_whitelist_enabled === true;\nconst whitelistTenantIds = String(info.test_sender_whitelist_tenant_ids || '')\n  .split(',')\n  .map((item) => String(item || '').trim())\n  .filter(Boolean);\nconst whitelistAppliesToThisTenant = whitelistEnabled\n  && tenantId\n  && whitelistTenantIds.includes(tenantId);\nconst whitelist = String(info.test_sender_whitelist_numbers || '')\n  .split(',')\n  .map((item) => normalizePhone(item))\n  .filter(Boolean);\n\nif (whitelistAppliesToThisTenant && !whitelist.includes(telefone)) {\n  return [];\n}\n\n// Permite áudio mesmo sem texto\nif (!texto.trim() && !isAudio) {\n  return [];\n}\n\nreturn [{\n  json: {\n    telefone,\n    texto,\n    pushName,\n    messageId: message.key.id,\n    messageType,\n    timestamp: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const body = $input.first().json.body ?? $input.first().json;\nconst info = $('Info').first().json;\nconst normalizePhone = (value = '') => String(value).replace(/\\D/g, '');\n\n// Ignora se não for mensagem válida\nif (!body.data || !body.data.message) {\n  return [];\n}\n\nconst message = body.data;\nconst isFromMe = message.key?.fromMe === true;\nconst isGroup = message.key?.remoteJid?.includes('@g.us');\nconst isStatus = message.key?.remoteJid === 'status@broadcast';\n\nif (isFromMe || isGroup || isStatus) {\n  return [];\n}\n\n// Extrai dados relevantes\nconst telefone = normalizePhone(message.key?.remoteJid || '');\nconst messageType = message.messageType || '';\nconst isAudio = messageType === 'audioMessage';\nconst texto = message.message?.conversation\n  || message.message?.extendedTextMessage?.text\n  || '';\nconst pushName = message.pushName || '';\nconst tenantId = String(info.tenant_id || '').trim();\nconst whitelistEnabled = info.test_sender_whitelist_enabled === true;\nlet whitelistAppliesToThisTenant = false;\nlet whitelist = [];\n\nif (whitelistEnabled && tenantId) {\n  const whitelistTenantIds = String(info.test_sender_whitelist_tenant_ids || '')\n    .split(',')\n    .map((item) => String(item || '').trim())\n    .filter(Boolean);\n\n  whitelistAppliesToThisTenant = whitelistTenantIds.includes(tenantId);\n\n  if (whitelistAppliesToThisTenant) {\n    whitelist = String(info.test_sender_whitelist_numbers || '')\n      .split(',')\n      .map((item) => normalizePhone(item))\n      .filter(Boolean);\n  }\n}\n\nif (whitelistAppliesToThisTenant && !whitelist.includes(telefone)) {\n  return [];\n}\n\n// Permite áudio mesmo sem texto\nif (!texto.trim() && !isAudio) {\n  return [];\n}\n\nreturn [{\n  json: {\n    telefone,\n    texto,\n    pushName,\n    messageId: message.key.id,\n    messageType,\n    timestamp: new Date().toISOString()\n  }\n}];"
       },
       "id": "4a6529d5-bae0-493f-b7ba-1c57ede069e4",
       "name": "Filtrar Mensagens",
@@ -247,7 +247,7 @@
             {
               "id": "0032e2de-027a-49b9-981d-fcd6850a896d",
               "name": "EvolutionAPI-Key",
-              "value": "ZehoPdTXWqhdf46u8xX3R5xery6lPTaV",
+              "value": "={{ $json.body?.tenantContext?.evolution_api_key || $json.tenantContext?.evolution_api_key || $json.body?.apiKey || $json.apiKey || $json.body?.apikey || $json.apikey || '' }}",
               "type": "string"
             },
             {
@@ -380,9 +380,13 @@
     },
     {
       "parameters": {
-        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $('Info').item.json.tenant_id }}/customers?pageSize=500",
+        "method": "POST",
+        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $('Info').item.json.tenant_id }}:runQuery",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleFirebaseCloudFirestoreOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"structuredQuery\": {\n    \"from\": [{ \"collectionId\": \"customers\" }],\n    \"where\": {\n      \"compositeFilter\": {\n        \"op\": \"OR\",\n        \"filters\": [\n          {\n            \"fieldFilter\": {\n              \"field\": { \"fieldPath\": \"whatsapp_normalized\" },\n              \"op\": \"EQUAL\",\n              \"value\": { \"stringValue\": \"{{ $('Filtrar Mensagens').item.json.telefone }}\" }\n            }\n          },\n          {\n            \"fieldFilter\": {\n              \"field\": { \"fieldPath\": \"phone_normalized\" },\n              \"op\": \"EQUAL\",\n              \"value\": { \"stringValue\": \"{{ $('Filtrar Mensagens').item.json.telefone }}\" }\n            }\n          },\n          {\n            \"fieldFilter\": {\n              \"field\": { \"fieldPath\": \"whatsapp\" },\n              \"op\": \"EQUAL\",\n              \"value\": { \"stringValue\": \"{{ $('Filtrar Mensagens').item.json.telefone }}\" }\n            }\n          },\n          {\n            \"fieldFilter\": {\n              \"field\": { \"fieldPath\": \"phone\" },\n              \"op\": \"EQUAL\",\n              \"value\": { \"stringValue\": \"{{ $('Filtrar Mensagens').item.json.telefone }}\" }\n            }\n          }\n        ]\n      }\n    },\n    \"limit\": 5\n  }\n}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -419,8 +423,8 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $('Info').item.json.tenant_id }}/customers",
+        "method": "PATCH",
+        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $('Info').item.json.tenant_id }}/customers/{{ $('Filtrar Mensagens').item.json.telefone }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleFirebaseCloudFirestoreOAuth2Api",
         "sendHeaders": true,
@@ -434,7 +438,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"fields\": {\n    \"name\": { \"stringValue\": \"{{ $('Filtrar Mensagens').item.json.pushName || $('Filtrar Mensagens').item.json.telefone }}\" },\n    \"phone\": { \"stringValue\": \"{{ $('Filtrar Mensagens').item.json.telefone }}\" },\n    \"whatsapp\": { \"stringValue\": \"{{ $('Filtrar Mensagens').item.json.telefone }}\" },\n    \"email\": { \"stringValue\": \"\" },\n    \"address\": { \"stringValue\": \"\" },\n    \"is_active\": { \"booleanValue\": true },\n    \"agent_off\": { \"booleanValue\": false },\n    \"created_at\": { \"timestampValue\": \"{{ $now.toISO() }}\" },\n    \"updated_at\": { \"timestampValue\": \"{{ $now.toISO() }}\" }\n  }\n}\n",
+        "jsonBody": "={\n  \"fields\": {\n    \"name\": { \"stringValue\": \"{{ $('Filtrar Mensagens').item.json.pushName || $('Filtrar Mensagens').item.json.telefone }}\" },\n    \"phone\": { \"stringValue\": \"{{ $('Filtrar Mensagens').item.json.telefone }}\" },\n    \"whatsapp\": { \"stringValue\": \"{{ $('Filtrar Mensagens').item.json.telefone }}\" },\n    \"phone_normalized\": { \"stringValue\": \"{{ $('Filtrar Mensagens').item.json.telefone }}\" },\n    \"whatsapp_normalized\": { \"stringValue\": \"{{ $('Filtrar Mensagens').item.json.telefone }}\" },\n    \"phone_lookup_key\": { \"stringValue\": \"{{ $('Filtrar Mensagens').item.json.telefone }}\" },\n    \"email\": { \"stringValue\": \"\" },\n    \"address\": { \"stringValue\": \"\" },\n    \"is_active\": { \"booleanValue\": true },\n    \"agent_off\": { \"booleanValue\": false },\n    \"created_at\": { \"timestampValue\": \"{{ $now.toISO() }}\" },\n    \"updated_at\": { \"timestampValue\": \"{{ $now.toISO() }}\" }\n  }\n}\n",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -489,7 +493,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const normalizePhone = (value = '') => String(value).replace(/\\D/g, '');\nconst docs = $input.first().json.documents || [];\nconst targetPhone = normalizePhone($('Filtrar Mensagens').first().json.telefone || '');\n\nconst parseField = (field) => {\n  if (!field || typeof field !== 'object') return field;\n\n  const valueKey = Object.keys(field).find((key) => key.endsWith('Value'));\n  if (valueKey) return field[valueKey];\n\n  if (field.mapValue) {\n    const mapFields = field.mapValue.fields || {};\n    const obj = {};\n    for (const [key, value] of Object.entries(mapFields)) {\n      obj[key] = parseField(value);\n    }\n    return obj;\n  }\n\n  if (field.arrayValue) {\n    const values = field.arrayValue.values || [];\n    return values.map(parseField);\n  }\n\n  return field;\n};\n\nfor (const doc of docs) {\n  const parsedData = {};\n  for (const [key, value] of Object.entries(doc.fields || {})) {\n    parsedData[key] = parseField(value);\n  }\n\n  const docPhone = normalizePhone(parsedData.whatsapp || parsedData.phone || '');\n  if (!docPhone || docPhone !== targetPhone) {\n    continue;\n  }\n\n  return [{\n    json: {\n      id: doc.name?.split('/').pop() || null,\n      ...parsedData\n    }\n  }];\n}\n\nreturn [{ json: {} }];\n"
+        "jsCode": "const normalizePhone = (value = '') => String(value).replace(/\\D/g, '');\nconst docs = $input.all().map((item) => item.json?.document).filter(Boolean);\nconst targetPhone = normalizePhone($('Filtrar Mensagens').first().json.telefone || '');\n\nconst parseField = (field) => {\n  if (!field || typeof field !== 'object') return field;\n\n  const valueKey = Object.keys(field).find((key) => key.endsWith('Value'));\n  if (valueKey) return field[valueKey];\n\n  if (field.mapValue) {\n    const mapFields = field.mapValue.fields || {};\n    const obj = {};\n    for (const [key, value] of Object.entries(mapFields)) {\n      obj[key] = parseField(value);\n    }\n    return obj;\n  }\n\n  if (field.arrayValue) {\n    const values = field.arrayValue.values || [];\n    return values.map(parseField);\n  }\n\n  return field;\n};\n\nconst parsedDocs = docs.map((doc) => {\n  const parsedData = {};\n  for (const [key, value] of Object.entries(doc.fields || {})) {\n    parsedData[key] = parseField(value);\n  }\n\n  return {\n    id: doc.name?.split('/').pop() || null,\n    ...parsedData,\n  };\n}).filter((doc) => {\n  const docPhone = normalizePhone(\n    doc.whatsapp_normalized\n      || doc.phone_normalized\n      || doc.whatsapp\n      || doc.phone\n      || '',\n  );\n  return Boolean(docPhone) && docPhone === targetPhone;\n}).sort((a, b) => {\n  const tsA = String(a.updated_at || a.created_at || '');\n  const tsB = String(b.updated_at || b.created_at || '');\n  return tsB.localeCompare(tsA);\n});\n\nif (parsedDocs.length > 0) {\n  return [{ json: parsedDocs[0] }];\n}\n\nreturn [{ json: {} }];\n"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,

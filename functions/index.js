@@ -1016,6 +1016,8 @@ async function buildTenantAiContext({ tenantId, tenantData }) {
       globalSegmentProfile.example_conversations || "",
     ).trim(),
     sales_webhook_url: buildSalesWebhookUrl(tenantId, webhookToken),
+    evolution_api_url: sanitizeUrl(tenantData.evolution_api_url),
+    evolution_api_key: String(tenantData.evolution_api_key || "").trim(),
     whatsapp_instance_id: String(
       tenantData.whatsapp_instance_id || tenantData.evolution_instance_name || "",
     ).trim(),
