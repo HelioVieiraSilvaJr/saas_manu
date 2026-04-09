@@ -13,7 +13,7 @@ import '../Widgets/EscalationCard.dart';
 class EscalationsMobileView extends StatelessWidget {
   final EscalationsPresenter presenter;
   final TextEditingController searchController;
-  final void Function(String escalationId) onAssume;
+  final void Function(String escalationId, String customerId) onAssume;
   final void Function(String escalationId, String customerId) onComplete;
   final void Function(EscalationTab tab) onTabChange;
 
@@ -228,7 +228,7 @@ class EscalationsMobileView extends StatelessWidget {
             escalation: escalation,
             isActionInProgress: vm.actionInProgressId == escalation.uid,
             onAssume: escalation.isPending
-                ? () => onAssume(escalation.uid)
+                ? () => onAssume(escalation.uid, escalation.customerId)
                 : null,
             onComplete: () => onComplete(escalation.uid, escalation.customerId),
             onWhatsApp: () => _openWhatsApp(escalation.customerWhatsapp),

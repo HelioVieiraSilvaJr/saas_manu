@@ -138,10 +138,10 @@ jq -n \
     name: ($local[0].name // $remote[0].name),
     nodes: ($local[0].nodes // $remote[0].nodes),
     connections: ($local[0].connections // $remote[0].connections),
-    settings: ($local[0].settings // $remote[0].settings // {}),
-    pinData: ($local[0].pinData // $remote[0].pinData // {}),
-    staticData: ($remote[0].staticData // {}),
-    versionId: ($remote[0].versionId // null)
+    settings: (($local[0].settings // $remote[0].settings // {}) | {
+      executionOrder,
+      callerPolicy
+    } | with_entries(select(.value != null))),
   } | with_entries(select(.value != null))' > "${PAYLOAD_FILE}"
 
 jq -n \
@@ -150,10 +150,10 @@ jq -n \
     name: ($remote[0].name),
     nodes: ($remote[0].nodes),
     connections: ($remote[0].connections),
-    settings: ($remote[0].settings // {}),
-    pinData: ($remote[0].pinData // {}),
-    staticData: ($remote[0].staticData // {}),
-    versionId: ($remote[0].versionId // null)
+    settings: (($remote[0].settings // {}) | {
+      executionOrder,
+      callerPolicy
+    } | with_entries(select(.value != null)))
   } | with_entries(select(.value != null))' > "${REMOTE_NORMALIZED_FILE}"
 
 REMOTE_NAME="$(jq -r '.name' "${REMOTE_FILE}")"

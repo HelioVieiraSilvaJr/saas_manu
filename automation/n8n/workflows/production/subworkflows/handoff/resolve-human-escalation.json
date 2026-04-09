@@ -1,0 +1,267 @@
+{
+  "name": "Sub - Resolver Escalacao Humana",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "tenant_id"
+            },
+            {
+              "name": "customer_id"
+            },
+            {
+              "name": "resolution_summary"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1440,
+        0
+      ],
+      "id": "b1c2d3e4-0001-4000-8000-000000000001",
+      "name": "Workflow Trigger"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $('Workflow Trigger').first().json.tenant_id }}/customers/{{ $('Workflow Trigger').first().json.customer_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleFirebaseCloudFirestoreOAuth2Api",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1200,
+        0
+      ],
+      "id": "b1c2d3e4-0002-4000-8000-000000000002",
+      "name": "Buscar Cliente",
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "QxD9cYkBZKwyeLQL",
+          "name": "Saas Manu - Firestore OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $('Buscar Cliente').first().json || {};\nconst fields = payload.fields || {};\n\nconst parseField = (field) => {\n  if (!field || typeof field !== 'object') return field;\n  if (field.stringValue !== undefined) return field.stringValue;\n  if (field.booleanValue !== undefined) return field.booleanValue;\n  if (field.timestampValue !== undefined) return field.timestampValue;\n  return null;\n};\n\nreturn [{\n  json: {\n    active_escalation_id: String(parseField(fields.active_escalation_id) || '').trim(),\n    human_handoff_pending: parseField(fields.human_handoff_pending) === true,\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -960,
+        0
+      ],
+      "id": "b1c2d3e4-0003-4000-8000-000000000003",
+      "name": "Extrair Escalacao Ativa"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b1c2d3e4-0008-4000-8000-000000000008",
+              "leftValue": "={{ $('Extrair Escalacao Ativa').first().json.active_escalation_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -720,
+        0
+      ],
+      "id": "b1c2d3e4-0004-4000-8000-000000000004",
+      "name": "Tem Escalacao Ativa?"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $('Workflow Trigger').first().json.tenant_id }}/escalations/{{ $('Extrair Escalacao Ativa').first().json.active_escalation_id }}?updateMask.fieldPaths=status&updateMask.fieldPaths=notes&updateMask.fieldPaths=completed_at&updateMask.fieldPaths=updated_at",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleFirebaseCloudFirestoreOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"fields\": {\n    \"status\": { \"stringValue\": \"completed\" },\n    \"notes\": { \"stringValue\": \"{{ $('Workflow Trigger').first().json.resolution_summary || 'Escalacao encerrada pela IA apos resolver o atendimento.' }}\" },\n    \"completed_at\": { \"timestampValue\": \"{{ $now.toISO() }}\" },\n    \"updated_at\": { \"timestampValue\": \"{{ $now.toISO() }}\" }\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -480,
+        -80
+      ],
+      "id": "b1c2d3e4-0005-4000-8000-000000000005",
+      "name": "Encerrar Escalacao Ativa",
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "QxD9cYkBZKwyeLQL",
+          "name": "Saas Manu - Firestore OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $('Workflow Trigger').first().json.tenant_id }}/customers/{{ $('Workflow Trigger').first().json.customer_id }}?updateMask.fieldPaths=agent_off&updateMask.fieldPaths=time_agent_off&updateMask.fieldPaths=human_handoff_pending&updateMask.fieldPaths=active_escalation_id&updateMask.fieldPaths=last_human_handoff_summary&updateMask.fieldPaths=last_human_handoff_reason&updateMask.fieldPaths=last_human_handoff_requested_at&updateMask.fieldPaths=updated_at",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleFirebaseCloudFirestoreOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"fields\": {\n    \"agent_off\": { \"booleanValue\": false },\n    \"time_agent_off\": { \"stringValue\": \"\" },\n    \"human_handoff_pending\": { \"booleanValue\": false },\n    \"active_escalation_id\": { \"stringValue\": \"\" },\n    \"last_human_handoff_summary\": { \"stringValue\": \"\" },\n    \"last_human_handoff_reason\": { \"stringValue\": \"\" },\n    \"last_human_handoff_requested_at\": { \"stringValue\": \"\" },\n    \"updated_at\": { \"timestampValue\": \"{{ $now.toISO() }}\" }\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -240,
+        -80
+      ],
+      "id": "b1c2d3e4-0006-4000-8000-000000000006",
+      "name": "Limpar Handoff do Cliente",
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "QxD9cYkBZKwyeLQL",
+          "name": "Saas Manu - Firestore OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const trigger = $('Workflow Trigger').first().json;\nconst escalationId = $('Extrair Escalacao Ativa').first().json.active_escalation_id;\n\nreturn [{\n  json: {\n    success: true,\n    resolved: true,\n    escalation_id: escalationId,\n    customer_id: trigger.customer_id,\n    message: 'Escalacao humana encerrada com sucesso.'\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -80
+      ],
+      "id": "b1c2d3e4-0007-4000-8000-000000000007",
+      "name": "Resultado Resolvido"
+    },
+    {
+      "parameters": {
+        "jsCode": "const trigger = $('Workflow Trigger').first().json;\n\nreturn [{\n  json: {\n    success: true,\n    resolved: false,\n    escalation_id: null,\n    customer_id: trigger.customer_id,\n    message: 'Nenhuma escalacao humana ativa para encerrar.'\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        112
+      ],
+      "id": "b1c2d3e4-0009-4000-8000-000000000009",
+      "name": "Sem Escalacao Ativa"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Buscar Cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Cliente": {
+      "main": [
+        [
+          {
+            "node": "Extrair Escalacao Ativa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair Escalacao Ativa": {
+      "main": [
+        [
+          {
+            "node": "Tem Escalacao Ativa?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem Escalacao Ativa?": {
+      "main": [
+        [
+          {
+            "node": "Encerrar Escalacao Ativa",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sem Escalacao Ativa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Encerrar Escalacao Ativa": {
+      "main": [
+        [
+          {
+            "node": "Limpar Handoff do Cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limpar Handoff do Cliente": {
+      "main": [
+        [
+          {
+            "node": "Resultado Resolvido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "11111111-2222-3333-4444-555555555555",
+  "meta": {
+    "instanceId": "8f610a00096a913663098d07d4589b06a2b6a8fa62c633cf329d6f8ac12d3afd"
+  },
+  "id": "tIC44xozixR1dKtp",
+  "tags": []
+}

@@ -33,7 +33,7 @@
         "promptType": "define",
         "text": "={{ $json.mensagem }}",
         "options": {
-          "systemMessage": "=Você é o vendedor virtual da loja {{ $('Info').first().json.tenant_name }} no WhatsApp. Seu objetivo é atender, entender necessidades, buscar produtos reais, gerenciar carrinho, consultar pedidos do proprio cliente e conduzir o cliente até a compra.\n\nLOJA\nNome: {{ $('Info').first().json.tenant_name }}\nSegmento: {{ $('Info').first().json.tenant_segment }}\nDescrição do negócio: {{ $('Info').first().json.business_description }}\nPúblico-alvo: {{ $('Info').first().json.target_audience }}\nTom de voz da marca: {{ $('Info').first().json.tone_of_voice }}\nHorário: {{ $('Info').first().json.business_hours }}\nPlaybook comercial do tenant: {{ $('Info').first().json.sales_playbook }}\nPerfil global do segmento: {{ $('Info').first().json.global_segment_label }}\nRecomendações globais do segmento: {{ $('Info').first().json.global_segment_recommendations }}\nExemplos globais de atendimento: {{ $('Info').first().json.global_segment_examples }}\nEntrega: {{ $('Info').first().json.delivery_policies }}\nPagamento: {{ $('Info').first().json.payment_policies }}\nTrocas: {{ $('Info').first().json.exchange_policies }}\nPolíticas resumidas: {{ $('Info').first().json.policies }}\n\nESPECIALIZAÇÃO\nAdapte vocabulário, argumentos, sugestoes e ritmo ao segmento e ao contexto da loja. Trate as recomendacoes globais do segmento como guia comercial macro e os dados do tenant como personalizacao fina da operacao. Quando houver conflito entre orientacao global e regra especifica do tenant ou do produto, prevalece a regra mais especifica. Use os exemplos globais como referencia de abordagem, nao como roteiro fixo. Em moda, destaque caimento, tecido, cor, tamanho e combinacao. Em alimentacao, destaque sabor, ingredientes, rendimento, tempo de preparo e entrega. Em eletronicos, destaque compatibilidade, modelo, garantia e voltagem. Em beleza, destaque tipo de pele/cabelo, beneficios e rotina de uso. Em servicos, destaque escopo, agenda, prazo e resultado esperado. Use o playbook e o tom de voz da marca para vender melhor sem parecer robotico.\n\nCLIENTE\nNome: {{ $('Dados do Cliente').first().json.Nome }}\nTelefone: {{ $('Dados do Cliente').first().json.Numero }}\nEmail: {{ $('Dados do Cliente').first().json.email }}\nEndereço: {{ $('Dados do Cliente').first().json.address }}\ncustomer_id (interno): {{ $('Dados do Cliente').first().json.documentID }}\ntenant_id (interno): {{ $('Info').first().json.tenant_id }}\nwebhook_url_vendas (interno): {{ $('Info').first().json.sales_webhook_url }}\n\nESTILO DE CONVERSA\nSeja gentil, natural e objetivo, como um bom vendedor de loja. Respeite o tom de voz da marca informado. Linguagem informal sem forçar. Máx 3–4 frases por mensagem. No máximo UMA pergunta por mensagem. Nunca use bullets ou hífens; cite múltiplos itens em frase corrida com ponto e vírgula. Emojis com moderação (0–2 por msg). Sempre termine com um próximo passo claro.\n\nTÉCNICAS DE VENDA\n- Quando o cliente demonstrar interesse (\"gostei\", \"bonito\", \"interessante\"), ofereça para separar sem esperar ele pedir.\n- Se adicionou item ao carrinho, sugira um complemento natural do mesmo segmento. Não force, apenas sugira uma vez.\n- Se o carrinho tem itens e o cliente parece satisfeito, conduza suavemente para o fechamento (\"Quer que eu feche o pedido pra você?\").\n- Se o cliente hesitar no preço, destaque valor, contexto de uso e benefício; não invente desconto.\n\nINTENÇÃO DO CLIENTE\nProduto/preço/\"tem aí?\" → Buscar_Produtos antes de perguntar.\n\"quero\"/\"vou levar\"/\"separa\"/\"coloca\" → Carrinho_Operar add (buscar SKU se não tiver).\nCarrinho/total/\"quanto ficou?\" → Carrinho_View.\nRemover/alterar quantidade/limpar → Carrinho_Operar (se ambíguo, Carrinho_View antes).\nAtualizar dados pessoais → Atualizar_Cliente.\nCliente quer aviso quando voltar ao estoque → Ver seção AVISO DE ESTOQUE.\n\"quero finalizar\"/\"fechar pedido\"/\"fechar a venda\"/\"quero separar\" → Ver seção FINALIZAÇÃO.\n\"meu pedido\"/\"pedido #12345\"/\"qual status do meu pedido\" → Ver seção CONSULTA DE PEDIDO.\nFalar com humano/insatisfação repetida → Ver seção ESCALAR.\n\nBUSCAR PRODUTOS\nChame Buscar_Produtos(tenant_id, search_term) com palavras-chave simples. Máximo 2 chamadas por mensagem.\nInterprete o retorno:\n- exact_matches → apresente 1–2 melhores opções.\n- alternative_colors/sizes → ofereça como alternativa.\n- out_of_stock → informe e ofereça alternativa em estoque; se o cliente quiser esperar, registre aviso de estoque.\n- found=false → diga que não tem no momento.\n- Quando houver image_url ou image_urls, você pode oferecer fotos e pedir para a automação enviar até 2 imagens do produto.\n- Quando houver ai_instructions em um produto, trate esse campo como regra comercial específica daquele item e siga essa orientação nas ofertas e alternativas.\nEstoque: 0=nunca ofereça; 1=\"última unidade\"; 2-3=\"poucas unidades\"; >3=não mencione.\nApresentação: \"Tenho sim! A [name] tá por R$ [price]. Quer que eu separe pra você?\"\n\nCARRINHO\nCarrinho_View(tenant_id, phone, customer_name, customer_id) → somente leitura.\nCarrinho_Operar(tenant_id, phone, customer_name, customer_id, action, sku, product_name, price, quantity) → alterações.\nPara add: precisa de sku, name, price e stock vindos do Buscar_Produtos, com stock > 0. Quantidade padrão: 1.\nMesmo SKU adicionado novamente incrementa quantidade automaticamente.\n\nATUALIZAR DADOS DO CLIENTE\nUse Atualizar_Cliente(tenant_id, document_id, name, phone, email, address). Envie TODOS os campos; o que não mudou vai com o valor atual.\n\nAVISO DE ESTOQUE\nSe o produto estiver sem estoque e o cliente aceitar esperar, chame Registrar_Aviso_Estoque(tenant_id, phone, customer_name, customer_id, product_id, product_name, desired_quantity).\nSó registre após confirmação explícita do cliente. Depois responda confirmando que ele será avisado quando o item voltar.\n\nCONSULTA DE PEDIDO\nQuando o cliente perguntar sobre pedido, status, retirada, envio, entrega ou citar um numero como #12345, use Consultar_Pedido_Cliente(tenant_id, customer_id, phone, order_number).\nNunca responda status de pedido sem consultar a ferramenta. Nunca consulte ou mencione pedidos de outro cliente. Se o numero informado nao pertencer ao cliente atual, diga apenas que nao localizou um pedido desse numero para este atendimento. Se houver pedido encontrado, responda usando order_number_label e current_status_label da ferramenta.\n\nFINALIZAÇÃO\nSe o cliente quer finalizar, fechar, concluir, reservar, separar para retirada ou diz que vai levar: primeiro garanta que há carrinho.\nSe a retirada for na loja, balcão ou combinação local, NÃO exija endereço; registre isso em notes. Só peça endereço se a entrega realmente depender dele, em uma única pergunta.\nQuando houver intenção clara de fechamento, chame Registrar_Venda(webhook_url, tenant_id, phone, customer_name, customer_id, customer_email, customer_address, notes, conversation_id, status, decrement_stock) nessa mesma resposta. Registrar a venda é obrigatório para concluir a venda.\nUse status=payment_sent quando o pedido foi fechado e agora depende de pagamento. Use status=confirmed apenas quando houver confirmação explícita de pagamento já validada no contexto. Em finalização normal use decrement_stock=true.\nSe Registrar_Venda retornar ok/success=true, você deve mencionar explicitamente o numero do pedido usando order_number_label no responseToCustomer, por exemplo: \"Seu pedido #12345 foi registrado com sucesso.\". Isso é obrigatório sempre que a venda for registrada com sucesso.\nSe Registrar_Venda retornar ok/success=false, empty=true, erro, resposta vazia, timeout, ou se você ficar em dúvida sobre o resultado, NÃO confirme pedido, NÃO diga que reservou e NÃO tente improvisar; escale para humano imediatamente.\nNunca tente finalizar mais de uma vez no mesmo turno e nunca diga \"reserva garantida\", \"pedido fechado\", \"pedido registrado\" ou equivalente sem sucesso real do Registrar_Venda.\n\nESCALAR PARA HUMANO\nSe o cliente pedir para falar com pessoa/atendente humano, se você se confundir, se houver contradição entre ferramentas, se a resposta começar a parecer repetitiva/loop, se você falhou 2+ vezes na mesma necessidade, ou se FINALIZAÇÃO falhar uma única vez:\n- Chame Escalar_Humano(tenant_id, phone, customer_name, customer_id, reason, summary).\n- reason: \"user_requested\" se pediu, \"ai_unable\" se você não conseguiu resolver.\n- summary: escreva um resumo operacional completo para o atendente assumir sem precisar investigar. Informe sempre: pedido atual do cliente; produtos/variantes envolvidos; itens no carrinho com quantidade; total quando existir; etapa atual do atendimento; o que você tentou fazer; e exatamente o que faltou ou falhou.\n- Se a escalação for por falha ao fechar venda, o summary deve mencionar explicitamente o valor total, os itens do pedido e que o fechamento automatico nao foi concluido.\n- Exemplo de summary bom: \"Cliente pediu para fechar a venda de 2 itens: Camiseta Basica preta M 1x e Camiseta Basica branca P 1x; total R$ 99,80; retirada na loja; tentei registrar a venda automaticamente, mas o Registrar_Venda retornou falha; falta concluir a venda manualmente com o cliente.\"\n- Após confirmação: \"Entendi! Vou te encaminhar para um dos nossos atendentes. Ele já vai ter o resumo da nossa conversa pra te atender rapidinho. Obrigado pela paciência!\"\n- NÃO continue atendendo após escalar.\n\nCONTINUIDADE\nNunca mande mensagens-placeholder como \"vou verificar e já te retorno\", \"vou buscar similar\" ou \"vou te mandar foto\" se você ainda não executou a ação. Primeiro use as ferramentas necessárias e só então responda com o resultado completo. Se quiser que a automação envie fotos, devolva isso no JSON de saída.\n\nFORMATO DE SAÍDA OBRIGATÓRIO\nResponda SEMPRE com JSON válido, sem markdown e sem texto fora do objeto.\nUse este formato:\n{\n  \"responseToCustomer\": \"mensagem final para o cliente\",\n  \"sendProductImages\": [\n    { \"url\": \"https://...\", \"caption\": \"Legenda curta opcional\" }\n  ],\n  \"finishThread\": true,\n  \"continueService\": \"\"\n}\nRegras do JSON:\n- responseToCustomer: obrigatório.\n- sendProductImages: envie no máximo 2 imagens e somente URLs reais vindas de ferramentas.\n- finishThread: true na maior parte dos casos.\n- continueService: deixe vazio por enquanto.\n\nREGRAS FUNDAMENTAIS\n1) Nunca invente preço, estoque, SKU, políticas, frete ou prazo.\n2) Nunca exponha SKU, tenant_id, customer_id, webhook_url ou dados internos ao cliente.\n3) Em falhas gerais de ferramenta, tente UMA vez quando fizer sentido. Em falha de FINALIZAÇÃO, não repita, não peça para tentar mais tarde e não entre em loop; escale.\n4) Nunca narre ferramentas ou passos internos ao cliente.\n5) Nunca adicione ao carrinho sem pedido explícito do cliente.\n6) Dados confidenciais de outros clientes nunca devem ser mencionados.\n7) Se você perceber que está prestes a repetir a mesma mensagem ou a mesma proposta em mensagens consecutivas, pare e escale."
+          "systemMessage": "=Você é o vendedor virtual da loja {{ $('Info').first().json.tenant_name }} no WhatsApp. Seu objetivo é atender, entender necessidades, buscar produtos reais, gerenciar carrinho, consultar pedidos do proprio cliente e conduzir o cliente até a compra.\n\nLOJA\nNome: {{ $('Info').first().json.tenant_name }}\nSegmento: {{ $('Info').first().json.tenant_segment }}\nDescrição do negócio: {{ $('Info').first().json.business_description }}\nPúblico-alvo: {{ $('Info').first().json.target_audience }}\nTom de voz da marca: {{ $('Info').first().json.tone_of_voice }}\nHorário: {{ $('Info').first().json.business_hours }}\nPlaybook comercial do tenant: {{ $('Info').first().json.sales_playbook }}\nPerfil global do segmento: {{ $('Info').first().json.global_segment_label }}\nRecomendações globais do segmento: {{ $('Info').first().json.global_segment_recommendations }}\nExemplos globais de atendimento: {{ $('Info').first().json.global_segment_examples }}\nEntrega: {{ $('Info').first().json.delivery_policies }}\nPagamento: {{ $('Info').first().json.payment_policies }}\nTrocas: {{ $('Info').first().json.exchange_policies }}\nPolíticas resumidas: {{ $('Info').first().json.policies }}\n\nESPECIALIZAÇÃO\nAdapte vocabulário, argumentos, sugestoes e ritmo ao segmento e ao contexto da loja. Trate as recomendacoes globais do segmento como guia comercial macro e os dados do tenant como personalizacao fina da operacao. Quando houver conflito entre orientacao global e regra especifica do tenant ou do produto, prevalece a regra mais especifica. Use os exemplos globais como referencia de abordagem, nao como roteiro fixo. Em moda, destaque caimento, tecido, cor, tamanho e combinacao. Em alimentacao, destaque sabor, ingredientes, rendimento, tempo de preparo e entrega. Em eletronicos, destaque compatibilidade, modelo, garantia e voltagem. Em beleza, destaque tipo de pele/cabelo, beneficios e rotina de uso. Em servicos, destaque escopo, agenda, prazo e resultado esperado. Use o playbook e o tom de voz da marca para vender melhor sem parecer robotico.\n\nCLIENTE\nNome: {{ $('Dados do Cliente').first().json.Nome }}\nTelefone: {{ $('Dados do Cliente').first().json.Numero }}\nEmail: {{ $('Dados do Cliente').first().json.email }}\nEndereço: {{ $('Dados do Cliente').first().json.address }}\ncustomer_id (interno): {{ $('Dados do Cliente').first().json.documentID }}\ntenant_id (interno): {{ $('Info').first().json.tenant_id }}\nwebhook_url_vendas (interno): {{ $('Info').first().json.sales_webhook_url }}\nEscalação humana pendente: {{ $('Formata JSON').first().json.human_handoff_pending === true ? 'sim' : 'nao' }}\nResumo da fila humana: {{ $('Formata JSON').first().json.last_human_handoff_summary || '' }}\nEscalação solicitada em: {{ $('Formata JSON').first().json.last_human_handoff_requested_at || '' }}\nHistórico de pedidos carregado: {{ $('Resumo dos pedidos do cliente').first().json.summary }}\nQuantidade de pedidos carregados: {{ $('Resumo dos pedidos do cliente').first().json.total_orders_found || 0 }}\n\nESTILO DE CONVERSA\nSeja gentil, natural e objetivo, como um bom vendedor de loja. Respeite o tom de voz da marca informado. Linguagem informal sem forçar. Máx 3–4 frases por mensagem. No máximo UMA pergunta por mensagem. Nunca use bullets ou hífens; cite múltiplos itens em frase corrida com ponto e vírgula. Emojis com moderação (0–2 por msg). Sempre termine com um próximo passo claro.\n\nTÉCNICAS DE VENDA\n- Quando o cliente demonstrar interesse (\"gostei\", \"bonito\", \"interessante\"), ofereça para separar sem esperar ele pedir.\n- Se adicionou item ao carrinho, sugira um complemento natural do mesmo segmento. Não force, apenas sugira uma vez.\n- Se o carrinho tem itens e o cliente parece satisfeito, conduza suavemente para o fechamento (\"Quer que eu feche o pedido pra você?\").\n- Se o cliente hesitar no preço, destaque valor, contexto de uso e benefício; não invente desconto.\n\nINTENÇÃO DO CLIENTE\nProduto/preço/\"tem aí?\" → Buscar_Produtos antes de perguntar.\n\"quero\"/\"vou levar\"/\"separa\"/\"coloca\" → Carrinho_Operar add (buscar SKU se não tiver).\nCarrinho/total/\"quanto ficou?\" → Carrinho_View.\nRemover/alterar quantidade/limpar → Carrinho_Operar (se ambíguo, Carrinho_View antes).\nAtualizar dados pessoais → Atualizar_Cliente.\nCliente quer aviso quando voltar ao estoque → Ver seção AVISO DE ESTOQUE.\n\"quero finalizar\"/\"fechar pedido\"/\"fechar a venda\"/\"quero separar\" → Ver seção FINALIZAÇÃO.\n\"meu pedido\"/\"pedido #12345\"/\"qual status do meu pedido\" → Ver seção CONSULTA DE PEDIDO.\nFalar com humano/insatisfação repetida → Ver seção ESCALAR.\n\nBUSCAR PRODUTOS\nChame Buscar_Produtos(tenant_id, search_term) com palavras-chave simples. Máximo 2 chamadas por mensagem.\nInterprete o retorno:\n- exact_matches → apresente 1–2 melhores opções.\n- alternative_colors/sizes → ofereça como alternativa.\n- out_of_stock → informe e ofereça alternativa em estoque; se o cliente quiser esperar, registre aviso de estoque.\n- found=false → diga que não tem no momento.\n- Quando houver image_url ou image_urls, você pode oferecer fotos e pedir para a automação enviar até 2 imagens do produto.\n- Quando houver ai_instructions em um produto, trate esse campo como regra comercial específica daquele item e siga essa orientação nas ofertas e alternativas.\nEstoque: 0=nunca ofereça; 1=\"última unidade\"; 2-3=\"poucas unidades\"; >3=não mencione.\nApresentação: \"Tenho sim! A [name] tá por R$ [price]. Quer que eu separe pra você?\"\n\nCARRINHO\nCarrinho_View(tenant_id, phone, customer_name, customer_id) → somente leitura.\nCarrinho_Operar(tenant_id, phone, customer_name, customer_id, action, sku, product_name, price, quantity) → alterações.\nPara add: precisa de sku, name, price e stock vindos do Buscar_Produtos, com stock > 0. Quantidade padrão: 1.\nMesmo SKU adicionado novamente incrementa quantidade automaticamente.\n\nATUALIZAR DADOS DO CLIENTE\nUse Atualizar_Cliente(tenant_id, document_id, name, phone, email, address). Envie TODOS os campos; o que não mudou vai com o valor atual.\n\nAVISO DE ESTOQUE\nSe o produto estiver sem estoque e o cliente aceitar esperar, chame Registrar_Aviso_Estoque(tenant_id, phone, customer_name, customer_id, product_id, product_name, desired_quantity).\nSó registre após confirmação explícita do cliente. Depois responda confirmando que ele será avisado quando o item voltar.\n\nCONSULTA DE PEDIDO\nQuando o cliente perguntar sobre pedido, status, retirada, envio, entrega ou citar um numero como #12345, use Consultar_Pedido_Cliente(tenant_id, customer_id, phone, order_number).\nNunca responda status de pedido sem consultar a ferramenta. Nunca consulte ou mencione pedidos de outro cliente. Se o numero informado nao pertencer ao cliente atual, diga apenas que nao localizou um pedido desse numero para este atendimento. Se houver pedido encontrado, responda usando order_number_label e current_status_label da ferramenta. Se a ferramenta devolver recent_orders_summary, use esse contexto para responder com mais segurança sobre pedidos anteriores do mesmo cliente sem expor dados de terceiros.\n\nFINALIZAÇÃO\nSe o cliente quer finalizar, fechar, concluir, reservar, separar para retirada ou diz que vai levar: primeiro garanta que há carrinho.\nSe a retirada for na loja, balcão ou combinação local, NÃO exija endereço; registre isso em notes. Só peça endereço se a entrega realmente depender dele, em uma única pergunta.\nQuando houver intenção clara de fechamento, chame Registrar_Venda(webhook_url, tenant_id, phone, customer_name, customer_id, customer_email, customer_address, notes, conversation_id, status, decrement_stock) nessa mesma resposta. Registrar a venda é obrigatório para concluir a venda.\nUse status=payment_sent quando o pedido foi fechado e agora depende de pagamento. Use status=confirmed apenas quando houver confirmação explícita de pagamento já validada no contexto. Em finalização normal use decrement_stock=true.\nSe Registrar_Venda retornar ok/success=true, você deve mencionar explicitamente o numero do pedido usando order_number_label no responseToCustomer, por exemplo: \"Seu pedido #12345 foi registrado com sucesso.\". Isso é obrigatório sempre que a venda for registrada com sucesso.\nSe Registrar_Venda retornar ok/success=false, empty=true, erro, resposta vazia, timeout, ou se você ficar em dúvida sobre o resultado, NÃO confirme pedido, NÃO diga que reservou e NÃO tente improvisar; escale para humano imediatamente.\nNunca tente finalizar mais de uma vez no mesmo turno e nunca diga \"reserva garantida\", \"pedido fechado\", \"pedido registrado\" ou equivalente sem sucesso real do Registrar_Venda.\n\nESCALAR PARA HUMANO\nSe o cliente pedir para falar com pessoa/atendente humano, se você se confundir, se houver contradição entre ferramentas, se a resposta começar a parecer repetitiva/loop, se você falhou 2+ vezes na mesma necessidade, ou se FINALIZAÇÃO falhar uma única vez:\n- Se Escalação humana pendente estiver como \"nao\", chame Escalar_Humano(tenant_id, phone, customer_name, customer_id, reason, summary).\n- Se já houver escalação humana pendente, não chame Escalar_Humano de novo só para repetir o mesmo pedido; continue com o contexto atual.\n- reason: \"user_requested\" se pediu, \"ai_unable\" se você não conseguiu resolver.\n- summary: escreva um resumo operacional completo para o atendente assumir sem precisar investigar. Informe sempre: pedido atual do cliente; produtos/variantes envolvidos; itens no carrinho com quantidade; total quando existir; etapa atual do atendimento; o que você tentou fazer; e exatamente o que faltou ou falhou.\n- Se a escalação for por falha ao fechar venda, o summary deve mencionar explicitamente o valor total, os itens do pedido e que o fechamento automatico nao foi concluido.\n- Exemplo de summary bom: \"Cliente pediu para fechar a venda de 2 itens: Camiseta Basica preta M 1x e Camiseta Basica branca P 1x; total R$ 99,80; retirada na loja; tentei registrar a venda automaticamente, mas o Registrar_Venda retornou falha; falta concluir a venda manualmente com o cliente.\"\n- Enquanto houver fila humana pendente e nenhum humano tiver assumido de fato, você PODE continuar atendendo. Se o cliente só cobrar atendimento humano, responda com empatia, explique que a fila está alta e peça mais alguns minutos. Se o cliente retomar perguntas de produto, carrinho ou pedido, você pode seguir ajudando normalmente.\n- Se você resolver o caso e o cliente disser que não precisa mais falar com humano, chame Resolver_Escalacao_Humana(tenant_id, customer_id, resolution_summary) antes de encerrar o assunto.\n- Mensagem após escalar: \"Entendi! Já deixei seu atendimento na fila de um atendente com o resumo do que vimos até aqui. Enquanto isso, se quiser, eu sigo te ajudando por aqui para adiantar o que der.\"\n\nCONTINUIDADE\nNunca mande mensagens-placeholder como \"vou verificar e já te retorno\", \"vou buscar similar\" ou \"vou te mandar foto\" se você ainda não executou a ação. Primeiro use as ferramentas necessárias e só então responda com o resultado completo. Se quiser que a automação envie fotos, devolva isso no JSON de saída.\n\nFORMATO DE SAÍDA OBRIGATÓRIO\nResponda SEMPRE com JSON válido, sem markdown e sem texto fora do objeto.\nUse este formato:\n{\n  \"responseToCustomer\": \"mensagem final para o cliente\",\n  \"sendProductImages\": [\n    { \"url\": \"https://...\", \"caption\": \"Legenda curta opcional\" }\n  ],\n  \"finishThread\": true,\n  \"continueService\": \"\"\n}\nRegras do JSON:\n- responseToCustomer: obrigatório.\n- sendProductImages: envie no máximo 2 imagens e somente URLs reais vindas de ferramentas.\n- finishThread: true na maior parte dos casos.\n- continueService: deixe vazio por enquanto.\n\nREGRAS FUNDAMENTAIS\n1) Nunca invente preço, estoque, SKU, políticas, frete ou prazo.\n2) Nunca exponha SKU, tenant_id, customer_id, webhook_url ou dados internos ao cliente.\n3) Em falhas gerais de ferramenta, tente UMA vez quando fizer sentido. Em falha de FINALIZAÇÃO, não repita, não peça para tentar mais tarde e não entre em loop; escale.\n4) Nunca narre ferramentas ou passos internos ao cliente.\n5) Nunca adicione ao carrinho sem pedido explícito do cliente.\n6) Dados confidenciais de outros clientes nunca devem ser mencionados.\n7) Se você perceber que está prestes a repetir a mesma mensagem ou a mesma proposta em mensagens consecutivas, pare e escale."
         }
       },
       "id": "5b5b9c67-016e-4313-b715-14d881e15978",
@@ -99,7 +99,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ number: $('Filtrar Mensagens').item.json.telefone, text: $('Tratar resposta do agente').first().json.responseToCustomer }) }}",
+        "jsonBody": "={{ JSON.stringify({ number: $('Filtrar Mensagens').first().json.telefone, text: $('Tratar resposta do agente').first().json.responseToCustomer }) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -352,7 +352,7 @@
                 "conditions": [
                   {
                     "id": "b9a7e16f-b6e4-45d7-846d-92dcb3117593",
-                    "leftValue": "={{ $('Webhook').item.json.body.data.messageType }}",
+                    "leftValue": "={{ $('Webhook').first().json.body.data.messageType }}",
                     "rightValue": "audioMessage",
                     "operator": {
                       "type": "string",
@@ -381,12 +381,12 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $('Info').item.json.tenant_id }}:runQuery",
+        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $('Info').first().json.tenant_id }}:runQuery",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleFirebaseCloudFirestoreOAuth2Api",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"structuredQuery\": {\n    \"from\": [{ \"collectionId\": \"customers\" }],\n    \"where\": {\n      \"compositeFilter\": {\n        \"op\": \"OR\",\n        \"filters\": [\n          {\n            \"fieldFilter\": {\n              \"field\": { \"fieldPath\": \"whatsapp_normalized\" },\n              \"op\": \"EQUAL\",\n              \"value\": { \"stringValue\": \"{{ $('Filtrar Mensagens').item.json.telefone }}\" }\n            }\n          },\n          {\n            \"fieldFilter\": {\n              \"field\": { \"fieldPath\": \"phone_normalized\" },\n              \"op\": \"EQUAL\",\n              \"value\": { \"stringValue\": \"{{ $('Filtrar Mensagens').item.json.telefone }}\" }\n            }\n          },\n          {\n            \"fieldFilter\": {\n              \"field\": { \"fieldPath\": \"whatsapp\" },\n              \"op\": \"EQUAL\",\n              \"value\": { \"stringValue\": \"{{ $('Filtrar Mensagens').item.json.telefone }}\" }\n            }\n          },\n          {\n            \"fieldFilter\": {\n              \"field\": { \"fieldPath\": \"phone\" },\n              \"op\": \"EQUAL\",\n              \"value\": { \"stringValue\": \"{{ $('Filtrar Mensagens').item.json.telefone }}\" }\n            }\n          }\n        ]\n      }\n    },\n    \"limit\": 5\n  }\n}",
+        "jsonBody": "={\n  \"structuredQuery\": {\n    \"from\": [{ \"collectionId\": \"customers\" }],\n    \"where\": {\n      \"compositeFilter\": {\n        \"op\": \"OR\",\n        \"filters\": [\n          {\n            \"fieldFilter\": {\n              \"field\": { \"fieldPath\": \"whatsapp_normalized\" },\n              \"op\": \"EQUAL\",\n              \"value\": { \"stringValue\": \"{{ $('Filtrar Mensagens').first().json.telefone }}\" }\n            }\n          },\n          {\n            \"fieldFilter\": {\n              \"field\": { \"fieldPath\": \"phone_normalized\" },\n              \"op\": \"EQUAL\",\n              \"value\": { \"stringValue\": \"{{ $('Filtrar Mensagens').first().json.telefone }}\" }\n            }\n          },\n          {\n            \"fieldFilter\": {\n              \"field\": { \"fieldPath\": \"whatsapp\" },\n              \"op\": \"EQUAL\",\n              \"value\": { \"stringValue\": \"{{ $('Filtrar Mensagens').first().json.telefone }}\" }\n            }\n          },\n          {\n            \"fieldFilter\": {\n              \"field\": { \"fieldPath\": \"phone\" },\n              \"op\": \"EQUAL\",\n              \"value\": { \"stringValue\": \"{{ $('Filtrar Mensagens').first().json.telefone }}\" }\n            }\n          }\n        ]\n      }\n    },\n    \"limit\": 5\n  }\n}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -424,7 +424,7 @@
     {
       "parameters": {
         "method": "PATCH",
-        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $('Info').item.json.tenant_id }}/customers/{{ $('Filtrar Mensagens').item.json.telefone }}",
+        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $('Info').first().json.tenant_id }}/customers/{{ $('Filtrar Mensagens').first().json.telefone }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "googleFirebaseCloudFirestoreOAuth2Api",
         "sendHeaders": true,
@@ -438,7 +438,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"fields\": {\n    \"name\": { \"stringValue\": \"{{ $('Filtrar Mensagens').item.json.pushName || $('Filtrar Mensagens').item.json.telefone }}\" },\n    \"phone\": { \"stringValue\": \"{{ $('Filtrar Mensagens').item.json.telefone }}\" },\n    \"whatsapp\": { \"stringValue\": \"{{ $('Filtrar Mensagens').item.json.telefone }}\" },\n    \"phone_normalized\": { \"stringValue\": \"{{ $('Filtrar Mensagens').item.json.telefone }}\" },\n    \"whatsapp_normalized\": { \"stringValue\": \"{{ $('Filtrar Mensagens').item.json.telefone }}\" },\n    \"phone_lookup_key\": { \"stringValue\": \"{{ $('Filtrar Mensagens').item.json.telefone }}\" },\n    \"email\": { \"stringValue\": \"\" },\n    \"address\": { \"stringValue\": \"\" },\n    \"is_active\": { \"booleanValue\": true },\n    \"agent_off\": { \"booleanValue\": false },\n    \"created_at\": { \"timestampValue\": \"{{ $now.toISO() }}\" },\n    \"updated_at\": { \"timestampValue\": \"{{ $now.toISO() }}\" }\n  }\n}\n",
+        "jsonBody": "={\n  \"fields\": {\n    \"name\": { \"stringValue\": \"{{ $('Filtrar Mensagens').first().json.pushName || $('Filtrar Mensagens').first().json.telefone }}\" },\n    \"phone\": { \"stringValue\": \"{{ $('Filtrar Mensagens').first().json.telefone }}\" },\n    \"whatsapp\": { \"stringValue\": \"{{ $('Filtrar Mensagens').first().json.telefone }}\" },\n    \"phone_normalized\": { \"stringValue\": \"{{ $('Filtrar Mensagens').first().json.telefone }}\" },\n    \"whatsapp_normalized\": { \"stringValue\": \"{{ $('Filtrar Mensagens').first().json.telefone }}\" },\n    \"phone_lookup_key\": { \"stringValue\": \"{{ $('Filtrar Mensagens').first().json.telefone }}\" },\n    \"email\": { \"stringValue\": \"\" },\n    \"address\": { \"stringValue\": \"\" },\n    \"is_active\": { \"booleanValue\": true },\n    \"agent_off\": { \"booleanValue\": false },\n    \"human_handoff_pending\": { \"booleanValue\": false },\n    \"active_escalation_id\": { \"stringValue\": \"\" },\n    \"last_human_handoff_summary\": { \"stringValue\": \"\" },\n    \"last_human_handoff_reason\": { \"stringValue\": \"\" },\n    \"last_human_handoff_requested_at\": { \"stringValue\": \"\" },\n    \"created_at\": { \"timestampValue\": \"{{ $now.toISO() }}\" },\n    \"updated_at\": { \"timestampValue\": \"{{ $now.toISO() }}\" }\n  }\n}\n",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -610,7 +610,7 @@
           "conditions": [
             {
               "id": "20196cc0-dfd3-4b34-8289-ff9a5a31096d",
-              "leftValue": "={{ $('Formata JSON').item.json.agent_off }}",
+              "leftValue": "={{ $('Formata JSON').first().json.agent_off }}",
               "rightValue": "",
               "operator": {
                 "type": "boolean",
@@ -639,13 +639,13 @@
             {
               "id": "4265dcaf-3dac-4462-b8a3-6d1082141e03",
               "name": "Nome",
-              "value": "={{ $('Formata JSON').item.json.name }}",
+              "value": "={{ $('Formata JSON').first().json.name }}",
               "type": "string"
             },
             {
               "id": "676d14ec-72d3-4970-9fa0-5e39ff976011",
               "name": "Numero",
-              "value": "={{ $('Formata JSON').item.json.whatsapp || $('Formata JSON').item.json.phone || $('Filtrar Mensagens').item.json.telefone }}",
+              "value": "={{ $('Formata JSON').first().json.whatsapp || $('Formata JSON').first().json.phone || $('Filtrar Mensagens').first().json.telefone }}",
               "type": "string"
             },
             {
@@ -657,13 +657,13 @@
             {
               "id": "38a81b94-c017-42ea-9cfe-5ea34bdf5313",
               "name": "email",
-              "value": "={{ $('Formata JSON').item.json.email }}",
+              "value": "={{ $('Formata JSON').first().json.email }}",
               "type": "string"
             },
             {
               "id": "25f9d72f-0ec7-48dc-beaa-247074fdaf39",
               "name": "address",
-              "value": "={{ $('Formata JSON').item.json.address }}",
+              "value": "={{ $('Formata JSON').first().json.address }}",
               "type": "string"
             }
           ]
@@ -711,7 +711,7 @@
           "values": [
             {
               "column": "phone",
-              "value": "={{ $('Dados do Cliente').item.json.Numero }}"
+              "value": "={{ $('Dados do Cliente').first().json.Numero }}"
             }
           ]
         },
@@ -855,9 +855,9 @@
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
-            "created_at": "={{ $('Filtrar Mensagens').item.json.timestamp }}",
-            "message": "={{ $('Filtrar Mensagens').item.json.texto }}",
-            "phone": "={{ $('Filtrar Mensagens').item.json.telefone }}"
+            "created_at": "={{ $('Filtrar Mensagens').first().json.timestamp }}",
+            "message": "={{ $('Filtrar Mensagens').first().json.texto }}",
+            "phone": "={{ $('Filtrar Mensagens').first().json.telefone }}"
           },
           "matchingColumns": [
             "id"
@@ -931,7 +931,7 @@
             {
               "id": "4265dcaf-3dac-4462-b8a3-6d1082141e03",
               "name": "mensagem",
-              "value": "={{ $('Mensagem encavalada?').item.json.texto }}",
+              "value": "={{ $('Mensagem encavalada?').first().json.texto }}",
               "type": "string"
             }
           ]
@@ -951,89 +951,26 @@
     },
     {
       "parameters": {
-        "workflowId": {
-          "__rl": true,
-          "value": "dq34Nu1lmyMdp1rb",
-          "mode": "list",
-          "cachedResultUrl": "/workflow/dq34Nu1lmyMdp1rb",
-          "cachedResultName": "Sub - Atualizar Status WhatsApp"
-        },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "instancia": "={{ $('Info').first().json['evolution-api_instancia'] }}",
-            "telefone": "={{ $('Filtrar Mensagens').item.json.telefone }}",
-            "status": "composing",
-            "delay": 300000,
-            "apikey": "={{ $('Info').first().json['EvolutionAPI-Key'] }}",
-            "server_url": "={{ $('Info').first().json.body?.server_url || 'https://chatwoot.htech-servidor.space' }}"
-          },
-          "matchingColumns": [],
-          "schema": [
+        "method": "POST",
+        "url": "https://n8n.htech-servidor.space/webhook/whatsapp-status-internal",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
             {
-              "id": "instancia",
-              "displayName": "instancia",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "canBeUsedToMatch": true,
-              "type": "string"
-            },
-            {
-              "id": "telefone",
-              "displayName": "telefone",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "canBeUsedToMatch": true,
-              "type": "string"
-            },
-            {
-              "id": "status",
-              "displayName": "status",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "canBeUsedToMatch": true,
-              "type": "string"
-            },
-            {
-              "id": "delay",
-              "displayName": "delay",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "canBeUsedToMatch": true,
-              "type": "number"
-            },
-            {
-              "id": "apikey",
-              "displayName": "apikey",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "canBeUsedToMatch": true,
-              "type": "string"
-            },
-            {
-              "id": "server_url",
-              "displayName": "server_url",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "canBeUsedToMatch": true,
-              "type": "string"
+              "name": "Content-Type",
+              "value": "application/json"
             }
-          ],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": false
+          ]
         },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ instancia: $('Info').first().json['evolution-api_instancia'], telefone: $('Filtrar Mensagens').first().json.telefone, status: 'composing', delay: 300000, apikey: $('Info').first().json['EvolutionAPI-Key'], server_url: $('Info').first().json.body?.server_url || 'https://chatwoot.htech-servidor.space' }) }}",
         "options": {
-          "waitForSubWorkflow": false
+          "timeout": 3000
         }
       },
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1.1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         -4320,
         2544
@@ -1119,89 +1056,26 @@
     },
     {
       "parameters": {
-        "workflowId": {
-          "__rl": true,
-          "value": "dq34Nu1lmyMdp1rb",
-          "mode": "list",
-          "cachedResultUrl": "/workflow/dq34Nu1lmyMdp1rb",
-          "cachedResultName": "Sub - Atualizar Status WhatsApp"
-        },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "instancia": "={{ $('Info').first().json['evolution-api_instancia'] }}",
-            "telefone": "={{ $('Filtrar Mensagens').item.json.telefone }}",
-            "status": "recording",
-            "delay": 300000,
-            "apikey": "={{ $('Info').first().json['EvolutionAPI-Key'] }}",
-            "server_url": "={{ $('Info').first().json.body?.server_url || 'https://chatwoot.htech-servidor.space' }}"
-          },
-          "matchingColumns": [],
-          "schema": [
+        "method": "POST",
+        "url": "https://n8n.htech-servidor.space/webhook/whatsapp-status-internal",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
             {
-              "id": "instancia",
-              "displayName": "instancia",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "canBeUsedToMatch": true,
-              "type": "string"
-            },
-            {
-              "id": "telefone",
-              "displayName": "telefone",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "canBeUsedToMatch": true,
-              "type": "string"
-            },
-            {
-              "id": "status",
-              "displayName": "status",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "canBeUsedToMatch": true,
-              "type": "string"
-            },
-            {
-              "id": "delay",
-              "displayName": "delay",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "canBeUsedToMatch": true,
-              "type": "number"
-            },
-            {
-              "id": "apikey",
-              "displayName": "apikey",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "canBeUsedToMatch": true,
-              "type": "string"
-            },
-            {
-              "id": "server_url",
-              "displayName": "server_url",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "canBeUsedToMatch": true,
-              "type": "string"
+              "name": "Content-Type",
+              "value": "application/json"
             }
-          ],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": false
+          ]
         },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ instancia: $('Info').first().json['evolution-api_instancia'], telefone: $('Filtrar Mensagens').first().json.telefone, status: 'recording', delay: 300000, apikey: $('Info').first().json['EvolutionAPI-Key'], server_url: $('Info').first().json.body?.server_url || 'https://chatwoot.htech-servidor.space' }) }}",
         "options": {
-          "waitForSubWorkflow": false
+          "timeout": 3000
         }
       },
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1.1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         -4320,
         3008
@@ -1213,89 +1087,26 @@
     },
     {
       "parameters": {
-        "workflowId": {
-          "__rl": true,
-          "value": "dq34Nu1lmyMdp1rb",
-          "mode": "list",
-          "cachedResultUrl": "/workflow/dq34Nu1lmyMdp1rb",
-          "cachedResultName": "Sub - Atualizar Status WhatsApp"
-        },
-        "workflowInputs": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "instancia": "={{ $('Info').first().json['evolution-api_instancia'] }}",
-            "telefone": "={{ $('Filtrar Mensagens').item.json.telefone }}",
-            "status": "paused",
-            "delay": 0,
-            "apikey": "={{ $('Info').first().json['EvolutionAPI-Key'] }}",
-            "server_url": "={{ $('Info').first().json.body?.server_url || 'https://chatwoot.htech-servidor.space' }}"
-          },
-          "matchingColumns": [],
-          "schema": [
+        "method": "POST",
+        "url": "https://n8n.htech-servidor.space/webhook/whatsapp-status-internal",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
             {
-              "id": "instancia",
-              "displayName": "instancia",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "canBeUsedToMatch": true,
-              "type": "string"
-            },
-            {
-              "id": "telefone",
-              "displayName": "telefone",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "canBeUsedToMatch": true,
-              "type": "string"
-            },
-            {
-              "id": "status",
-              "displayName": "status",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "canBeUsedToMatch": true,
-              "type": "string"
-            },
-            {
-              "id": "delay",
-              "displayName": "delay",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "canBeUsedToMatch": true,
-              "type": "number"
-            },
-            {
-              "id": "apikey",
-              "displayName": "apikey",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "canBeUsedToMatch": true,
-              "type": "string"
-            },
-            {
-              "id": "server_url",
-              "displayName": "server_url",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "canBeUsedToMatch": true,
-              "type": "string"
+              "name": "Content-Type",
+              "value": "application/json"
             }
-          ],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": false
+          ]
         },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ instancia: $('Info').first().json['evolution-api_instancia'], telefone: $('Filtrar Mensagens').first().json.telefone, status: 'paused', delay: 0, apikey: $('Info').first().json['EvolutionAPI-Key'], server_url: $('Info').first().json.body?.server_url || 'https://chatwoot.htech-servidor.space' }) }}",
         "options": {
-          "waitForSubWorkflow": false
+          "timeout": 3000
         }
       },
-      "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1.1,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         -1888,
         2656
@@ -1313,7 +1124,7 @@
             {
               "id": "d29ae5a6-0f4d-4bf7-b8f1-b77608e1ea74",
               "name": "mensagem",
-              "value": "={{ $('Transcrever áudio').item.json.text || '[O cliente enviou um áudio mas não consegui entender. Peça para ele enviar por texto.]' }}",
+              "value": "={{ $('Transcrever áudio').first().json.text || '[O cliente enviou um áudio mas não consegui entender. Peça para ele enviar por texto.]' }}",
               "type": "string"
             }
           ]
@@ -1436,7 +1247,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ number: $('Filtrar Mensagens').item.json.telefone, audio: $json.audioBase64 }) }}",
+        "jsonBody": "={{ JSON.stringify({ number: $('Filtrar Mensagens').first().json.telefone, audio: $json.audioBase64 }) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -1560,7 +1371,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ number: $('Filtrar Mensagens').item.json.telefone, mediatype: 'image', media: $('Tratar resposta do agente').first().json.sendProductImages[0]?.url || '', caption: $('Tratar resposta do agente').first().json.sendProductImages[0]?.caption || '', fileName: 'produto-1.jpg' }) }}",
+        "jsonBody": "={{ JSON.stringify({ number: $('Filtrar Mensagens').first().json.telefone, mediatype: 'image', media: $('Tratar resposta do agente').first().json.sendProductImages[0]?.url || '', caption: $('Tratar resposta do agente').first().json.sendProductImages[0]?.caption || '', fileName: 'produto-1.jpg' }) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -1626,7 +1437,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ number: $('Filtrar Mensagens').item.json.telefone, mediatype: 'image', media: $('Tratar resposta do agente').first().json.sendProductImages[1]?.url || '', caption: $('Tratar resposta do agente').first().json.sendProductImages[1]?.caption || '', fileName: 'produto-2.jpg' }) }}",
+        "jsonBody": "={{ JSON.stringify({ number: $('Filtrar Mensagens').first().json.telefone, mediatype: 'image', media: $('Tratar resposta do agente').first().json.sendProductImages[1]?.url || '', caption: $('Tratar resposta do agente').first().json.sendProductImages[1]?.caption || '', fileName: 'produto-2.jpg' }) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -1846,7 +1657,7 @@
       "main": [
         [
           {
-            "node": "Tipo de mensagem",
+            "node": "Buscar pedidos do cliente",
             "type": "main",
             "index": 0
           }
@@ -1875,7 +1686,7 @@
         ],
         [
           {
-            "node": "Tipo de mensagem",
+            "node": "Buscar pedidos do cliente",
             "type": "main",
             "index": 0
           }
@@ -1887,6 +1698,28 @@
         [
           {
             "node": "AgentOff?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar pedidos do cliente": {
+      "main": [
+        [
+          {
+            "node": "Resumo dos pedidos do cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resumo dos pedidos do cliente": {
+      "main": [
+        [
+          {
+            "node": "Tipo de mensagem",
             "type": "main",
             "index": 0
           }

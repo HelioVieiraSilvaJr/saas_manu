@@ -442,6 +442,67 @@
     },
     {
       "parameters": {
+        "name": "Resolver_Escalacao_Humana",
+        "description": "Encerra uma escalacao humana pendente quando a IA resolver o caso antes do atendente assumir ou quando o cliente disser que nao precisa mais falar com humano. Use somente se nao houver atendente humano ja atuando. Informe um resolution_summary curto e objetivo.",
+        "workflowId": {
+          "__rl": true,
+          "value": "tIC44xozixR1dKtp",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/tIC44xozixR1dKtp",
+          "cachedResultName": "Sub - Resolver Escalacao Humana"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "tenant_id": "={{ $fromAI('tenant_id', 'ID do tenant', 'string') }}",
+            "customer_id": "={{ $fromAI('customer_id', 'document_id do cliente', 'string') }}",
+            "resolution_summary": "={{ $fromAI('resolution_summary', 'Resumo curto do motivo do encerramento da escalacao humana', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "tenant_id",
+              "displayName": "tenant_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "customer_id",
+              "displayName": "customer_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "resolution_summary",
+              "displayName": "resolution_summary",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        688
+      ],
+      "id": "e5c6d7e8-0002-4000-8000-000000000002",
+      "name": "Resolver_Escalacao_Humana"
+    },
+    {
+      "parameters": {
         "name": "Registrar_Aviso_Estoque",
         "description": "Registra que o cliente quer ser avisado quando um produto sem estoque voltar. Use somente quando o cliente confirmar que quer aguardar reposicao. Exige product_id e customer_id.",
         "workflowId": {
@@ -544,7 +605,7 @@
     {
       "parameters": {
         "name": "Consultar_Pedido_Cliente",
-        "description": "Consulta pedidos de um cliente especifico com seguranca. Sempre filtra pelo customer_id do proprio atendimento e opcionalmente pelo numero do pedido. Use para informar status do pedido, sem nunca consultar pedidos de outros clientes.",
+        "description": "Consulta pedidos de um cliente especifico com seguranca. Sempre filtra pelo customer_id do proprio atendimento e opcionalmente pelo numero do pedido. Retorna o pedido encontrado e tambem um resumo do historico recente desse mesmo cliente. Use para informar status do pedido, sem nunca consultar pedidos de outros clientes.",
         "workflowId": {
           "__rl": true,
           "value": "1YyfRLyYGtNeVcuA",
@@ -801,6 +862,17 @@
       ]
     },
     "Escalar_Humano": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolver_Escalacao_Humana": {
       "ai_tool": [
         [
           {

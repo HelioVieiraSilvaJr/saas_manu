@@ -37,32 +37,6 @@
     },
     {
       "parameters": {
-        "method": "PATCH",
-        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $json.tenant_id }}/customers/{{ $json.customer_id }}?updateMask.fieldPaths=agent_off&updateMask.fieldPaths=time_agent_off",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "googleFirebaseCloudFirestoreOAuth2Api",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"fields\": {\n    \"agent_off\": { \"booleanValue\": true },\n    \"time_agent_off\": { \"stringValue\": \"{{ new Date().toISOString() }}\" }\n  }\n}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        -880,
-        -80
-      ],
-      "id": "a1b2c3d4-0002-4000-8000-000000000002",
-      "name": "Desativar Agente no Cliente",
-      "credentials": {
-        "googleFirebaseCloudFirestoreOAuth2Api": {
-          "id": "QxD9cYkBZKwyeLQL",
-          "name": "Saas Manu - Firestore OAuth2"
-        }
-      }
-    },
-    {
-      "parameters": {
         "method": "POST",
         "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $('Workflow Trigger').first().json.tenant_id }}/escalations",
         "authentication": "predefinedCredentialType",
@@ -76,7 +50,7 @@
       "typeVersion": 4.2,
       "position": [
         -880,
-        120
+        0
       ],
       "id": "a1b2c3d4-0003-4000-8000-000000000003",
       "name": "Criar Escalação",
@@ -89,12 +63,38 @@
     },
     {
       "parameters": {
-        "jsCode": "const trigger = $('Workflow Trigger').first().json;\nconst escalationResult = $input.first().json;\n\nconst escalationId = escalationResult.name ? escalationResult.name.split('/').pop() : null;\n\nreturn [{\n  json: {\n    success: true,\n    message: 'Atendimento escalado para humano com sucesso.',\n    escalation_id: escalationId,\n    customer_name: trigger.customer_name,\n    reason: trigger.reason\n  }\n}];"
+        "method": "PATCH",
+        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $('Workflow Trigger').first().json.tenant_id }}/customers/{{ $('Workflow Trigger').first().json.customer_id }}?updateMask.fieldPaths=human_handoff_pending&updateMask.fieldPaths=active_escalation_id&updateMask.fieldPaths=last_human_handoff_summary&updateMask.fieldPaths=last_human_handoff_reason&updateMask.fieldPaths=last_human_handoff_requested_at&updateMask.fieldPaths=updated_at",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleFirebaseCloudFirestoreOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"fields\": {\n    \"human_handoff_pending\": { \"booleanValue\": true },\n    \"active_escalation_id\": { \"stringValue\": \"{{ ($('Criar Escalação').first().json.name || '').split('/').pop() }}\" },\n    \"last_human_handoff_summary\": { \"stringValue\": \"{{ $('Workflow Trigger').first().json.summary }}\" },\n    \"last_human_handoff_reason\": { \"stringValue\": \"{{ $('Workflow Trigger').first().json.reason }}\" },\n    \"last_human_handoff_requested_at\": { \"timestampValue\": \"{{ $now.toISO() }}\" },\n    \"updated_at\": { \"timestampValue\": \"{{ $now.toISO() }}\" }\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -560,
+        0
+      ],
+      "id": "a1b2c3d4-0005-4000-8000-000000000005",
+      "name": "Marcar Handoff Pendente no Cliente",
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "QxD9cYkBZKwyeLQL",
+          "name": "Saas Manu - Firestore OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const trigger = $('Workflow Trigger').first().json;\nconst customerResult = $input.first().json;\nconst escalationId = String(customerResult.fields?.active_escalation_id?.stringValue || '').trim() || null;\n\nreturn [{\n  json: {\n    success: true,\n    message: 'Atendimento encaminhado para a fila humana com sucesso.',\n    escalation_id: escalationId,\n    customer_name: trigger.customer_name,\n    reason: trigger.reason\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -560,
+        -240,
         0
       ],
       "id": "a1b2c3d4-0004-4000-8000-000000000004",
@@ -107,17 +107,6 @@
       "main": [
         [
           {
-            "node": "Desativar Agente no Cliente",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Desativar Agente no Cliente": {
-      "main": [
-        [
-          {
             "node": "Criar Escalação",
             "type": "main",
             "index": 0
@@ -126,6 +115,17 @@
       ]
     },
     "Criar Escalação": {
+      "main": [
+        [
+          {
+            "node": "Marcar Handoff Pendente no Cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar Handoff Pendente no Cliente": {
       "main": [
         [
           {

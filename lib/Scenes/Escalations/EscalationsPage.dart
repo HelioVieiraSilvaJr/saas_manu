@@ -38,8 +38,11 @@ class _EscalationsPageState extends State<EscalationsPage> {
     super.dispose();
   }
 
-  Future<void> _handleAssume(String escalationId) async {
-    final success = await _presenter.assumeEscalation(escalationId);
+  Future<void> _handleAssume(String escalationId, String customerId) async {
+    final success = await _presenter.assumeEscalation(
+      escalationId,
+      customerId,
+    );
     if (success && mounted) {
       ElegantNotification.success(
         title: const Text('Atendimento Assumido'),

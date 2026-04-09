@@ -170,7 +170,7 @@ class EscalationsPresenter {
   // MARK: - Ações (Optimistic Updates)
 
   /// Assume um atendimento pendente.
-  Future<bool> assumeEscalation(String escalationId) async {
+  Future<bool> assumeEscalation(String escalationId, String customerId) async {
     final session = SessionManager.instance;
     final userId = session.currentUser!.uid;
     final userName = session.currentUser!.name;
@@ -182,6 +182,7 @@ class EscalationsPresenter {
       escalationId,
       userId,
       userName,
+      customerId,
     );
 
     _viewModel = _viewModel.copyWith(actionInProgressId: null);

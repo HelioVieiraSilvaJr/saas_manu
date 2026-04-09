@@ -14,7 +14,7 @@ import '../Widgets/EscalationCard.dart';
 class EscalationsWebView extends StatelessWidget {
   final EscalationsPresenter presenter;
   final TextEditingController searchController;
-  final void Function(String escalationId) onAssume;
+  final void Function(String escalationId, String customerId) onAssume;
   final void Function(String escalationId, String customerId) onComplete;
   final void Function(EscalationTab tab) onTabChange;
 
@@ -263,7 +263,7 @@ class EscalationsWebView extends StatelessWidget {
             (e) => EscalationCard(
               escalation: e,
               isActionInProgress: vm.actionInProgressId == e.uid,
-              onAssume: () => onAssume(e.uid),
+              onAssume: () => onAssume(e.uid, e.customerId),
               onComplete: () => onComplete(e.uid, e.customerId),
               onWhatsApp: () => _openWhatsApp(e.customerWhatsapp),
             ),

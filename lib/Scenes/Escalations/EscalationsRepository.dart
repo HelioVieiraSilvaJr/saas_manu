@@ -84,14 +84,27 @@ class EscalationsRepository {
     String escalationId,
     String userId,
     String userName,
+    String customerId,
   ) async {
     try {
-      await _collection.doc(escalationId).update({
+      final now = Timestamp.fromDate(DateTime.now());
+      final batch = _firestore.batch();
+
+      batch.update(_collection.doc(escalationId), {
         'status': EscalationStatus.in_progress.name,
         'assigned_to': userId,
         'assigned_to_name': userName,
-        'updated_at': Timestamp.fromDate(DateTime.now()),
+        'updated_at': now,
       });
+
+      batch.update(_customersCollection.doc(customerId), {
+        'agent_off': true,
+        'time_agent_off': now,
+        'human_handoff_pending': false,
+        'updated_at': now,
+      });
+
+      await batch.commit();
       AppLogger.info('Escalação $escalationId assumida por $userName');
       return true;
     } catch (e) {
@@ -121,6 +134,12 @@ class EscalationsRepository {
       // 2. Libera cliente para o agente IA
       batch.update(_customersCollection.doc(customerId), {
         'agent_off': false,
+        'time_agent_off': '',
+        'human_handoff_pending': false,
+        'active_escalation_id': '',
+        'last_human_handoff_summary': '',
+        'last_human_handoff_reason': '',
+        'last_human_handoff_requested_at': '',
         'updated_at': Timestamp.fromDate(DateTime.now()),
       });
 
