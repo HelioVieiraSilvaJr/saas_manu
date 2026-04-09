@@ -37,7 +37,7 @@
         "nodeCredentialType": "googleFirebaseCloudFirestoreOAuth2Api",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"structuredQuery\": {\n    \"from\": [{ \"collectionId\": \"sales\" }],\n    \"where\": {\n      \"fieldFilter\": {\n        \"field\": { \"fieldPath\": \"customer_id\" },\n        \"op\": \"EQUAL\",\n        \"value\": { \"stringValue\": \"{{ $json.customer_id }}\" }\n      }\n    },\n    \"orderBy\": [\n      {\n        \"field\": { \"fieldPath\": \"created_at\" },\n        \"direction\": \"DESCENDING\"\n      }\n    ],\n    \"limit\": 100\n  }\n}",
+        "jsonBody": "={\n  \"structuredQuery\": {\n    \"from\": [{ \"collectionId\": \"sales\" }],\n    \"where\": {\n      \"fieldFilter\": {\n        \"field\": { \"fieldPath\": \"customer_id\" },\n        \"op\": \"EQUAL\",\n        \"value\": { \"stringValue\": \"{{ $json.customer_id }}\" }\n      }\n    },\n    \"limit\": 100\n  }\n}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
