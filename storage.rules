@@ -52,6 +52,11 @@ service firebase.storage {
         );
     }
 
+    match /tenants/{tenantId}/products/{allPaths=**} {
+      allow read: if true;
+      allow write: if canManageTenant(tenantId);
+    }
+
     match /tenants/{tenantId}/{allPaths=**} {
       allow read: if isActiveTenantMember(tenantId);
       allow write: if canManageTenant(tenantId);

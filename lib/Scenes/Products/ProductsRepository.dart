@@ -35,6 +35,35 @@ class ProductsRepository {
   CollectionReference get _collection =>
       _firestore.collection('tenants').doc(_tenantId).collection('products');
 
+  String _buildPublicProductImageUrl(String path, String bucket) {
+    final encodedPath = Uri.encodeComponent(path);
+    return 'https://firebasestorage.googleapis.com/v0/b/$bucket/o/$encodedPath?alt=media';
+  }
+
+  String? _extractStoragePathFromUrl(String rawUrl) {
+    final normalized = rawUrl.trim();
+    if (normalized.isEmpty) return null;
+
+    final uri = Uri.tryParse(normalized);
+    if (uri == null) return null;
+
+    if (uri.scheme == 'gs') {
+      return uri.pathSegments.isEmpty ? null : uri.pathSegments.join('/');
+    }
+
+    if (uri.host == 'firebasestorage.googleapis.com') {
+      final segments = uri.pathSegments;
+      if (segments.length >= 4 &&
+          segments[0] == 'v0' &&
+          segments[1] == 'b' &&
+          segments[3] == 'o') {
+        return Uri.decodeComponent(segments.sublist(4).join('/'));
+      }
+    }
+
+    return null;
+  }
+
   static String _normalizeSearchText(String value) {
     const accentsIn = 'áàâãäéèêëíìîïóòôõöúùûüçÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇ';
     const accentsOut = 'aaaaaeeeeiiiiooooouuuucAAAAAEEEEIIIIOOOOOUUUUC';
@@ -327,10 +356,10 @@ class ProductsRepository {
       );
 
       await ref.putData(imageBytes, metadata);
-      final downloadUrl = await ref.getDownloadURL();
+      final publicUrl = _buildPublicProductImageUrl(path, ref.bucket);
 
       AppLogger.info('Imagem uploaded: $path');
-      return downloadUrl;
+      return publicUrl;
     } catch (e) {
       AppLogger.error('Erro ao fazer upload de imagem', error: e);
       return null;
@@ -340,7 +369,10 @@ class ProductsRepository {
   /// Remove a imagem antiga do Storage (se existir).
   Future<void> deleteImage(String imageUrl) async {
     try {
-      final ref = _storage.refFromURL(imageUrl);
+      final storagePath = _extractStoragePathFromUrl(imageUrl);
+      final ref = storagePath != null
+          ? _storage.ref().child(storagePath)
+          : _storage.refFromURL(imageUrl);
       await ref.delete();
       AppLogger.info('Imagem removida');
     } catch (e) {
