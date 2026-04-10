@@ -88,7 +88,7 @@ class DashboardTenantWebView extends StatelessWidget {
             const SizedBox(height: DSSpacing.md),
 
             // Seção 1b: Métricas operacionais (escalações + estoque)
-            if (_hasOperationalMetrics) _buildOperationalCards(),
+            if (viewModel.hasOperationalMetrics) _buildOperationalCards(),
             const SizedBox(height: DSSpacing.xl),
 
             // Seção 2 + 3: Gráfico + Vendas Recentes (lado a lado)
@@ -244,13 +244,6 @@ class DashboardTenantWebView extends StatelessWidget {
       trend: TrendType.down,
     );
   }
-
-  bool get _hasOperationalMetrics =>
-      viewModel.pendingEscalationsCount > 0 ||
-      viewModel.pendingStockAlertsCount > 0 ||
-      viewModel.pendingSalesCount > 0 ||
-      viewModel.paymentSentSalesCount > 0 ||
-      viewModel.abandonedCartsCount > 0;
 
   String? _formatPercentChange(double? percent) {
     if (percent == null) return null;

@@ -73,7 +73,7 @@ class DashboardTenantMobileView extends StatelessWidget {
             _buildMetricCards(),
 
             // Métricas operacionais (escalações + estoque)
-            if (_hasOperationalMetrics) ...[
+            if (viewModel.hasOperationalMetrics) ...[
               const SizedBox(height: DSSpacing.sm),
               _buildOperationalCards(context),
             ],
@@ -239,13 +239,6 @@ class DashboardTenantMobileView extends StatelessWidget {
       compact: true,
     );
   }
-
-  bool get _hasOperationalMetrics =>
-      viewModel.pendingEscalationsCount > 0 ||
-      viewModel.pendingStockAlertsCount > 0 ||
-      viewModel.pendingSalesCount > 0 ||
-      viewModel.paymentSentSalesCount > 0 ||
-      viewModel.abandonedCartsCount > 0;
 
   String? _formatPercentChange(double? percent) {
     if (percent == null) return null;

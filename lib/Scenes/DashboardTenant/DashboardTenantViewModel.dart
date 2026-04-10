@@ -167,6 +167,14 @@ class DashboardTenantViewModel {
         100;
   }
 
+  /// Indica se existe alguma pendencia operacional visivel no dashboard.
+  bool get hasOperationalMetrics =>
+      pendingEscalationsCount > 0 ||
+      pendingStockAlertsCount > 0 ||
+      pendingSalesCount > 0 ||
+      paymentSentSalesCount > 0 ||
+      abandonedCartsCount > 0;
+
   // MARK: - CopyWith
 
   DashboardTenantViewModel copyWith({
