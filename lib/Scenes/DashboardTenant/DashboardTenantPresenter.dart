@@ -37,6 +37,9 @@ class DashboardTenantPresenter {
         salesCountThisMonth: snapshot.salesCountThisMonth,
         pendingEscalationsCount: snapshot.pendingEscalationsCount,
         pendingStockAlertsCount: snapshot.pendingStockAlertsCount,
+        pendingSalesCount: snapshot.pendingSalesCount,
+        paymentSentSalesCount: snapshot.paymentSentSalesCount,
+        abandonedCartsCount: snapshot.abandonedCartsCount,
       );
 
       _update(
@@ -57,6 +60,9 @@ class DashboardTenantPresenter {
           alerts: alerts,
           pendingEscalationsCount: snapshot.pendingEscalationsCount,
           pendingStockAlertsCount: snapshot.pendingStockAlertsCount,
+          pendingSalesCount: snapshot.pendingSalesCount,
+          paymentSentSalesCount: snapshot.paymentSentSalesCount,
+          abandonedCartsCount: snapshot.abandonedCartsCount,
         ),
       );
 
@@ -148,6 +154,9 @@ class DashboardTenantPresenter {
     required int salesCountThisMonth,
     required int pendingEscalationsCount,
     required int pendingStockAlertsCount,
+    required int pendingSalesCount,
+    required int paymentSentSalesCount,
+    required int abandonedCartsCount,
   }) async {
     final alerts = <DashboardAlert>[];
     final prefs = PreferencesManager.instance;
@@ -307,6 +316,48 @@ class DashboardTenantPresenter {
               'Você tem $pendingStockAlertsCount produto${pendingStockAlertsCount > 1 ? "s" : ""} com aviso de estoque pendente.',
           actionLabel: 'Ver Estoque',
           route: '/stock-alerts',
+          isWarning: true,
+        ),
+      );
+    }
+
+    // 8. Vendas pendentes aguardando ação
+    if (pendingSalesCount > 0) {
+      alerts.add(
+        DashboardAlert(
+          type: DashboardAlertType.pendingSalesAction,
+          title:
+              'Você tem $pendingSalesCount venda${pendingSalesCount > 1 ? "s" : ""} pendente${pendingSalesCount > 1 ? "s" : ""} aguardando marcar como paga ou cancelar.',
+          actionLabel: 'Abrir Vendas',
+          route: '/sales',
+          isWarning: true,
+        ),
+      );
+    }
+
+    // 9. Cobranças enviadas sem desfecho
+    if (paymentSentSalesCount > 0) {
+      alerts.add(
+        DashboardAlert(
+          type: DashboardAlertType.paymentFollowUp,
+          title:
+              'Você tem $paymentSentSalesCount cobrança${paymentSentSalesCount > 1 ? "s" : ""} enviada${paymentSentSalesCount > 1 ? "s" : ""} sem desfecho.',
+          actionLabel: 'Revisar Vendas',
+          route: '/sales',
+          isWarning: true,
+        ),
+      );
+    }
+
+    // 10. Carrinhos em risco de abandono
+    if (abandonedCartsCount > 0) {
+      alerts.add(
+        DashboardAlert(
+          type: DashboardAlertType.abandonedCarts,
+          title:
+              'Você tem $abandonedCartsCount carrinho${abandonedCartsCount > 1 ? "s" : ""} em risco de abandono.',
+          actionLabel: 'Ver Dashboard',
+          route: '/dashboard',
           isWarning: true,
         ),
       );

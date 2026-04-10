@@ -73,10 +73,9 @@ class DashboardTenantMobileView extends StatelessWidget {
             _buildMetricCards(),
 
             // Métricas operacionais (escalações + estoque)
-            if (viewModel.pendingEscalationsCount > 0 ||
-                viewModel.pendingStockAlertsCount > 0) ...[
+            if (_hasOperationalMetrics) ...[
               const SizedBox(height: DSSpacing.sm),
-              _buildOperationalCards(),
+              _buildOperationalCards(context),
             ],
             const SizedBox(height: DSSpacing.base),
 
@@ -171,39 +170,82 @@ class DashboardTenantMobileView extends StatelessWidget {
     );
   }
 
-  Widget _buildOperationalCards() {
-    return Row(
-      children: [
-        if (viewModel.pendingEscalationsCount > 0)
-          Expanded(
-            child: DSMetricCard(
-              title: 'Escalações Pendentes',
-              value: viewModel.pendingEscalationsCount.toString(),
-              icon: Icons.support_agent_rounded,
-              comparison: 'Aguardando',
-              trend: TrendType.down,
-            ),
-          ),
-        if (viewModel.pendingEscalationsCount > 0 &&
-            viewModel.pendingStockAlertsCount > 0)
-          const SizedBox(width: DSSpacing.sm),
-        if (viewModel.pendingStockAlertsCount > 0)
-          Expanded(
-            child: DSMetricCard(
-              title: 'Alertas de Estoque',
-              value: viewModel.pendingStockAlertsCount.toString(),
-              icon: Icons.inventory_2_rounded,
-              comparison: 'Estoque baixo',
-              trend: TrendType.down,
-            ),
-          ),
-        // Spacer if only one card
-        if (viewModel.pendingEscalationsCount == 0 ||
-            viewModel.pendingStockAlertsCount == 0)
-          const Expanded(child: SizedBox()),
-      ],
+  Widget _buildOperationalCards(BuildContext context) {
+    final cards = <Widget>[
+      if (viewModel.pendingEscalationsCount > 0)
+        _buildOperationalMetricCard(
+          title: 'Escalações Pendentes',
+          value: viewModel.pendingEscalationsCount.toString(),
+          icon: Icons.support_agent_rounded,
+          comparison: 'Aguardando',
+        ),
+      if (viewModel.pendingStockAlertsCount > 0)
+        _buildOperationalMetricCard(
+          title: 'Alertas de Estoque',
+          value: viewModel.pendingStockAlertsCount.toString(),
+          icon: Icons.inventory_2_rounded,
+          comparison: 'Estoque baixo',
+        ),
+      if (viewModel.pendingSalesCount > 0)
+        _buildOperationalMetricCard(
+          title: 'Vendas Pendentes',
+          value: viewModel.pendingSalesCount.toString(),
+          icon: Icons.point_of_sale_rounded,
+          comparison: 'Pagar ou cancelar',
+        ),
+      if (viewModel.paymentSentSalesCount > 0)
+        _buildOperationalMetricCard(
+          title: 'Cobranças sem Desfecho',
+          value: viewModel.paymentSentSalesCount.toString(),
+          icon: Icons.payments_rounded,
+          comparison: 'Sem retorno',
+        ),
+      if (viewModel.abandonedCartsCount > 0)
+        _buildOperationalMetricCard(
+          title: 'Carrinhos em Risco',
+          value: viewModel.abandonedCartsCount.toString(),
+          icon: Icons.shopping_cart_checkout_rounded,
+          comparison: 'Sem resposta ha 2h',
+        ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardWidth = (constraints.maxWidth - DSSpacing.sm) / 2;
+
+        return Wrap(
+          spacing: DSSpacing.sm,
+          runSpacing: DSSpacing.sm,
+          children: cards
+              .map((card) => SizedBox(width: cardWidth, child: card))
+              .toList(),
+        );
+      },
     );
   }
+
+  Widget _buildOperationalMetricCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required String comparison,
+  }) {
+    return DSMetricCard(
+      title: title,
+      value: value,
+      icon: icon,
+      comparison: comparison,
+      trend: TrendType.down,
+      compact: true,
+    );
+  }
+
+  bool get _hasOperationalMetrics =>
+      viewModel.pendingEscalationsCount > 0 ||
+      viewModel.pendingStockAlertsCount > 0 ||
+      viewModel.pendingSalesCount > 0 ||
+      viewModel.paymentSentSalesCount > 0 ||
+      viewModel.abandonedCartsCount > 0;
 
   String? _formatPercentChange(double? percent) {
     if (percent == null) return null;

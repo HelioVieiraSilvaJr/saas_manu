@@ -88,9 +88,7 @@ class DashboardTenantWebView extends StatelessWidget {
             const SizedBox(height: DSSpacing.md),
 
             // Seção 1b: Métricas operacionais (escalações + estoque)
-            if (viewModel.pendingEscalationsCount > 0 ||
-                viewModel.pendingStockAlertsCount > 0)
-              _buildOperationalCards(),
+            if (_hasOperationalMetrics) _buildOperationalCards(),
             const SizedBox(height: DSSpacing.xl),
 
             // Seção 2 + 3: Gráfico + Vendas Recentes (lado a lado)
@@ -187,43 +185,72 @@ class DashboardTenantWebView extends StatelessWidget {
   }
 
   Widget _buildOperationalCards() {
-    return Row(
-      children: [
-        if (viewModel.pendingEscalationsCount > 0) ...[
-          Expanded(
-            child: DSMetricCard(
-              title: 'Escalações Pendentes',
-              value: viewModel.pendingEscalationsCount.toString(),
-              icon: Icons.support_agent_rounded,
-              comparison: 'Aguardando atendimento',
-              trend: TrendType.down,
-            ),
-          ),
-          if (viewModel.pendingStockAlertsCount > 0)
-            const SizedBox(width: DSSpacing.md),
-        ],
-        if (viewModel.pendingStockAlertsCount > 0)
-          Expanded(
-            child: DSMetricCard(
-              title: 'Alertas de Estoque',
-              value: viewModel.pendingStockAlertsCount.toString(),
-              icon: Icons.inventory_2_rounded,
-              comparison: 'Itens com estoque baixo',
-              trend: TrendType.down,
-            ),
-          ),
-        // Spacers to keep card sizes consistent with 4-card row
-        if (viewModel.pendingEscalationsCount == 0 ||
-            viewModel.pendingStockAlertsCount == 0) ...[
-          const Expanded(child: SizedBox()),
-          const SizedBox(width: DSSpacing.md),
-        ],
-        const Expanded(child: SizedBox()),
-        const SizedBox(width: DSSpacing.md),
-        const Expanded(child: SizedBox()),
-      ],
+    final cards = <Widget>[
+      if (viewModel.pendingEscalationsCount > 0)
+        _buildOperationalMetricCard(
+          title: 'Escalações Pendentes',
+          value: viewModel.pendingEscalationsCount.toString(),
+          icon: Icons.support_agent_rounded,
+          comparison: 'Aguardando atendimento',
+        ),
+      if (viewModel.pendingStockAlertsCount > 0)
+        _buildOperationalMetricCard(
+          title: 'Alertas de Estoque',
+          value: viewModel.pendingStockAlertsCount.toString(),
+          icon: Icons.inventory_2_rounded,
+          comparison: 'Itens com estoque baixo',
+        ),
+      if (viewModel.pendingSalesCount > 0)
+        _buildOperationalMetricCard(
+          title: 'Vendas Pendentes',
+          value: viewModel.pendingSalesCount.toString(),
+          icon: Icons.point_of_sale_rounded,
+          comparison: 'Aguardando pagar ou cancelar',
+        ),
+      if (viewModel.paymentSentSalesCount > 0)
+        _buildOperationalMetricCard(
+          title: 'Cobranças sem Desfecho',
+          value: viewModel.paymentSentSalesCount.toString(),
+          icon: Icons.payments_rounded,
+          comparison: 'Pagamento enviado sem retorno',
+        ),
+      if (viewModel.abandonedCartsCount > 0)
+        _buildOperationalMetricCard(
+          title: 'Carrinhos em Risco',
+          value: viewModel.abandonedCartsCount.toString(),
+          icon: Icons.shopping_cart_checkout_rounded,
+          comparison: 'Clientes sem resposta ha 2h',
+        ),
+    ];
+
+    return Wrap(
+      spacing: DSSpacing.md,
+      runSpacing: DSSpacing.md,
+      children: cards.map((card) => SizedBox(width: 260, child: card)).toList(),
     );
   }
+
+  Widget _buildOperationalMetricCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required String comparison,
+  }) {
+    return DSMetricCard(
+      title: title,
+      value: value,
+      icon: icon,
+      comparison: comparison,
+      trend: TrendType.down,
+    );
+  }
+
+  bool get _hasOperationalMetrics =>
+      viewModel.pendingEscalationsCount > 0 ||
+      viewModel.pendingStockAlertsCount > 0 ||
+      viewModel.pendingSalesCount > 0 ||
+      viewModel.paymentSentSalesCount > 0 ||
+      viewModel.abandonedCartsCount > 0;
 
   String? _formatPercentChange(double? percent) {
     if (percent == null) return null;

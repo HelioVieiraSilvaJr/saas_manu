@@ -1,9 +1,11 @@
 const crypto = require("crypto");
 const admin = require("firebase-admin");
 const logger = require("firebase-functions/logger");
+const { onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { onRequest } = require("firebase-functions/v2/https");
 const { setGlobalOptions } = require("firebase-functions/v2/options");
 const { defineSecret } = require("firebase-functions/params");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 
 admin.initializeApp();
 setGlobalOptions({ region: "us-central1", maxInstances: 10 });
@@ -77,6 +79,229 @@ function normalizeSaleSource(source) {
   return ["manual", "whatsapp_automation"].includes(value)
     ? value
     : "whatsapp_automation";
+}
+
+function normalizeOrderStatus(status) {
+  const value = String(status || "").trim().toLowerCase();
+  switch (value) {
+    case "separating":
+      return "awaiting_processing";
+    case "ready":
+    case "ready_for_pickup":
+      return "ready_for_shipping";
+    default:
+      return value;
+  }
+}
+
+function orderStatusNotificationLabel(status) {
+  switch (normalizeOrderStatus(status)) {
+    case "awaiting_processing":
+      return "aguardando processamento";
+    case "awaiting_pickup":
+      return "aguardando retirada";
+    case "ready_for_shipping":
+      return "pronto para envio ou retirada";
+    case "shipped":
+      return "enviado";
+    case "completed":
+      return "concluido";
+    default:
+      return "";
+  }
+}
+
+function shouldNotifyOrderStatus(status) {
+  return [
+    "awaiting_processing",
+    "awaiting_pickup",
+    "ready_for_shipping",
+    "shipped",
+    "completed",
+  ].includes(normalizeOrderStatus(status));
+}
+
+function buildOrderStatusNotificationMessage({
+  customerName,
+  tenantName,
+  orderNumber,
+  orderStatus,
+}) {
+  const normalizedStatus = normalizeOrderStatus(orderStatus);
+  const greetingName = String(customerName || "").trim();
+  const storeName = String(tenantName || "nossa loja").trim() || "nossa loja";
+  const orderLabel = String(orderNumber || "").trim()
+    ? `#${String(orderNumber || "").trim()}`
+    : "seu pedido";
+  const greeting = greetingName ? `Oi ${greetingName}! ` : "Oi! ";
+
+  switch (normalizedStatus) {
+    case "awaiting_processing":
+      return (
+        `${greeting}${orderLabel} na ${storeName} foi confirmado e agora esta ` +
+        "aguardando processamento. Se precisar de mais alguma coisa, me chama por aqui."
+      );
+    case "awaiting_pickup":
+      return (
+        `${greeting}${orderLabel} ja esta aguardando retirada na ${storeName}. ` +
+        "Se quiser, posso te ajudar com mais alguma informacao por aqui."
+      );
+    case "ready_for_shipping":
+      return (
+        `${greeting}${orderLabel} na ${storeName} agora esta pronto para envio ou retirada. ` +
+        "Se precisar, eu sigo por aqui."
+      );
+    case "shipped":
+      return (
+        `${greeting}${orderLabel} na ${storeName} foi enviado. ` +
+        "Qualquer duvida sobre a entrega, pode me chamar."
+      );
+    case "completed":
+      return (
+        `${greeting}${orderLabel} na ${storeName} foi concluido. ` +
+        "Obrigada pela compra! Se quiser, eu posso te ajudar novamente por aqui."
+      );
+    default:
+      return "";
+  }
+}
+
+function parseDateLike(value) {
+  if (!value) return null;
+  if (value instanceof admin.firestore.Timestamp) {
+    return value.toDate();
+  }
+  if (value && typeof value.toDate === "function") {
+    try {
+      return value.toDate();
+    } catch (error) {
+      return null;
+    }
+  }
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+  if (typeof value === "string") {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? null : new Date(parsed);
+  }
+  if (typeof value === "number") {
+    const normalized = value < 1e12 ? value * 1000 : value;
+    const parsed = new Date(normalized);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  return null;
+}
+
+function extractTenantIdFromPath(path = "") {
+  const segments = String(path || "").split("/").filter(Boolean);
+  const tenantIndex = segments.indexOf("tenants");
+  if (tenantIndex === -1 || !segments[tenantIndex + 1]) {
+    return "";
+  }
+  return segments[tenantIndex + 1];
+}
+
+function summarizeCartItems(items = []) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return "itens no carrinho";
+  }
+
+  return items
+    .slice(0, 3)
+    .map((item) => {
+      const quantity = Number(item?.quantity || 1);
+      const name = String(item?.product_name || item?.name || "item").trim() || "item";
+      return `${quantity}x ${name}`;
+    })
+    .join("; ");
+}
+
+function buildCartRecoveryMessage({ customerName, itemsSummary }) {
+  const greetingName = String(customerName || "").trim();
+  const greeting = greetingName ? `Oi ${greetingName}, ` : "Oi, ";
+  return (
+    `${greeting}voce ainda tem interesse em ${itemsSummary}? ` +
+    "Se quiser, eu posso retomar seu atendimento e te ajudar a fechar o pedido por aqui."
+  );
+}
+
+function groupEligibleCartDocs(cartDocs = []) {
+  const grouped = new Map();
+
+  for (const doc of cartDocs) {
+    const data = doc.data() || {};
+    const tenantId = extractTenantIdFromPath(doc.ref.path);
+    const phone = sanitizePhone(data.phone || "");
+    if (!tenantId || !phone) {
+      continue;
+    }
+
+    const key = `${tenantId}:${phone}`;
+    const current = grouped.get(key) || {
+      tenantId,
+      phone,
+      docs: [],
+      customerId: "",
+      customerName: "",
+      latestUpdatedAt: null,
+      latestRecoveryAt: null,
+      maxRecoveryAttemptCount: 0,
+      recoveryStatus: "",
+      items: [],
+    };
+
+    current.docs.push(doc);
+    current.customerId = current.customerId || String(data.customer_id || "").trim();
+    current.customerName =
+      current.customerName || String(data.customer_name || "").trim() || phone;
+
+    const updatedAt = parseDateLike(data.updated_at || data.created_at);
+    if (!current.latestUpdatedAt || (updatedAt && updatedAt > current.latestUpdatedAt)) {
+      current.latestUpdatedAt = updatedAt;
+      current.items = Array.isArray(data.items) ? data.items : [];
+    }
+
+    const lastRecoveryAt = parseDateLike(data.last_recovery_at);
+    if (!current.latestRecoveryAt || (lastRecoveryAt && lastRecoveryAt > current.latestRecoveryAt)) {
+      current.latestRecoveryAt = lastRecoveryAt;
+    }
+
+    current.maxRecoveryAttemptCount = Math.max(
+      current.maxRecoveryAttemptCount,
+      Number(data.recovery_attempt_count || 0),
+    );
+    current.recoveryStatus = String(data.recovery_status || current.recoveryStatus || "").trim();
+
+    grouped.set(key, current);
+  }
+
+  return Array.from(grouped.values());
+}
+
+async function markCartRecoveryState(cartDocs = [], payload = {}) {
+  if (!Array.isArray(cartDocs) || cartDocs.length === 0) {
+    return;
+  }
+
+  const batch = db.batch();
+  for (const doc of cartDocs) {
+    batch.set(doc.ref, payload, { merge: true });
+  }
+  await batch.commit();
+}
+
+async function deleteCartDocs(cartDocs = []) {
+  if (!Array.isArray(cartDocs) || cartDocs.length === 0) {
+    return 0;
+  }
+
+  const batch = db.batch();
+  for (const doc of cartDocs) {
+    batch.delete(doc.ref);
+  }
+  await batch.commit();
+  return cartDocs.length;
 }
 
 function generatePublicOrderNumber(saleId) {
@@ -946,6 +1171,24 @@ function membershipDocId(tenantId, userId) {
 
 function nowTs() {
   return admin.firestore.FieldValue.serverTimestamp();
+}
+
+async function syncOrderStatusNotificationState({
+  saleRef,
+  orderStatus,
+  errorMessage = "",
+}) {
+  const payload = {
+    last_order_status_notification_attempted_at: admin.firestore.Timestamp.now(),
+    last_order_status_notification_error: String(errorMessage || "").trim(),
+  };
+
+  if (!errorMessage) {
+    payload.last_notified_order_status = normalizeOrderStatus(orderStatus);
+    payload.last_order_status_notification_at = admin.firestore.Timestamp.now();
+  }
+
+  await saleRef.set(payload, { merge: true });
 }
 
 function buildSalesWebhookUrl(tenantId, token) {
@@ -2421,6 +2664,303 @@ exports.receiveN8nSale = onRequest(
       ...result,
     });
   }),
+);
+
+exports.notifyOrderStatusChange = onDocumentUpdated(
+  {
+    document: "tenants/{tenantId}/sales/{saleId}",
+    secrets: [EVOLUTION_API_URL, EVOLUTION_API_KEY],
+  },
+  async (event) => {
+    const beforeData = event.data?.before?.data() || null;
+    const afterData = event.data?.after?.data() || null;
+    const tenantId = String(event.params?.tenantId || "").trim();
+    const saleId = String(event.params?.saleId || "").trim();
+
+    if (!beforeData || !afterData || !tenantId || !saleId) {
+      return;
+    }
+
+    const previousOrderStatus = normalizeOrderStatus(beforeData.order_status);
+    const currentOrderStatus = normalizeOrderStatus(afterData.order_status);
+    if (!currentOrderStatus || previousOrderStatus === currentOrderStatus) {
+      return;
+    }
+
+    if (!shouldNotifyOrderStatus(currentOrderStatus)) {
+      return;
+    }
+
+    if (normalizeSaleSource(afterData.source || "") !== "whatsapp_automation") {
+      return;
+    }
+
+    if (normalizeSaleStatus(afterData.status || "") !== "confirmed") {
+      return;
+    }
+
+    if (
+      normalizeOrderStatus(afterData.last_notified_order_status) === currentOrderStatus
+    ) {
+      return;
+    }
+
+    const customerPhone = sanitizePhone(afterData.customer_whatsapp || "");
+    if (!customerPhone) {
+      return;
+    }
+
+    const saleRef = event.data.after.ref;
+    const tenantRef = db.collection("tenants").doc(tenantId);
+    const customerId = String(afterData.customer_id || "").trim();
+    const customerRef = customerId
+      ? tenantRef.collection("customers").doc(customerId)
+      : null;
+
+    const [tenantDoc, customerDoc] = await Promise.all([
+      tenantRef.get(),
+      customerRef ? customerRef.get() : Promise.resolve(null),
+    ]);
+
+    if (!tenantDoc.exists) {
+      logger.warn("Tenant nao encontrado para notificar status do pedido", {
+        tenantId,
+        saleId,
+        orderStatus: currentOrderStatus,
+      });
+      return;
+    }
+
+    const tenantData = tenantDoc.data() || {};
+    const customerData = customerDoc?.exists ? customerDoc.data() || {} : {};
+    if (customerData.human_handoff_pending === true || customerData.agent_off === true) {
+      logger.info("Notificacao de status ignorada por handoff humano ativo", {
+        tenantId,
+        saleId,
+        customerId,
+        orderStatus: currentOrderStatus,
+      });
+      return;
+    }
+
+    const tenantEvolutionConfig = resolveTenantEvolutionConfig(tenantData);
+    if (!tenantEvolutionConfig) {
+      logger.warn("Tenant sem configuracao de WhatsApp para notificar status do pedido", {
+        tenantId,
+        saleId,
+        orderStatus: currentOrderStatus,
+      });
+      return;
+    }
+
+    const orderNumber =
+      String(afterData.public_order_number || "").trim() || generatePublicOrderNumber(saleId);
+    const message = buildOrderStatusNotificationMessage({
+      customerName: afterData.customer_name || customerData.name || "",
+      tenantName: tenantData.name || "sua loja",
+      orderNumber,
+      orderStatus: currentOrderStatus,
+    });
+
+    if (!message) {
+      return;
+    }
+
+    try {
+      await sendEvolutionTextMessage({
+        evolutionApiUrl: tenantEvolutionConfig.evolutionApiUrl,
+        apiKey: tenantEvolutionConfig.apiKey,
+        instanceName: tenantEvolutionConfig.instanceName,
+        phone: customerPhone,
+        message,
+      });
+
+      await syncOrderStatusNotificationState({
+        saleRef,
+        orderStatus: currentOrderStatus,
+      });
+
+      logger.info("Cliente notificado sobre mudanca de status do pedido", {
+        tenantId,
+        saleId,
+        customerId,
+        orderStatus: currentOrderStatus,
+        statusLabel: orderStatusNotificationLabel(currentOrderStatus),
+      });
+    } catch (error) {
+      const errorMessage = String(error?.message || error || "").trim();
+      logger.error("Erro ao notificar mudanca de status do pedido", {
+        tenantId,
+        saleId,
+        customerId,
+        orderStatus: currentOrderStatus,
+        error: errorMessage,
+      });
+
+      await syncOrderStatusNotificationState({
+        saleRef,
+        orderStatus: currentOrderStatus,
+        errorMessage,
+      });
+    }
+  },
+);
+
+exports.processAbandonedCarts = onSchedule(
+  {
+    schedule: "every 15 minutes",
+    timeZone: "America/Sao_Paulo",
+    secrets: [EVOLUTION_API_URL, EVOLUTION_API_KEY],
+  },
+  async () => {
+    const staleCartCutoffIso = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    const expirationCutoffTs = admin.firestore.Timestamp.fromDate(
+      new Date(Date.now() - 24 * 60 * 60 * 1000),
+    );
+    const recoveryErrorRetryCutoff = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    let recoveredCount = 0;
+    let expiredCount = 0;
+    let eligibleRecoveryGroupsCount = 0;
+    let eligibleExpirationGroupsCount = 0;
+
+    const tenantsSnapshot = await db.collection("tenants").get();
+    for (const tenantDoc of tenantsSnapshot.docs) {
+      const tenantId = tenantDoc.id;
+      const tenantData = tenantDoc.data() || {};
+      const cartsRef = tenantDoc.ref.collection("carts");
+
+      const [eligibleRecoverySnapshot, eligibleExpirationSnapshot] = await Promise.all([
+        cartsRef
+          .where("status", "==", "open")
+          .where("updated_at", "<=", staleCartCutoffIso)
+          .get(),
+        cartsRef
+          .where("status", "==", "open")
+          .where("recovery_status", "==", "recovery_sent")
+          .where("last_recovery_at", "<=", expirationCutoffTs)
+          .get(),
+      ]);
+
+      const recoveryGroups = groupEligibleCartDocs(eligibleRecoverySnapshot.docs);
+      eligibleRecoveryGroupsCount += recoveryGroups.length;
+
+      for (const group of recoveryGroups) {
+        if (group.maxRecoveryAttemptCount > 0 || group.recoveryStatus === "recovery_sent") {
+          continue;
+        }
+
+        if (
+          group.recoveryStatus === "recovery_error" &&
+          group.latestRecoveryAt &&
+          group.latestRecoveryAt > recoveryErrorRetryCutoff
+        ) {
+          continue;
+        }
+
+        const customerRef = group.customerId
+          ? tenantDoc.ref.collection("customers").doc(group.customerId)
+          : null;
+        const customerDoc = customerRef ? await customerRef.get() : null;
+        const customerData = customerDoc?.exists ? customerDoc.data() || {} : {};
+        const lastInboundAt = parseDateLike(customerData.last_inbound_message_at);
+        const lastUpdatedAt = group.latestUpdatedAt;
+
+        if (customerData.human_handoff_pending === true || customerData.agent_off === true) {
+          continue;
+        }
+
+        if (lastInboundAt && lastUpdatedAt && lastInboundAt > lastUpdatedAt) {
+          continue;
+        }
+
+        const tenantEvolutionConfig = resolveTenantEvolutionConfig(tenantData);
+        if (!tenantEvolutionConfig) {
+          logger.warn("Tenant sem configuracao de WhatsApp para recuperar carrinho", {
+            tenantId,
+            phone: group.phone,
+          });
+          continue;
+        }
+
+        const message = buildCartRecoveryMessage({
+          customerName: group.customerName,
+          itemsSummary: summarizeCartItems(group.items),
+        });
+
+        try {
+          await sendEvolutionTextMessage({
+            evolutionApiUrl: tenantEvolutionConfig.evolutionApiUrl,
+            apiKey: tenantEvolutionConfig.apiKey,
+            instanceName: tenantEvolutionConfig.instanceName,
+            phone: group.phone,
+            message,
+          });
+
+          await markCartRecoveryState(group.docs, {
+            recovery_status: "recovery_sent",
+            recovery_attempt_count: 1,
+            last_recovery_at: admin.firestore.Timestamp.now(),
+            recovery_message_snapshot: message,
+            recovery_error: null,
+          });
+
+          recoveredCount += 1;
+        } catch (error) {
+          logger.error("Erro ao recuperar carrinho abandonado", {
+            tenantId,
+            phone: group.phone,
+            error: String(error?.message || error || "").trim(),
+          });
+
+          await markCartRecoveryState(group.docs, {
+            recovery_status: "recovery_error",
+            recovery_error: String(error?.message || error || "").trim(),
+            recovery_attempt_count: 0,
+            last_recovery_at: admin.firestore.Timestamp.now(),
+          });
+        }
+      }
+
+      const expirationGroups = groupEligibleCartDocs(eligibleExpirationSnapshot.docs);
+      eligibleExpirationGroupsCount += expirationGroups.length;
+
+      for (const group of expirationGroups) {
+        const customerRef = group.customerId
+          ? tenantDoc.ref.collection("customers").doc(group.customerId)
+          : null;
+        const customerDoc = customerRef ? await customerRef.get() : null;
+        const customerData = customerDoc?.exists ? customerDoc.data() || {} : {};
+        const lastInboundAt = parseDateLike(customerData.last_inbound_message_at);
+        const lastRecoveryAt = group.latestRecoveryAt;
+        const latestUpdatedAt = group.latestUpdatedAt;
+
+        if (lastInboundAt && lastRecoveryAt && lastInboundAt > lastRecoveryAt) {
+          continue;
+        }
+
+        if (latestUpdatedAt && lastRecoveryAt && latestUpdatedAt > lastRecoveryAt) {
+          continue;
+        }
+
+        try {
+          expiredCount += await deleteCartDocs(group.docs);
+        } catch (error) {
+          logger.error("Erro ao expirar carrinho abandonado", {
+            tenantId,
+            phone: group.phone,
+            error: String(error?.message || error || "").trim(),
+          });
+        }
+      }
+    }
+
+    logger.info("Processamento de carrinhos abandonados concluido", {
+      eligibleRecoveries: eligibleRecoveryGroupsCount,
+      recoveredCount,
+      eligibleExpirations: eligibleExpirationGroupsCount,
+      expiredCount,
+    });
+  },
 );
 
 exports.notifyRestockCustomers = onRequest(

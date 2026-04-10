@@ -40,6 +40,23 @@
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "completed_at", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "carts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "updated_at", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "carts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "recovery_status", "order": "ASCENDING" },
+        { "fieldPath": "last_recovery_at", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

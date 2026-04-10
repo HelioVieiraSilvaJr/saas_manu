@@ -60,6 +60,9 @@ class DashboardTenantSnapshot {
   final int productsWithoutImage;
   final int pendingEscalationsCount;
   final int pendingStockAlertsCount;
+  final int pendingSalesCount;
+  final int paymentSentSalesCount;
+  final int abandonedCartsCount;
 
   const DashboardTenantSnapshot({
     required this.salesToday,
@@ -76,6 +79,9 @@ class DashboardTenantSnapshot {
     required this.productsWithoutImage,
     required this.pendingEscalationsCount,
     required this.pendingStockAlertsCount,
+    required this.pendingSalesCount,
+    required this.paymentSentSalesCount,
+    required this.abandonedCartsCount,
   });
 }
 
@@ -101,6 +107,9 @@ class DashboardTenantRepository {
 
   CollectionReference<Map<String, dynamic>> get _stockAlertsCollection =>
       _firestore.collection('tenants').doc(_tenantId).collection('stockAlerts');
+
+  CollectionReference<Map<String, dynamic>> get _cartsCollection =>
+      _firestore.collection('tenants').doc(_tenantId).collection('carts');
 
   static double saleTotalFromMap(Map<String, dynamic> data) {
     final rawValue = data['total'] ?? data['total_value'] ?? 0;
@@ -153,6 +162,7 @@ class DashboardTenantRepository {
         1,
       );
       final sevenDaysAgo = startOfDay.subtract(const Duration(days: 6));
+      final staleCartCutoff = now.subtract(const Duration(hours: 2));
 
       final dailyTotals = <String, double>{};
       for (int i = 0; i < 7; i++) {
@@ -188,6 +198,21 @@ class DashboardTenantRepository {
         _stockAlertsCollection
             .where('status', isEqualTo: StockAlertStatus.pending.name)
             .get(),
+        _salesCollection
+            .where('status', isEqualTo: 'pending')
+            .count()
+            .get(),
+        _salesCollection
+            .where('status', isEqualTo: 'payment_sent')
+            .count()
+            .get(),
+        _cartsCollection
+            .where('status', isEqualTo: 'open')
+            .where(
+              'updated_at',
+              isLessThanOrEqualTo: staleCartCutoff.toUtc().toIso8601String(),
+            )
+            .get(),
       ]);
 
       final salesWindowSnapshot =
@@ -205,9 +230,20 @@ class DashboardTenantRepository {
           (results[7] as AggregateQuerySnapshot).count ?? 0;
       final pendingStockAlertsSnapshot =
           results[8] as QuerySnapshot<Map<String, dynamic>>;
+      final pendingSalesCount =
+          (results[9] as AggregateQuerySnapshot).count ?? 0;
+      final paymentSentSalesCount =
+          (results[10] as AggregateQuerySnapshot).count ?? 0;
+      final abandonedCartsSnapshot =
+          results[11] as QuerySnapshot<Map<String, dynamic>>;
       final pendingStockAlertsCount = pendingStockAlertsSnapshot.docs
           .map((doc) => doc.data()['product_id'] as String? ?? '')
           .where((productId) => productId.isNotEmpty)
+          .toSet()
+          .length;
+      final abandonedCartsCount = abandonedCartsSnapshot.docs
+          .map((doc) => doc.data()['phone'] as String? ?? '')
+          .where((phone) => phone.isNotEmpty)
           .toSet()
           .length;
 
@@ -275,6 +311,9 @@ class DashboardTenantRepository {
         productsWithoutImage: productsWithoutImage,
         pendingEscalationsCount: pendingEscalationsCount,
         pendingStockAlertsCount: pendingStockAlertsCount,
+        pendingSalesCount: pendingSalesCount,
+        paymentSentSalesCount: paymentSentSalesCount,
+        abandonedCartsCount: abandonedCartsCount,
       );
     } catch (e, stackTrace) {
       AppLogger.error(

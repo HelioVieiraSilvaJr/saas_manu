@@ -12,6 +12,9 @@ enum DashboardAlertType {
   noSalesThisMonth,
   pendingEscalations,
   pendingStockAlerts,
+  pendingSalesAction,
+  paymentFollowUp,
+  abandonedCarts,
 }
 
 /// Modelo de alerta para o Dashboard.
@@ -58,6 +61,12 @@ class DashboardAlert {
         return 1;
       case DashboardAlertType.pendingStockAlerts:
         return 2;
+      case DashboardAlertType.pendingSalesAction:
+        return 1;
+      case DashboardAlertType.paymentFollowUp:
+        return 1;
+      case DashboardAlertType.abandonedCarts:
+        return 2;
     }
   }
 }
@@ -92,6 +101,9 @@ class DashboardTenantViewModel {
   // MARK: - Operacional
   final int pendingEscalationsCount;
   final int pendingStockAlertsCount;
+  final int pendingSalesCount;
+  final int paymentSentSalesCount;
+  final int abandonedCartsCount;
 
   const DashboardTenantViewModel({
     this.isLoading = true,
@@ -111,6 +123,9 @@ class DashboardTenantViewModel {
     this.alerts = const [],
     this.pendingEscalationsCount = 0,
     this.pendingStockAlertsCount = 0,
+    this.pendingSalesCount = 0,
+    this.paymentSentSalesCount = 0,
+    this.abandonedCartsCount = 0,
   });
 
   // MARK: - Computed
@@ -172,6 +187,9 @@ class DashboardTenantViewModel {
     List<DashboardAlert>? alerts,
     int? pendingEscalationsCount,
     int? pendingStockAlertsCount,
+    int? pendingSalesCount,
+    int? paymentSentSalesCount,
+    int? abandonedCartsCount,
     bool clearError = true,
   }) {
     return DashboardTenantViewModel(
@@ -198,6 +216,10 @@ class DashboardTenantViewModel {
           pendingEscalationsCount ?? this.pendingEscalationsCount,
       pendingStockAlertsCount:
           pendingStockAlertsCount ?? this.pendingStockAlertsCount,
+      pendingSalesCount: pendingSalesCount ?? this.pendingSalesCount,
+      paymentSentSalesCount:
+          paymentSentSalesCount ?? this.paymentSentSalesCount,
+      abandonedCartsCount: abandonedCartsCount ?? this.abandonedCartsCount,
     );
   }
 }

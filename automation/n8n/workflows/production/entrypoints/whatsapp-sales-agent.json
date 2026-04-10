@@ -116,6 +116,42 @@
     },
     {
       "parameters": {
+        "method": "PATCH",
+        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $('Info').first().json.tenant_id }}/customers/{{ $('Dados do Cliente').first().json.documentID }}?updateMask.fieldPaths=last_outbound_message_at&updateMask.fieldPaths=updated_at",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleFirebaseCloudFirestoreOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "=application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"fields\": {\n    \"last_outbound_message_at\": { \"timestampValue\": \"{{ $now.toISO() }}\" },\n    \"updated_at\": { \"timestampValue\": \"{{ $now.toISO() }}\" }\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -544,
+        2704
+      ],
+      "id": "312de0b4-59d6-4d58-b5d1-a2673e04f95c",
+      "name": "Atualizar ultima saida do cliente",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "QxD9cYkBZKwyeLQL",
+          "name": "Saas Manu - Firestore OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
         "assignments": {
           "assignments": [
             {
@@ -438,7 +474,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"fields\": {\n    \"name\": { \"stringValue\": \"{{ $('Filtrar Mensagens').first().json.pushName || $('Filtrar Mensagens').first().json.telefone }}\" },\n    \"phone\": { \"stringValue\": \"{{ $('Filtrar Mensagens').first().json.telefone }}\" },\n    \"whatsapp\": { \"stringValue\": \"{{ $('Filtrar Mensagens').first().json.telefone }}\" },\n    \"phone_normalized\": { \"stringValue\": \"{{ $('Filtrar Mensagens').first().json.telefone }}\" },\n    \"whatsapp_normalized\": { \"stringValue\": \"{{ $('Filtrar Mensagens').first().json.telefone }}\" },\n    \"phone_lookup_key\": { \"stringValue\": \"{{ $('Filtrar Mensagens').first().json.telefone }}\" },\n    \"email\": { \"stringValue\": \"\" },\n    \"address\": { \"stringValue\": \"\" },\n    \"is_active\": { \"booleanValue\": true },\n    \"agent_off\": { \"booleanValue\": false },\n    \"human_handoff_pending\": { \"booleanValue\": false },\n    \"active_escalation_id\": { \"stringValue\": \"\" },\n    \"last_human_handoff_summary\": { \"stringValue\": \"\" },\n    \"last_human_handoff_reason\": { \"stringValue\": \"\" },\n    \"last_human_handoff_requested_at\": { \"stringValue\": \"\" },\n    \"created_at\": { \"timestampValue\": \"{{ $now.toISO() }}\" },\n    \"updated_at\": { \"timestampValue\": \"{{ $now.toISO() }}\" }\n  }\n}\n",
+        "jsonBody": "={\n  \"fields\": {\n    \"name\": { \"stringValue\": \"{{ $('Filtrar Mensagens').first().json.pushName || $('Filtrar Mensagens').first().json.telefone }}\" },\n    \"phone\": { \"stringValue\": \"{{ $('Filtrar Mensagens').first().json.telefone }}\" },\n    \"whatsapp\": { \"stringValue\": \"{{ $('Filtrar Mensagens').first().json.telefone }}\" },\n    \"phone_normalized\": { \"stringValue\": \"{{ $('Filtrar Mensagens').first().json.telefone }}\" },\n    \"whatsapp_normalized\": { \"stringValue\": \"{{ $('Filtrar Mensagens').first().json.telefone }}\" },\n    \"phone_lookup_key\": { \"stringValue\": \"{{ $('Filtrar Mensagens').first().json.telefone }}\" },\n    \"email\": { \"stringValue\": \"\" },\n    \"address\": { \"stringValue\": \"\" },\n    \"is_active\": { \"booleanValue\": true },\n    \"agent_off\": { \"booleanValue\": false },\n    \"human_handoff_pending\": { \"booleanValue\": false },\n    \"active_escalation_id\": { \"stringValue\": \"\" },\n    \"last_human_handoff_summary\": { \"stringValue\": \"\" },\n    \"last_human_handoff_reason\": { \"stringValue\": \"\" },\n    \"last_human_handoff_requested_at\": { \"stringValue\": \"\" },\n    \"last_inbound_message_at\": { \"timestampValue\": \"{{ $now.toISO() }}\" },\n    \"created_at\": { \"timestampValue\": \"{{ $now.toISO() }}\" },\n    \"updated_at\": { \"timestampValue\": \"{{ $now.toISO() }}\" }\n  }\n}\n",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -679,6 +715,42 @@
       "id": "eb48423a-e24c-4339-8154-9bab0ca36b5a",
       "name": "Dados do Cliente",
       "executeOnce": true
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://firestore.googleapis.com/v1/projects/saas-manu-project/databases/(default)/documents/tenants/{{ $('Info').first().json.tenant_id }}/customers/{{ $('Dados do Cliente').first().json.documentID }}?updateMask.fieldPaths=last_inbound_message_at&updateMask.fieldPaths=updated_at",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleFirebaseCloudFirestoreOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "=application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"fields\": {\n    \"last_inbound_message_at\": { \"timestampValue\": \"{{ $now.toISO() }}\" },\n    \"updated_at\": { \"timestampValue\": \"{{ $now.toISO() }}\" }\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2704,
+        1808
+      ],
+      "id": "14f7eaef-70d7-4d33-b66d-699e1c0bb701",
+      "name": "Atualizar ultima entrada do cliente",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleFirebaseCloudFirestoreOAuth2Api": {
+          "id": "QxD9cYkBZKwyeLQL",
+          "name": "Saas Manu - Firestore OAuth2"
+        }
+      }
     },
     {
       "parameters": {
@@ -1698,7 +1770,7 @@
       "main": [
         [
           {
-            "node": "Buscar pedidos do cliente",
+            "node": "Atualizar ultima entrada do cliente",
             "type": "main",
             "index": 0
           }
@@ -1727,7 +1799,7 @@
         ],
         [
           {
-            "node": "Buscar pedidos do cliente",
+            "node": "Atualizar ultima entrada do cliente",
             "type": "main",
             "index": 0
           }
@@ -1739,6 +1811,17 @@
         [
           {
             "node": "AgentOff?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Atualizar ultima entrada do cliente": {
+      "main": [
+        [
+          {
+            "node": "Buscar pedidos do cliente",
             "type": "main",
             "index": 0
           }
@@ -1994,6 +2077,17 @@
       ]
     },
     "Enviar texto": {
+      "main": [
+        [
+          {
+            "node": "Atualizar ultima saida do cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Atualizar ultima saida do cliente": {
       "main": [
         []
       ]
