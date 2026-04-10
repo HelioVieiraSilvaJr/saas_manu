@@ -30,6 +30,7 @@ import 'Scenes/TenantSettings/TenantSettingsPage.dart';
 import 'Scenes/TeamManagement/TeamManagementPage.dart';
 import 'Scenes/TeamManagement/AddMemberPage.dart';
 import 'Scenes/UpgradePlan/UpgradePlanPage.dart';
+import 'Scenes/Marketing/ai_sales_agent_landing_page.dart';
 import 'Commons/Utils/DSPageRoute.dart';
 
 void main() async {
@@ -183,6 +184,10 @@ class SaasManApp extends StatelessWidget {
           '/upgrade': (context) => const UpgradePlanPage(),
           '/team': (context) => const TeamManagementPage(),
           '/team/add': (context) => const AddMemberPage(),
+          '/landing': (context) => const AiSalesAgentLandingPage(),
+          '/ai-sales-agent': (context) => const AiSalesAgentLandingPage(),
+          '/landing/ai-sales-agent': (context) =>
+              const AiSalesAgentLandingPage(),
         };
         final builder = routes[settings.name];
         if (builder == null) return null;

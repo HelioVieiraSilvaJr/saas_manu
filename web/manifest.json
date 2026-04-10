@@ -1,11 +1,11 @@
 {
-    "name": "saas_manu",
-    "short_name": "saas_manu",
+    "name": "AI Sales Engine",
+    "short_name": "AI Sales",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#07111F",
+    "theme_color": "#07111F",
+    "description": "Plataforma de atendimento comercial com IA para WhatsApp, CRM integrado e automação de vendas.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
