@@ -18,6 +18,8 @@ class _AiSalesAgentLandingPageState extends State<AiSalesAgentLandingPage> {
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _featuresKey = GlobalKey();
   final GlobalKey _abilitiesKey = GlobalKey();
+  final GlobalKey _offerKey = GlobalKey();
+  final GlobalKey _faqKey = GlobalKey();
   final GlobalKey _ctaKey = GlobalKey();
 
   void _scrollTo(GlobalKey key) {
@@ -130,7 +132,22 @@ class _AiSalesAgentLandingPageState extends State<AiSalesAgentLandingPage> {
                           ),
                           const SizedBox(height: 44),
                           _Reveal(
+                            delayMs: 520,
+                            child: _buildTrustSection(colors, textStyles),
+                          ),
+                          const SizedBox(height: 44),
+                          _Reveal(
+                            delayMs: 540,
+                            child: _buildOfferSection(colors, textStyles),
+                          ),
+                          const SizedBox(height: 44),
+                          _Reveal(
                             delayMs: 560,
+                            child: _buildFaqSection(colors, textStyles),
+                          ),
+                          const SizedBox(height: 44),
+                          _Reveal(
+                            delayMs: 620,
                             child: _buildFinalCta(colors, textStyles),
                           ),
                           const SizedBox(height: 32),
@@ -143,6 +160,11 @@ class _AiSalesAgentLandingPageState extends State<AiSalesAgentLandingPage> {
                 ],
               ),
             ),
+          ),
+          Positioned(
+            right: 18,
+            bottom: 18,
+            child: _FloatingCta(onTap: () => _scrollTo(_ctaKey)),
           ),
         ],
       ),
@@ -204,7 +226,9 @@ class _AiSalesAgentLandingPageState extends State<AiSalesAgentLandingPage> {
               label: 'Poderes da IA',
               onTap: () => _scrollTo(_abilitiesKey),
             ),
-            _TopNavLink(label: 'Demonstração', onTap: () => _scrollTo(_ctaKey)),
+            _TopNavLink(label: 'Oferta', onTap: () => _scrollTo(_offerKey)),
+            _TopNavLink(label: 'FAQ', onTap: () => _scrollTo(_faqKey)),
+            _TopNavLink(label: 'Demo', onTap: () => _scrollTo(_ctaKey)),
             const SizedBox(width: 10),
           ],
           OutlinedButton(
@@ -969,6 +993,297 @@ class _AiSalesAgentLandingPageState extends State<AiSalesAgentLandingPage> {
     );
   }
 
+  Widget _buildTrustSection(DSColors colors, DSTextStyle textStyles) {
+    final trustPoints = [
+      (
+        'Atua no funil real de vendas',
+        'A IA não para na resposta. Ela conduz contexto, carrinho, venda e follow-up.',
+      ),
+      (
+        'Responde com base em dados reais',
+        'Consulta catálogo, histórico e operação antes de prometer qualquer coisa.',
+      ),
+      (
+        'Amplia o time humano',
+        'A automação absorve volume e libera a equipe para os casos mais estratégicos.',
+      ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionHeader(
+          eyebrow: 'POR QUE ESSA SOLUÇÃO GERA CONFIANÇA',
+          title:
+              'Tecnologia pensada para vender com precisão e operar com responsabilidade.',
+          subtitle:
+              'O maior valor da plataforma não é parecer futurista. É transformar atendimento em processo confiável, rápido e orientado a resultado.',
+        ),
+        const SizedBox(height: 22),
+        Wrap(
+          spacing: 18,
+          runSpacing: 18,
+          children: trustPoints
+              .map(
+                (point) => SizedBox(
+                  width: 390,
+                  child: _GlassPanel(
+                    padding: const EdgeInsets.all(22),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 46,
+                          height: 46,
+                          decoration: BoxDecoration(
+                            color: colors.secundaryLight.withValues(
+                              alpha: 0.12,
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Icon(
+                            Icons.verified_rounded,
+                            color: colors.secundaryLight,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          point.$1,
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          point.$2,
+                          style: textStyles.bodyLarge.copyWith(
+                            color: const Color(0xFFBFD0E0),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOfferSection(DSColors colors, DSTextStyle textStyles) {
+    final deliverables = [
+      'Agente de IA comercial integrado ao WhatsApp',
+      'Consulta real de catálogo, cliente e operação',
+      'Carrinho, venda e pós-venda dentro do fluxo',
+      'Recuperação de oportunidades e visão operacional',
+      'Escalação humana com contexto preservado',
+    ];
+
+    return Column(
+      key: _offerKey,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionHeader(
+          eyebrow: 'OFERTA COMERCIAL',
+          title:
+              'Uma camada de atendimento e vendas com IA pronta para virar vantagem competitiva.',
+          subtitle:
+              'Você pode usar esta landing para vender a solução como implantação de um vendedor digital integrado à operação do cliente.',
+        ),
+        const SizedBox(height: 22),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final useRow = constraints.maxWidth > 980;
+            final offerCard = _GlassPanel(
+              padding: const EdgeInsets.all(26),
+              borderColor: colors.highlights.withValues(alpha: 0.24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Implantação AI Sales Engine',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Posicione como atendimento comercial com IA + CRM + automação operacional.',
+                    style: textStyles.bodyLarge.copyWith(
+                      color: const Color(0xFFBFD0E0),
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  ...deliverables.map(
+                    (item) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.check_circle_rounded,
+                            color: colors.secundaryLight,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              item,
+                              style: textStyles.bodyLarge.copyWith(
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: const [
+                      _SignalPill(label: 'Implantação'),
+                      _SignalPill(label: 'Treinamento'),
+                      _SignalPill(label: 'Operação assistida'),
+                    ],
+                  ),
+                ],
+              ),
+            );
+
+            final pricingCard = Container(
+              padding: const EdgeInsets.all(26),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    colors.highlights.withValues(alpha: 0.18),
+                    colors.accentWarm.withValues(alpha: 0.10),
+                    Colors.white.withValues(alpha: 0.04),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(30),
+                border: Border.all(
+                  color: colors.highlights.withValues(alpha: 0.22),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Como vender esta solução',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Fale menos em chatbot e mais em ganho comercial: velocidade, conversão, organização e capacidade de escala.',
+                    style: textStyles.bodyLarge.copyWith(
+                      color: const Color(0xFFF4E8D0),
+                      height: 1.7,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  _OfferSignal(
+                    title: 'Valor percebido',
+                    description:
+                        'Atendimento, CRM, pós-venda e inteligência operacional no mesmo sistema.',
+                    accent: colors.highlights,
+                  ),
+                  const SizedBox(height: 12),
+                  _OfferSignal(
+                    title: 'Diferencial comercial',
+                    description:
+                        'A IA conversa, consulta dados reais e executa ações na operação.',
+                    accent: colors.secundaryLight,
+                  ),
+                  const SizedBox(height: 12),
+                  _OfferSignal(
+                    title: 'Resultado esperado',
+                    description:
+                        'Mais agilidade, menos perda de oportunidade e mais previsibilidade.',
+                    accent: colors.blue,
+                  ),
+                ],
+              ),
+            );
+
+            if (!useRow) {
+              return Column(
+                children: [offerCard, const SizedBox(height: 18), pricingCard],
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: offerCard),
+                const SizedBox(width: 18),
+                Expanded(child: pricingCard),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFaqSection(DSColors colors, DSTextStyle textStyles) {
+    final items = [
+      (
+        'Isso substitui totalmente a equipe humana?',
+        'Não. A proposta é multiplicar a capacidade da equipe. A IA absorve base, velocidade e repetição, enquanto os humanos entram nos casos mais estratégicos, sensíveis ou complexos.',
+      ),
+      (
+        'O agente inventa respostas?',
+        'Não deve. Ele foi projetado para consultar dados reais do catálogo e da operação antes de responder preço, disponibilidade, pedido ou contexto interno.',
+      ),
+      (
+        'Serve só para atendimento?',
+        'Não. O foco é atendimento comercial. Ele atua em pré-venda, venda, pós-venda, recuperação de carrinho e acompanhamento de pedidos.',
+      ),
+      (
+        'Precisa mudar o processo da empresa?',
+        'Na prática, a plataforma melhora o processo existente e organiza a operação. Ela tende a reduzir improviso, retrabalho e perda de oportunidade.',
+      ),
+    ];
+
+    return Column(
+      key: _faqKey,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionHeader(
+          eyebrow: 'FAQ COMERCIAL',
+          title: 'Objeções comuns respondidas de forma clara.',
+          subtitle:
+              'Uma boa landing também reduz atrito de decisão. Estas respostas ajudam a dar segurança para quem está avaliando a solução.',
+        ),
+        const SizedBox(height: 22),
+        ...items.map(
+          (item) => Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: _FaqItem(
+              title: item.$1,
+              description: item.$2,
+              colors: colors,
+              textStyles: textStyles,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildFinalCta(DSColors colors, DSTextStyle textStyles) {
     return Container(
       key: _ctaKey,
@@ -1402,6 +1717,109 @@ class _OperationalPulseCard extends StatelessWidget {
   }
 }
 
+class _OfferSignal extends StatelessWidget {
+  const _OfferSignal({
+    required this.title,
+    required this.description,
+    required this.accent,
+  });
+
+  final String title;
+  final String description;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: accent.withValues(alpha: 0.22)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            description,
+            style: GoogleFonts.dmSans(
+              fontSize: 14,
+              height: 1.6,
+              color: const Color(0xFFF3F4F6),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FaqItem extends StatelessWidget {
+  const _FaqItem({
+    required this.title,
+    required this.description,
+    required this.colors,
+    required this.textStyles,
+  });
+
+  final String title;
+  final String description;
+  final DSColors colors;
+  final DSTextStyle textStyles;
+
+  @override
+  Widget build(BuildContext context) {
+    return _GlassPanel(
+      padding: const EdgeInsets.all(20),
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          dividerColor: Colors.transparent,
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+        ),
+        child: ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: EdgeInsets.zero,
+          iconColor: colors.secundaryLight,
+          collapsedIconColor: colors.secundaryLight,
+          title: Text(
+            title,
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  description,
+                  style: textStyles.bodyLarge.copyWith(
+                    color: const Color(0xFFBFD0E0),
+                    height: 1.7,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _PipelineStep extends StatelessWidget {
   const _PipelineStep({required this.icon, required this.label});
 
@@ -1583,6 +2001,43 @@ class _NebulaBackground extends StatelessWidget {
           colors: [Color(0x44F59E0B), Color(0x00F59E0B)],
         ),
       ],
+    );
+  }
+}
+
+class _FloatingCta extends StatelessWidget {
+  const _FloatingCta({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = DSColors();
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        boxShadow: [
+          BoxShadow(
+            color: colors.secundaryLight.withValues(alpha: 0.24),
+            blurRadius: 26,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: ElevatedButton.icon(
+        onPressed: onTap,
+        icon: const Icon(Icons.bolt_rounded),
+        label: const Text('Agendar demo'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: colors.secundaryLight,
+          foregroundColor: colors.black,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(999),
+          ),
+        ),
+      ),
     );
   }
 }
